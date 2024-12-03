@@ -4,126 +4,101 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reports - Lodge Ease</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        'roboto': ['Roboto', 'sans-serif'],
-                        'montserrat': ['Montserrat', 'sans-serif']
-                    }
-                }
-            }
-        }
-    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="styles.css">
 </head>
-<body class="font-roboto text-gray-800">
-    <div class="flex h-screen w-screen overflow-hidden">
-        <aside class="w-64 bg-gray-800 text-white p-5 fixed left-0 top-0 h-full z-50 overflow-y-auto">
-            <div class="flex items-center mb-8 px-2.5">
-                <img src="../images/LodgeEaseLogo.png" alt="Lodge Ease Logo" class="w-16 h-10 mr-3">
-                <h2 class="text-xl font-montserrat">Lodge Ease</h2>
+<body>
+    <div class="app">
+        <aside class="sidebar">
+            <div class="logo-container">
+                <img src="../images/LodgeEaseLogo.png" alt="Lodge Ease Logo" class="logo">
+                <h2>Lodge Ease</h2>
             </div>
-            
             <nav>
-                <ul class="space-y-4">
-                    <li><a href="../Dashboard/Dashboard.html" class="flex items-center p-3 rounded-md hover:bg-white/10 transition-colors">
-                        <i class="fas fa-tachometer-alt mr-3 w-5 text-center"></i> Dashboard
-                    </a></li>
-                    <li><a href="../Room Management/room_management.html" class="flex items-center p-3 rounded-md hover:bg-white/10 transition-colors">
-                        <i class="fas fa-bed mr-3 w-5 text-center"></i> Room Management
-                    </a></li>
-                    <li><a href="../Reservation/reservations.html" class="flex items-center p-3 rounded-md hover:bg-white/10 transition-colors">
-                        <i class="fas fa-calendar-alt mr-3 w-5 text-center"></i> Reservations
-                    </a></li>
-                    <li><a href="../Billing/billing.html" class="flex items-center p-3 rounded-md hover:bg-white/10 transition-colors">
-                        <i class="fas fa-money-bill-wave mr-3 w-5 text-center"></i> Billing
-                    </a></li>
-                    <li><a href="../Reports/reports.html" class="flex items-center p-3 rounded-md hover:bg-white/10 transition-colors">
-                        <i class="fas fa-chart-line mr-3 w-5 text-center"></i> Reports
-                    </a></li>
-                    <li><a href="../Settings/settings.html" class="flex items-center p-3 rounded-md hover:bg-white/10 transition-colors">
-                        <i class="fas fa-cog mr-3 w-5 text-center"></i> Settings
-                    </a></li>
-                    <li><a href="../AInalysis/AInalysis.html" class="flex items-center p-3 rounded-md hover:bg-white/10 transition-colors">
-                        <i class="fas fa-robot mr-3 w-5 text-center"></i> ChatBot
-                    </a></li>
+                <ul>
+                    <li><a href="../Dashboard/Dashboard.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                    <li><a href="../Room Management/room_management.html"><i class="fas fa-bed"></i> Room Management</a></li>
+                    <li><a href="../Reservation/reservations.html"><i class="fas fa-calendar-alt"></i> Reservations</a></li>
+                    <li><a href="../Billing/billing.html"><i class="fas fa-money-bill-wave"></i> Billing</a></li>
+                    <li><a href="../Reports/reports.html"><i class="fas fa-chart-line"></i> Reports</a></li>
+                    <li><a href="../Settings/settings.html"><i class="fas fa-cog"></i> Settings</a></li>
+                    <li><a href="../AInalysis/AInalysis.html"><i class="fas fa-robot"></i>ChatBot</a></li>
                 </ul>
             </nav>
         </aside>
 
-        <main class="flex-1 ml-64 p-5 overflow-y-auto bg-gray-100">
-            <header class="mb-8">
-                <h1 class="text-3xl font-montserrat text-gray-700">Reports & Analytics</h1>
+        <main class="main-content">
+            <header class="page-header">
+                <h1>Reports & Analytics</h1>
             </header>
 
-            <section class="bg-white rounded-lg shadow p-5 mb-5">
-                <h2 class="text-xl font-montserrat mb-4">Filters</h2>
-                <div class="flex gap-5 items-center flex-wrap">
-                    <div class="flex-1 min-w-[200px]">
-                        <label for="report-period" class="block mb-2">Select Period:</label>
-                        <select id="report-period" class="w-full p-2 border rounded">
+            <section class="filter-section card">
+                <h2>Filters</h2>
+                <div class="filter-controls">
+                    <div class="filter-group">
+                        <label for="report-period">Select Period:</label>
+                        <select id="report-period" class="form-control">
                             <option value="monthly">Monthly</option>
                             <option value="quarterly">Quarterly</option>
                             <option value="yearly">Yearly</option>
                         </select>
                     </div>
-                    <div class="flex-1 min-w-[200px]">
-                        <label for="room-type" class="block mb-2">Room Type:</label>
-                        <select id="room-type" class="w-full p-2 border rounded">
+                    <div class="filter-group">
+                        <label for="room-type">Room Type:</label>
+                        <select id="room-type" class="form-control">
                             <option value="all">All</option>
                             <option value="standard">Standard</option>
                         </select>
                     </div>
-                    <button class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors" onclick="applyFilters()">Apply Filters</button>
+                    <button class="btn btn-primary" onclick="applyFilters()">Apply Filters</button>
                 </div>
             </section>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
-                <section class="bg-white rounded-lg shadow p-5">
-                    <h2 class="text-xl font-montserrat mb-4">Revenue Report</h2>
-                    <div class="h-72 mb-5">
+            <div class="reports-grid">
+                <section class="report-section card">
+                    <h2>Revenue Report</h2>
+                    <div class="chart-container">
                         <canvas id="revenueChart"></canvas>
                     </div>
-                    <div class="text-center">
-                        <p>Total Revenue: <span id="totalRevenue" class="font-bold text-green-600">$0.00</span></p>
+                    <div class="summary">
+                        <p>Total Revenue: <span id="totalRevenue" class="highlight">$0.00</span></p>
                     </div>
                 </section>
 
-                <section class="bg-white rounded-lg shadow p-5">
-                    <h2 class="text-xl font-montserrat mb-4">Peak Occupancy Times</h2>
-                    <div class="h-72 mb-5">
+                <section class="report-section card">
+                    <h2>Peak Occupancy Times</h2>
+                    <div class="chart-container">
                         <canvas id="occupancyChart"></canvas>
                     </div>
-                    <div class="text-center">
-                        <p>Most Frequented Time: <span id="peakTime" class="font-bold">Not Available</span></p>
+                    <div class="summary">
+                        <p>Most Frequented Time: <span id="peakTime" class="highlight">Not Available</span></p>
                     </div>
                 </section>
 
-                <section class="bg-white rounded-lg shadow p-5">
-                    <h2 class="text-xl font-montserrat mb-4">Guest Demographics</h2>
-                    <div class="h-72 mb-5">
+                <section class="report-section card">
+                    <h2>Guest Demographics</h2>
+                    <div class="chart-container">
                         <canvas id="guestChart"></canvas>
                     </div>
-                    <div class="text-center">
-                        <p>Most Common Age Group: <span id="commonAgeGroup" class="font-bold">N/A</span></p>
+                    <div class="summary">
+                        <p>Most Common Age Group: <span id="commonAgeGroup" class="highlight">N/A</span></p>
                     </div>
                 </section>
             </div>
 
-            <section class="bg-white rounded-lg shadow p-5">
-                <h2 class="text-xl font-montserrat mb-4">AI-Powered Insights</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div class="bg-gray-100 p-4 rounded">
-                        <h3 class="font-semibold mb-2">Predicted Busy Period</h3>
+            <section class="ai-insights-section card">
+                <h2>AI-Powered Insights</h2>
+                <div class="insights-grid">
+                    <div class="insight-item">
+                        <h3>Predicted Busy Period</h3>
                         <p id="predictedBusyPeriod">N/A</p>
                     </div>
-                    <div class="bg-gray-100 p-4 rounded">
-                        <h3 class="font-semibold mb-2">Revenue Optimization</h3>
+                    <div class="insight-item">
+                        <h3>Revenue Optimization</h3>
                         <p id="optimizationSuggestion">N/A</p>
                     </div>
                 </div>
@@ -131,12 +106,6 @@
         </main>
     </div>
 
-    <script>
-        function applyFilters() {
-            // Placeholder for filter application logic
-            console.log('Filters applied');
-        }
-    </script>
     <script src="reports.js"></script>
 </body>
 </html>
