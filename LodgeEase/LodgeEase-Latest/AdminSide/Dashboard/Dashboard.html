@@ -7,9 +7,12 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600&family=Roboto:wght@400&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="app.js" type="module" defer></script>
+    
+    <!-- Load Vue.js from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    
+    <!-- Load Chart.js from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
 </head>
 <body>
     <div id="app">
@@ -66,39 +69,58 @@
             <section class="dashboard-panels">
                 <div class="panel">
                     <h2>Analytics</h2>
-                    <canvas id="analyticsChart"></canvas>
+                    <canvas ref="analyticsChart" id="analyticsChart"></canvas>
                 </div>
 
                 <div class="panel">
                     <h2>Revenue</h2>
-                    <canvas id="revenueChart"></canvas>
+                    <canvas ref="revenueChart" id="revenueChart"></canvas>
                 </div>
             </section>
 
             <!-- Search bar and bookings table -->
             <section class="recent-bookings">
                 <h2>Recent Bookings</h2>
-                <input v-model="searchQuery" placeholder="Search by Guest Name or Room Number" class="search-input">
+                <input 
+                    v-model="searchQuery" 
+                    id="search-bar" 
+                    placeholder="Search by Guest Name or Room Number" 
+                    class="search-input"
+                >
                 <table>
                     <thead>
                         <tr>
+                            <th>Room Number</th>
+                            <th>Room Type</th>
+                            <th>Floor Level</th>
                             <th>Guest Name</th>
-                            <th>Room</th>
                             <th>Check-in</th>
                             <th>Check-out</th>
+                            <th>Status</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <tr v-for="checkIn in filteredBookings" :key="checkIn.id">
-                            <td>{{ checkIn.guestName }}</td>
-                            <td>{{ checkIn.roomNumber }}</td>
-                            <td>{{ checkIn.checkInDate }}</td>
-                            <td>{{ checkIn.checkOutDate }}</td>
+                    <tbody id="roomData">
+                        <tr v-for="room in filteredBookings" :key="room.id">
+                            <td>{{ room.roomNumber }}</td>
+                            <td>{{ room.roomType }}</td>
+                            <td>{{ room.floorLevel }}</td>
+                            <td>{{ room.guestName }}</td>
+                            <td>{{ room.checkInDate }}</td>
+                            <td>{{ room.checkOutDate }}</td>
+                            <td>{{ room.status }}</td>
+                            <td>
+                                <button class="action-btn edit" @click="editRoom(room)">Edit</button>
+                                <button class="action-btn delete" @click="deleteRoom(room.id)">Delete</button>
+                            </td>
                         </tr>
-                    </tbody>                    
-                </table>
+                    </tbody>
+                </table>                
             </section>          
         </main>
     </div>
+
+    <!-- Load Vue App Script -->
+    <script src="app.js" type="module"></script>
 </body>
 </html>
