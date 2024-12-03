@@ -1,4 +1,5 @@
 import { fetchRoomsData } from '../firebase.js';
+import { sendRoomDataToDashboard } from '../Room Management/room_management.js';
 
 new Vue({
     el: '#app',
@@ -9,68 +10,98 @@ new Vue({
         analysisFeedback: '',
         searchQuery: '',
         bookings: [],
+        totalRooms: 0,
+        recentCheckIns: [],
     },
     computed: {
         filteredBookings() {
             if (!this.searchQuery) return this.bookings;
-            return this.bookings.filter(booking => {
-                const lowerCaseQuery = this.searchQuery.toLowerCase();
-                return booking.guestName.toLowerCase().includes(lowerCaseQuery) ||
-                       booking.roomNumber.includes(lowerCaseQuery);
-            });
+            const lowerCaseQuery = this.searchQuery.toLowerCase();
+            return this.bookings.filter(booking => 
+                booking.guestName.toLowerCase().includes(lowerCaseQuery) || 
+                booking.roomNumber.includes(lowerCaseQuery)
+            );
         }
     },
     methods: {
         async fetchDashboardData() {
-            const rooms = await fetchRoomsData();
-            this.availableRooms = rooms.filter(room => room.status === 'available').length;
-            this.occupiedRooms = rooms.filter(room => room.status === 'occupied').length;
-            this.todayCheckIns = rooms.filter(room => room.checkInDate === new Date().toISOString().split('T')[0]).length;
+            try {
+                const rooms = await fetchRoomsData();
+                console.log('Fetched rooms data:', rooms);  // Debugging log
 
-            // Fetch bookings (if stored in Firestore or another database)
-            // Assuming you have a similar function to fetch bookings
-            this.bookings = rooms.map(room => ({
-                guestName: room.guestName || 'Unknown',
-                roomNumber: room.roomNumber,
-                checkInDate: room.checkInDate,
-                checkOutDate: room.checkOutDate,
-                id: room.id
-            }));
+                if (!rooms || rooms.length === 0) return;
+
+                this.availableRooms = rooms.filter(room => room.status === 'available').length;
+                this.occupiedRooms = rooms.filter(room => room.status === 'occupied').length;
+                this.todayCheckIns = rooms.filter(room => room.checkInDate === new Date().toISOString().split('T')[0]).length;
+
+                this.bookings = rooms.map(room => ({
+                    guestName: room.guestName || 'Unknown',
+                    roomNumber: room.roomNumber,
+                    checkInDate: room.checkInDate,
+                    checkOutDate: room.checkOutDate,
+                    id: room.id
+                }));
+
+            } catch (error) {
+                console.error('Error fetching room data:', error);
+            }
         },
         analyzeData() {
             this.analysisFeedback = "AI analysis is complete! Suggestion: Optimize room pricing for peak seasons.";
         },
         renderCharts() {
-            // Analytics Chart Code
-            // Revenue Chart Code
-        }
+            const ctx1 = document.getElementById('analyticsChart').getContext('2d');
+            new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: ['Available', 'Occupied'],
+                    datasets: [{
+                        label: 'Room Status',
+                        data: [this.availableRooms, this.occupiedRooms],
+                        backgroundColor: ['green', 'red'],
+                    }]
+                }
+            });
+
+            const ctx2 = document.getElementById('revenueChart').getContext('2d');
+            new Chart(ctx2, {
+                type: 'line',
+                data: {
+                    labels: ['Today', 'This Week', 'This Month'],
+                    datasets: [{
+                        label: 'Revenue',
+                        data: [500, 1500, 3000],
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        fill: false
+                    }]
+                }
+            });
+        },
+        async updateDashboard() {
+            try {
+                const dashboardData = await sendRoomDataToDashboard();
+                if (dashboardData) {
+                    this.totalRooms = dashboardData.totalRooms;
+                    this.availableRooms = dashboardData.availableRooms;
+                    this.occupiedRooms = dashboardData.occupiedRooms;
+                    this.recentCheckIns = dashboardData.recentCheckIns;
+                    this.updateDashboardUI(dashboardData);
+                }
+            } catch (error) {
+                console.error('Error fetching dashboard data:', error);
+            }
+        },
+        updateDashboardUI(dashboardData) {
+            // Directly update the data properties, and Vue will automatically re-render the DOM
+            this.totalRooms = dashboardData.totalRooms;
+            this.availableRooms = dashboardData.availableRooms;
+            this.occupiedRooms = dashboardData.occupiedRooms;
+            this.recentCheckIns = dashboardData.recentCheckIns;  // This will automatically update the table
+        }               
     },
-    mounted() {
+    created() {
         this.fetchDashboardData();
         this.renderCharts();
     }
 });
-
-import { sendRoomDataToDashboard } from '../Room Management/room_management.js';
-
-async function updateDashboard() {
-    const dashboardData = await sendRoomDataToDashboard();
-    if (dashboardData) {
-        document.getElementById('total-rooms').textContent = dashboardData.totalRooms;
-        document.getElementById('available-rooms').textContent = dashboardData.availableRooms;
-        document.getElementById('occupied-rooms').textContent = dashboardData.occupiedRooms;
-
-        const recentCheckInsContainer = document.getElementById('recent-checkins');
-        dashboardData.recentCheckIns.forEach(checkIn => {
-            const row = `<tr>
-                <td>${checkIn.roomNumber}</td>
-                <td>${checkIn.guest}</td>
-                <td>${checkIn.checkIn}</td>
-            </tr>`;
-            recentCheckInsContainer.innerHTML += row;
-        });
-    }
-}
-
-window.addEventListener('DOMContentLoaded', updateDashboard);
-

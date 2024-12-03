@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600&family=Roboto:wght@400&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script type="module" src="../firebase.js"></script>
+    <script src="app.js" type="module" defer></script>
 </head>
 <body>
     <div id="app">
@@ -75,55 +75,30 @@
                 </div>
             </section>
 
-            <!-- Recent Bookings Table -->
+            <!-- Search bar and bookings table -->
             <section class="recent-bookings">
                 <h2>Recent Bookings</h2>
-                <!-- Search Bar for Filtering -->
-                <input type="text" id="search-for-rooms" placeholder="Search by Guest Name or Room Number" class="search-input">
-                
-                <!-- Room Data Container -->
-                <div id="roomData">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Guest Name</th>
-                                <th>Room</th>
-                                <th>Check-in</th>
-                                <th>Check-out</th>
-                            </tr>
-                        </thead>
-                        <tbody id="roomDataTable">
-                            <!-- Room data will be dynamically injected here -->
-                        </tbody>
-                    </table>
-                </div>
-            </section>
+                <input v-model="searchQuery" placeholder="Search by Guest Name or Room Number" class="search-input">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Guest Name</th>
+                            <th>Room</th>
+                            <th>Check-in</th>
+                            <th>Check-out</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="checkIn in filteredBookings" :key="checkIn.id">
+                            <td>{{ checkIn.guestName }}</td>
+                            <td>{{ checkIn.roomNumber }}</td>
+                            <td>{{ checkIn.checkInDate }}</td>
+                            <td>{{ checkIn.checkOutDate }}</td>
+                        </tr>
+                    </tbody>                    
+                </table>
+            </section>          
         </main>
     </div>
-
-    <!-- Link to app.js for Vue.js and other JavaScript logic -->
-    <script type="module">
-        import { sendRoomDataToDashboard } from '../Room Management/room_management.js';
-
-        window.addEventListener('DOMContentLoaded', async () => {
-            try {
-                const dashboardData = await sendRoomDataToDashboard();
-                document.querySelector("#roomDataTable").innerHTML = dashboardData.recentCheckIns.map(room => `
-                    <tr>
-                        <td>${room.guestName}</td>
-                        <td>${room.roomNumber}</td>
-                        <td>${room.checkInDate}</td>
-                        <td>${room.checkOutDate}</td>
-                    </tr>
-                `).join('');
-                
-                // Update other parts of the dashboard
-                document.querySelector(".overview-item:nth-child(2) p").textContent = dashboardData.availableRooms;
-                document.querySelector(".overview-item:nth-child(3) p").textContent = dashboardData.occupiedRooms;
-            } catch (error) {
-                console.error("Failed to load room data for dashboard:", error);
-            }
-        });
-    </script>
 </body>
 </html>
