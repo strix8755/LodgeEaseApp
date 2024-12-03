@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hotel Client Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="app.js"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="flex min-h-screen">
+        <!-- Sidebar -->
+        <nav class="w-64 bg-gray-800 text-white p-6">
+            <div class="flex flex-col items-center mb-8">
+                <img src="../components/LodgeEaseLogo.png" alt="Hotel Logo" class="w-30 h-20 mb-4">
+                <h2 class="text-2xl font-bold">LodgeEase</h2>
+            </div>
+            <ul class="w-full space-y-4">
+                <li><a href="../Dashboard/Dashboard.html" class="block py-2 px-4 rounded hover:bg-gray-600 transition">Dashboard</a></li>
+                <li><a href="../FoodOrder/foodOrder.html" class="block py-2 px-4 rounded hover:bg-gray-600 transition">Order Food</a></li>
+                <li><a href="../Bill/bill.html" class="block py-2 px-4 rounded hover:bg-gray-600 transition">Bill & Checkout</a></li>
+                <li><a href="../Extend/Extend.html" class="block py-2 px-4 rounded hover:bg-gray-600 transition">Extend Stay</a></li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-8">
+            <header class="mb-8">
+                <h1 class="text-3xl font-bold text-gray-800">Welcome, Guest</h1>
+                <p class="text-gray-600">Room 304 | Check-out: 11:00 AM</p>
+            </header>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Weather Card -->
+                <div class="bg-white rounded-lg shadow-md p-6 transform transition hover:scale-105">
+                    <div class="flex items-center mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m3.343-5.657L5.343 5.343m11.314 11.314 1.414 1.414M6.343 18.657 5.343 19.657m11.314-11.314 1.414-1.414" />
+                        </svg>
+                        <h2 class="text-xl font-semibold">Weather</h2>
+                    </div>
+                    <div class="text-3xl font-bold mb-2">72°F</div>
+                    <div class="text-gray-600 mb-4">Sunny</div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div class="text-center bg-gray-50 p-2 rounded">
+                            <div class="text-sm">Today</div>
+                            <div class="font-bold">72°</div>
+                        </div>
+                        <div class="text-center bg-gray-50 p-2 rounded">
+                            <div class="text-sm">Tomorrow</div>
+                            <div class="font-bold">68°</div>
+                        </div>
+                        <div class="text-center bg-gray-50 p-2 rounded">
+                            <div class="text-sm">Wed</div>
+                            <div class="font-bold">70°</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Checkout Info Card -->
+                <div class="bg-white rounded-lg shadow-md p-6 transform transition hover:scale-105">
+                    <div class="flex items-center mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <h2 class="text-xl font-semibold">Checkout Information</h2>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="flex justify-between">
+                            <span>Checkout Time</span>
+                            <span class="font-bold">11:00 AM</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Late Checkout Fee</span>
+                            <span class="text-gray-600">P550/hour</span>
+                        </div>
+                        <button class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">
+                            Request Late Checkout
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Featured Items Card -->
+                <div class="bg-white rounded-lg shadow-md p-6 transform transition hover:scale-105">
+                    <div class="flex items-center mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                        </svg>
+                        <h2 class="text-xl font-semibold">Featured Items</h2>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center p-2 hover:bg-gray-50 rounded group">
+                            <div>
+                                <div class="font-medium group-hover:text-blue-600 transition">Breakfast Buffet</div>
+                                <div class="text-sm text-gray-600">Food</div>
+                            </div>
+                            <div class="font-bold text-blue-600">P25</div>
+                        </div>
+                        <div class="flex justify-between items-center p-2 hover:bg-gray-50 rounded group">
+                            <div>
+                                <div class="font-medium group-hover:text-blue-600 transition">Spa Package</div>
+                                <div class="text-sm text-gray-600">Service</div>
+                            </div>
+                            <div class="font-bold text-blue-600">P120</div>
+                        </div>
+                        <div class="flex justify-between items-center p-2 hover:bg-gray-50 rounded group">
+                            <div>
+                                <div class="font-medium group-hover:text-blue-600 transition">Local Wine</div>
+                                <div class="text-sm text-gray-600">Product</div>
+                            </div>
+                            <div class="font-bold text-blue-600">P45</div>
+                        </div>
+                        <button class="w-full mt-2 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition">
+                            View All Items
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content Sections -->
+            <div class="mt-8 space-y-6">
+                <div id="order-food" class="content-section bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-2xl font-bold mb-4 text-gray-800">Order Food</h2>
+                    <p class="text-gray-600">Choose from our delicious menu items and have it delivered to your room.</p>
+                    <button class="mt-4 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition">
+                        Browse Menu
+                    </button>
+                </div>
+                <div id="view-bill" class="content-section hidden bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-2xl font-bold mb-4 text-gray-800">View Bill</h2>
+                    <p class="text-gray-600">Check your current bill to keep track of your expenses.</p>
+                    <button class="mt-4 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition">
+                        View Details
+                    </button>
+                </div>
+                <div id="check-out" class="content-section hidden bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-2xl font-bold mb-4 text-gray-800">Check Out</h2>
+                    <p class="text-gray-600">Ready to leave? Check out and finalize your bill.</p>
+                    <button class="mt-4 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition">
+                        Proceed to Checkout
+                    </button>
+                </div>
+                <div id="extend-stay" class="content-section hidden bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-2xl font-bold mb-4 text-gray-800">Extend Stay</h2>
+                    <p class="text-gray-600">Want to stay a bit longer? Extend your booking with ease.</p>
+                    <button class="mt-4 bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition">
+                        Check Availability
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+</body>
+</html>

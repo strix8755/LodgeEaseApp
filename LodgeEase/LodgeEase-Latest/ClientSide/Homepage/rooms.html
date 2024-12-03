@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LodgeEase - Our Rooms</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="../Homepage/homePage.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body class="text-gray-800">
+    <header class="fixed w-full z-50 bg-white/80 backdrop-blur-md shadow-lg">
+        <nav class="container mx-auto flex justify-between items-center py-4 px-6">
+            <div class="text-3xl font-bold text-blue-600 tracking-wider">
+                LodgeEase
+            </div>
+            <ul class="flex space-x-6 text-gray-700">
+                <li><a href="../Homepage/index.html" class="hover:text-blue-600 transition-colors">Home</a></li>
+                <li><a href="rooms.html" class="hover:text-blue-600 transition-colors active:text-blue-800">Rooms</a></li>
+                <li><a href="amenities.html" class="hover:text-blue-600 transition-colors">Amenities</a></li>
+                <li><a href="#" class="hover:text-blue-600 transition-colors">Reservations</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero-bg h-[50vh] flex items-center justify-center text-white relative">
+            <div class="container mx-auto px-6 z-10 text-center">
+                <div class="glass-card p-10 max-w-2xl mx-auto">
+                    <h1 class="text-5xl font-bold mb-4 text-white">Our Rooms</h1>
+                    <p class="text-xl mb-8 text-gray-200">Comfort, Elegance, and Serenity Await You</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="container mx-auto py-16 px-6">
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all">
+                    <img src="../components/240499557.jpg" alt="Standard Room" class="w-full h-64 object-cover">
+                    <div class="p-6">
+                        <h2 class="text-2xl font-semibold mb-3 text-blue-600">Standard Room</h2>
+                        <p class="text-gray-600">Comfortable and cozy room with modern amenities.</p>
+                        <div class="mt-4 flex justify-between items-center">
+                            <span class="text-lg font-bold text-blue-500">₱2,500/night</span>
+                            <a href="#" class="inline-block text-blue-500 hover:text-blue-700 transition-colors">
+                                Book Now <i class="fas fa-arrow-right ml-2"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all">
+                    <img src="../components/Strawberry-Sinigang.jpg" alt="Deluxe Room" class="w-full h-64 object-cover">
+                    <div class="p-6">
+                        <h2 class="text-2xl font-semibold mb-3 text-blue-600">Deluxe Room</h2>
+                        <p class="text-gray-600">Spacious room with enhanced comfort and city views.</p>
+                        <div class="mt-4 flex justify-between items-center">
+                            <span class="text-lg font-bold text-blue-500">₱3,800/night</span>
+                            <a href="#" class="inline-block text-blue-500 hover:text-blue-700 transition-colors">
+                                Book Now <i class="fas fa-arrow-right ml-2"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all">
+                    <img src="../components/c3.jpg" alt="Suite" class="w-full h-64 object-cover">
+                    <div class="p-6">
+                        <h2 class="text-2xl font-semibold mb-3 text-blue-600">Executive Suite</h2>
+                        <p class="text-gray-600">Luxurious suite with premium amenities and panoramic views.</p>
+                        <div class="mt-4 flex justify-between items-center">
+                            <span class="text-lg font-bold text-blue-500">₱5,500/night</span>
+                            <a href="#" class="inline-block text-blue-500 hover:text-blue-700 transition-colors">
+                                Book Now <i class="fas fa-arrow-right ml-2"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-gray-900 text-white py-12">
+        <div class="container mx-auto px-6 text-center">
+            <div class="mb-8">
+                <h3 class="text-3xl font-bold text-blue-500 mb-4">LodgeEase</h3>
+                <p class="text-gray-300">Aspiras palispis highway Baguio City, Benguet bontiway, Tuba, 2600 Benguet</p>
+                <p class="text-gray-300">Contact: +(63) 9129 912 6584 | </p>
+            </div>
+            <div class="flex justify-center space-x-6">
+                <a href="#" class="text-2xl text-blue-400 hover:text-white transition-colors">
+                    <i class="fab fa-instagram"></i>
+                </a>
+                <a href="#" class="text-2xl text-blue-400 hover:text-white transition-colors">
+                    <i class="fab fa-facebook"></i>
+                </a>
+                <a href="#" class="text-2xl text-blue-400 hover:text-white transition-colors">
+                    <i class="fab fa-twitter"></i>
+                </a>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,18 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
+        
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: #f5f5f5;
+}
+.hero-bg {
+    background-image: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('../components/baguio-city-mirador-hill-sunset.jpg');
+    background-size: cover;
+    background-position: center;
+    position: relative;
+}
+.glass-card {
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.125);
+}

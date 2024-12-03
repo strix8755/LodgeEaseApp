@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LodgeEase - Login</title>
+    <link rel="stylesheet" href="login.css">
+    <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+    <script type="module" src="login.js"></script>
+</head>
+<body>
+    <div class="brand">Lodge<span>Ease</span></div>
+    <div class="login-container" id="app">
+        <div class="header">
+            <h1 v-if="currentForm === 'login'">Welcome</h1>
+            <h1 v-if="currentForm === 'register'">Create Account</h1>
+            <h1 v-if="currentForm === 'reset'">Reset Password</h1>
+            <p v-if="currentForm === 'login'">Please login to access the system</p>
+            <p v-if="currentForm === 'register'">Fill in the details to create an account</p>
+            <p v-if="currentForm === 'reset'">Enter your email to reset your password</p>
+        </div>
+
+        <!-- Login Form -->
+        <form v-show="currentForm === 'login'" @submit.prevent="handleLogin">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" :id="'email-login'" v-model="email" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" :id="'password-login'" v-model="password" required>
+            </div>
+            <button type="submit" class="btn">Login</button>
+            <div class="actions">
+                <a href="#" @click.prevent="switchForm('register')">Don't have an account? Sign up</a>
+                <a href="#" @click.prevent="switchForm('reset')">Forgot password?</a>
+            </div>
+        </form>
+
+        <!-- Registration Form -->
+        <form v-show="currentForm === 'register'" @submit.prevent="handleRegister">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" :id="'email-register'" v-model="email" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" :id="'password-register'" v-model="password" required>
+            </div>
+            <button type="submit" class="btn">Sign Up</button>
+            <div class="actions">
+                <a href="#" @click.prevent="switchForm('login')">Already have an account?</a>
+            </div>
+        </form>
+
+        <!-- Reset Password Form -->
+        <form v-show="currentForm === 'reset'" @submit.prevent="handleReset">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" :id="'email-reset'" v-model="email" required>
+            </div>
+            <button type="submit" class="btn">Reset Password</button>
+            <div class="actions">
+                <a href="#" @click.prevent="switchForm('login')">Back to login</a>
+            </div>
+        </form>
+
+        <!-- Feedback Messages -->
+        <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
+        <div v-if="successMessage" class="success-message">{{ successMessage }}</div>
+        <div v-if="loading" class="loading">Processing...</div>
+
+</body>
+</html>
