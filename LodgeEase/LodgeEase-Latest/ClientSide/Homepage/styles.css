@@ -16,3 +16,17 @@ body {
     border-radius: 15px;
     border: 1px solid rgba(255, 255, 255, 0.125);
 }
+
+body {
+    background-image: url('../components/marita-kavelashvili-ugnrXk1129g-unsplash.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed; 
+    background-repeat: no-repeat;
+  }
+  .page-content {
+    background-color: rgba(255, 255, 255, 0.85); /* Slightly transparent white */
+    max-width: 1200px; /* Contain content in a centered container */
+    margin: 0 auto;
+    box-shadow: 0 0 20px rgba(0,0,0,0.1); /* Optional subtle shadow */
+  }
