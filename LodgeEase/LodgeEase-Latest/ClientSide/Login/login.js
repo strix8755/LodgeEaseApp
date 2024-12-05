@@ -26,7 +26,7 @@ document.querySelector('form').addEventListener('submit', function(e) {
             loadingIndicator.innerHTML = '';
             
             // Redirect to dashboard
-            window.location.href = '../Dashboard/Dashboard.html';
+            window.location.href = '../Homepage/rooms.html';
         } else {
             // Failed login
             errorMessage.textContent = 'Invalid username or password';
