@@ -185,5 +185,5 @@ function redirectToPay() {
   const payUrl = `pay.html?checkIn=${encodeURIComponent(checkInDate)}&checkOut=${encodeURIComponent(checkOutDate)}&guests=${encodeURIComponent(guests)}&total=${encodeURIComponent(totalPrice)}`;
   
   // Redirect to pay page
-  window.location.href = payUrl;
+  window.location.href ='../Lodge/pay.html';
 }
