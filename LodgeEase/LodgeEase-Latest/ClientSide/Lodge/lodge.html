@@ -7,22 +7,28 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
 </head>
 
-<body class="bg-gray-50 text-gray-800">
-  <!-- Fixed Top Bar -->
+<body class="text-gray-800">
   <header class="fixed w-full z-50 bg-white/80 backdrop-blur-md shadow-lg">
     <nav class="container mx-auto flex justify-between items-center py-4 px-6">
       <div class="text-3xl font-bold text-blue-600 tracking-wider">
-        LodgeEase
+          LodgeEase
       </div>
-      <ul class="flex space-x-6 text-gray-700">
-        <li><a href="../Homepage/rooms.html" class="hover:text-blue-600 transition-colors">Stay</a></li>
-        <li><a href="../Login/index.html" class="hover:text-blue-600 transition-colors">Log In</a></li>
-        <li><a href="../Homepage/homPage.html" class="hover:text-blue-600 transition-colors">Home</a></li>
+      <ul class="flex space-x-6 items-center text-gray-700">
+          <li><a href="../Homepage/rooms.html" class="hover:text-blue-600 transition-colors">Stay</a></li>
+          <li><a href="../Login/index.html" class="hover:text-blue-600 transition-colors">Log In</a></li>
+          <li><a href="../Homepage/homPage.html" class="hover:text-blue-600 transition-colors">Home</a></li>
+          <li>
+            <a href="#" class="text-gray-600 hover:text-blue-600 transition-colors">
+                <i class="ri-user-line text-2xl"></i>
+            </a>
+        </li>
       </ul>
-    </nav>
+  </nav>
   </header>
+
 
   <!-- Main Content -->
   <div class="max-w-6xl mx-auto px-4 pt-24">
@@ -281,22 +287,56 @@
               </div>
           </div>
       </div>
-  
-      <script>
-          document.getElementById('toggle-reviews').addEventListener('click', function() {
-              const reviewsSection = document.getElementById('reviews-section');
-              const toggleButton = document.getElementById('toggle-reviews');
-              
-              if (reviewsSection.classList.contains('hidden')) {
-                  reviewsSection.classList.remove('hidden');
-                  toggleButton.textContent = 'Hide Reviews';
-              } else {
-                  reviewsSection.classList.add('hidden');
-                  toggleButton.textContent = 'Show Reviews';
-              }
-          });
-      </script>
   </div>
+
+  <div 
+  id="userDrawer" 
+  class="fixed top-0 right-0 w-80 h-full bg-white shadow-xl transform transition-transform duration-300 z-50 translate-x-full"
+>
+  <div class="p-6">
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-xl font-bold text-gray-800">My Account</h2>
+      <button id="closeDrawer" class="text-gray-500 hover:text-gray-700">
+        <i class="ri-close-line text-2xl"></i>
+      </button>
+    </div>
+
+    <div class="space-y-4">
+      <div class="flex items-center space-x-4 bg-gray-100 p-4 rounded-lg">
+        <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+          <i class="ri-user-line text-blue-600"></i>
+        </div>
+        <div>
+          <h3 class="font-semibold">John Doe</h3>
+          <p class="text-sm text-gray-500">john.doe@example.com</p>
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        <a href="#" class="flex items-center space-x-3 p-3 hover:bg-gray-100 rounded-lg transition">
+          <i class="ri-user-settings-line text-gray-600"></i>
+          <span>Profile Settings</span>
+        </a>
+        <a href="#" class="flex items-center space-x-3 p-3 hover:bg-gray-100 rounded-lg transition">
+          <i class="ri-heart-line text-gray-600"></i>
+          <span>Saved Lodges</span>
+        </a>
+        <a href="#" class="flex items-center space-x-3 p-3 hover:bg-gray-100 rounded-lg transition">
+          <i class="ri-booking-line text-gray-600"></i>
+          <span>My Bookings</span>
+        </a>
+        <a href="#" class="flex items-center space-x-3 p-3 hover:bg-gray-100 rounded-lg transition">
+          <i class="ri-booking-line text-gray-600"></i>
+          <span>Messages</span>
+        </a>
+        <a href="#" class="flex items-center space-x-3 p-3 hover:bg-gray-100 rounded-lg transition">
+          <i class="ri-logout-box-r-line text-red-600"></i>
+          <span class="text-red-600">Logout</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
   <!-- Footer -->
   <footer class="bg-gray-900 text-white py-12 mt-12">
     <div class="container mx-auto px-6 text-center">
@@ -318,6 +358,19 @@
       </div>
     </div>
   </footer>
+  <script>
+    document.getElementById('toggle-reviews').addEventListener('click', function() {
+        const reviewsSection = document.getElementById('reviews-section');
+        const toggleButton = document.getElementById('toggle-reviews');
+        
+        if (reviewsSection.classList.contains('hidden')) {
+            reviewsSection.classList.remove('hidden');
+            toggleButton.textContent = 'Hide Reviews';
+        } else {
+            reviewsSection.classList.add('hidden');
+            toggleButton.textContent = 'Show Reviews';
+        }
+    });</script>
   <script src="../Lodge/lodge.js"></script>
 </body>
 </html>
