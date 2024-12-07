@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Food - LodgeEase</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="script.js"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="flex min-h-screen bg-gradient-to-br from-gray-100 to-gray-200">
+        <!-- Sidebar -->
+        <nav class="w-64 bg-gray-800 text-white p-6 flex flex-col items-center">
+            <div class="flex flex-col items-center mb-8">
+                <img src="../components/LodgeEaseLogo.png" alt="Hotel Logo" class="w-30 h-20 mb-4">
+                <h2 class="text-2xl font-bold">LodgeEase</h2>
+            </div>
+            <ul class="w-full space-y-4">
+                <li><a href="../Dashboard/Dashboard.html" class="block py-2 px-4 rounded hover:bg-gray-600 transition">Dashboard</a></li>
+                <li><a href="../FoodOrder/foodOrder.html" class="block py-2 px-4 rounded hover:bg-gray-600 transition">Order Food</a></li>
+                <li><a href="../Bill/bill.html" class="block py-2 px-4 rounded hover:bg-gray-600 transition">Bill & Checkout</a></li>
+                <li><a href="../Extend/Extend.html" class="block py-2 px-4 rounded hover:bg-gray-600 transition">Extend Stay</a></li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <div class="flex-grow p-10">
+            <header class="text-center mb-10">
+                <h1 class="text-4xl font-bold text-gray-800 mb-4">Order Food</h1>
+                <p class="text-gray-600">Enjoy our delicious menu items delivered straight to your room</p>
+            </header>
+
+            <!-- Menu Categories -->
+            <div class="mb-8">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-6">Main Courses</h2>
+                <div class="grid grid-cols-2 gap-6">
+                    <div class="bg-white rounded-xl shadow-md p-6 text-center">
+                        <img src="../components/salmon.jpg" alt="Grilled Salmon" class="mx-auto mb-4 rounded-lg">
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">Grilled Salmon</h3>
+                        <p class="text-gray-600 mb-2">Fresh salmon with seasonal vegetables</p>
+                        <p class="text-green-600 font-bold mb-4">P24.99</p>
+                        <div class="flex items-center justify-center mb-4">
+                            <button class="quantity-btn bg-gray-200 px-3 py-1 rounded-l" onclick="changeQuantity(this, -1)">-</button>
+                            <span class="quantity-display bg-gray-100 px-4 py-1">0</span>
+                            <button class="quantity-btn bg-gray-200 px-3 py-1 rounded-r" onclick="changeQuantity(this, 1)">+</button>
+                        </div>
+                        <button class="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600 transition">Add to Cart</button>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-md p-6 text-center">
+                        <img src="../components/beef.jpg" alt="Beef Steak" class="mx-auto mb-4 rounded-lg">
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">Beef Steak</h3>
+                        <p class="text-gray-600 mb-2">Premium cut with garlic butter</p>
+                        <p class="text-green-600 font-bold mb-4">P29.99</p>
+                        <div class="flex items-center justify-center mb-4">
+                            <button class="quantity-btn bg-gray-200 px-3 py-1 rounded-l" onclick="changeQuantity(this, -1)">-</button>
+                            <span class="quantity-display bg-gray-100 px-4 py-1">0</span>
+                            <button class="quantity-btn bg-gray-200 px-3 py-1 rounded-r" onclick="changeQuantity(this, 1)">+</button>
+                        </div>
+                        <button class="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600 transition">Add to Cart</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-8">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-6">Desserts</h2>
+                <div class="grid grid-cols-2 gap-6">
+                    <div class="bg-white rounded-xl shadow-md p-6 text-center">
+                        <img src="../components/cake.jpg" alt="Chocolate Cake" class="mx-auto mb-4 rounded-lg">
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">Chocolate Cake</h3>
+                        <p class="text-gray-600 mb-2">Rich chocolate layer cake</p>
+                        <p class="text-green-600 font-bold mb-4">P8.99</p>
+                        <div class="flex items-center justify-center mb-4">
+                            <button class="quantity-btn bg-gray-200 px-3 py-1 rounded-l" onclick="changeQuantity(this, -1)">-</button>
+                            <span class="quantity-display bg-gray-100 px-4 py-1">0</span>
+                            <button class="quantity-btn bg-gray-200 px-3 py-1 rounded-r" onclick="changeQuantity(this, 1)">+</button>
+                        </div>
+                        <button class="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600 transition">Add to Cart</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
