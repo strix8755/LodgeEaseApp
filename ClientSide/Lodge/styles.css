@@ -25,3 +25,13 @@ body {
 .animate-fade-in {
   animation: fadeIn 0.6s ease-out;
 }
+
+#calendar-modal {
+  display: none; /* Hidden by default */
+}
+
+#calendar-modal:not(.hidden) {
+  display: flex; /* Shows the modal when 'hidden' is removed */
+}
+
+
