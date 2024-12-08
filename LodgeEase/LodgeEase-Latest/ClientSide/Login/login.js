@@ -20,23 +20,21 @@ document.querySelector('form').addEventListener('submit', async function (e) {
     // Show loading indicator
     loadingIndicator.innerHTML = '<div class="spinner"></div>';
 
+    try {
+        // Attempt sign-in with Firebase Authentication
+        const user = await signIn(email, password);
 
-    // Simulate authentication (replace with actual backend authentication in real application)
-    setTimeout(() => {
-        // Simple validation (replace with proper authentication in a real app)
-        if (username && password) {
-            // Successful login
-            successMessage.textContent = 'Login successful! Redirecting...';
-            loadingIndicator.innerHTML = '';
-            
-            // Redirect to dashboard
-            window.location.href = '../Homepage/rooms.html';
-        } else {
-            // Failed login
-            errorMessage.textContent = 'Invalid username or password';
-            loadingIndicator.innerHTML = '';
-        }
-    }, 1000); // Simulate network delay
+        // Successful login
+        successMessage.textContent = 'Login successful! Redirecting...';
+        loadingIndicator.innerHTML = '';
+
+        // Redirect to dashboard
+        window.location.href = '../Homepage/rooms.html';
+    } catch (error) {
+        // Handle login errors
+        errorMessage.textContent = `Error: ${error.message}`;
+        loadingIndicator.innerHTML = '';
+    }
 });
 
 
@@ -61,19 +59,3 @@ document.addEventListener('DOMContentLoaded', function() {
       drawerOverlay.classList.add('hidden');
     }
   });
-    try {
-        // Attempt sign-in with Firebase Authentication
-        const user = await signIn(email, password);
-
-        // Successful login
-        successMessage.textContent = 'Login successful! Redirecting...';
-        loadingIndicator.innerHTML = '';
-
-        // Redirect to dashboard
-        window.location.href = '../Homepage/rooms.html';
-    } catch (error) {
-        // Handle login errors
-        errorMessage.textContent = `Error: ${error.message}`;
-        loadingIndicator.innerHTML = '';
-    }
-});
