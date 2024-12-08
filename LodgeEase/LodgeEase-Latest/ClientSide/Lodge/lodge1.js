@@ -13,6 +13,7 @@ const pricingDetails = document.getElementById('pricing-details');
 const nightsCalculation = document.getElementById('nights-calculation');
 const totalNightsPrice = document.getElementById('total-nights-price');
 const totalPrice = document.getElementById('total-price');
+let serviceFee = document.getElementById('service-fee');
 
 let currentDate = new Date(2025, 0, 1); // January 2025
 let selectedCheckIn = null;
@@ -94,12 +95,13 @@ function handleDateSelection(selectedDate) {
       const nightlyRate = 6500;
       const totalNights = nights;
       const subtotal = nightlyRate * totalNights;
-      const serviceFee = Math.round(subtotal * 0.14);
+      const serviceFeeCalculation = Math.round(subtotal * 0.14);
       
       nightsCalculation.textContent = `₱${nightlyRate} x ${totalNights} nights`;
       totalNightsPrice.textContent = `₱${subtotal.toLocaleString()}`;
+      serviceFee.textContent = `₱${(serviceFeeCalculation).toLocaleString()}`;
       pricingDetails.classList.remove('hidden');
-      totalPrice.textContent = `₱${(subtotal + serviceFee).toLocaleString()}`;
+      totalPrice.textContent = `₱${(subtotal + serviceFeeCalculation).toLocaleString()}`;
     } else {
       // If selected date is before check-in, reset and start over
       selectedCheckIn = selectedDate;
