@@ -23,6 +23,19 @@ const db = getFirestore(app);
 const analytics = getAnalytics(app);
 const auth = getAuth(app);
 
+// Function to add a booking
+export async function addBooking(bookingData) {
+    try {
+        const bookingsRef = collection(db, "bookings");
+        const docRef = await addDoc(bookingsRef, bookingData);
+        console.log("Booking added with ID: ", docRef.id);
+        return docRef.id;
+    } catch (error) {
+        console.error("Error adding booking: ", error);
+        throw error; // Throw the error to handle it in the calling function
+    }
+}
+
 // Sign-in function
 export async function signIn(email, password) {
     try {
@@ -56,7 +69,7 @@ export async function resetPassword(email) {
     }
 }
 
-// Get all rooms
+// Fetch all rooms
 export async function fetchRoomsData() {
     try {
         const querySnapshot = await getDocs(collection(db, "rooms"));
