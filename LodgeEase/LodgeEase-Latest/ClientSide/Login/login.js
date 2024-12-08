@@ -1,8 +1,11 @@
-document.querySelector('form').addEventListener('submit', function(e) {
+// login.js
+import { signIn } from './firebase.js';
+
+document.querySelector('form').addEventListener('submit', async function (e) {
     e.preventDefault(); // Prevent default form submission
 
     // Get input values
-    const username = document.getElementById('username').value;
+    const email = document.getElementById('username').value; // Assuming 'username' is the email field
     const password = document.getElementById('password').value;
 
     // Get message display elements
@@ -17,20 +20,19 @@ document.querySelector('form').addEventListener('submit', function(e) {
     // Show loading indicator
     loadingIndicator.innerHTML = '<div class="spinner"></div>';
 
-    // Simulate authentication (replace with actual backend authentication in real application)
-    setTimeout(() => {
-        // Simple validation (replace with proper authentication in a real app)
-        if (username && password) {
-            // Successful login
-            successMessage.textContent = 'Login successful! Redirecting...';
-            loadingIndicator.innerHTML = '';
-            
-            // Redirect to dashboard
-            window.location.href = '../Homepage/rooms.html';
-        } else {
-            // Failed login
-            errorMessage.textContent = 'Invalid username or password';
-            loadingIndicator.innerHTML = '';
-        }
-    }, 1000); // Simulate network delay
+    try {
+        // Attempt sign-in with Firebase Authentication
+        const user = await signIn(email, password);
+
+        // Successful login
+        successMessage.textContent = 'Login successful! Redirecting...';
+        loadingIndicator.innerHTML = '';
+
+        // Redirect to dashboard
+        window.location.href = '../Homepage/rooms.html';
+    } catch (error) {
+        // Handle login errors
+        errorMessage.textContent = `Error: ${error.message}`;
+        loadingIndicator.innerHTML = '';
+    }
 });

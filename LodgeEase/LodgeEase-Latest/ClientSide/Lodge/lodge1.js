@@ -1,3 +1,7 @@
+// Import the addBooking function from firebase.js
+import { addBooking } from '../../AdminSide/firebase.js'; // Adjust the path if needed
+import { Timestamp } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore.js";
+
 // Calendar Functionality
 const calendarModal = document.getElementById('calendar-modal');
 const calendarGrid = document.getElementById('calendar-grid');
@@ -171,43 +175,89 @@ calendarModal.addEventListener('click', (e) => {
   }
 });
 
-function redirectToPay() {
-  // Get the check-in and check-out dates
-  const checkInDate = document.getElementById('check-in-date').value;
-  const checkOutDate = document.getElementById('check-out-date').value;
-  
-  // Get the number of guests
-  const guestsSelect = document.querySelector('select');
-  const guests = guestsSelect.options[guestsSelect.selectedIndex].text;
-  
-  // Get the total price
-  const totalPrice = document.getElementById('total-price').textContent;
-  
-  // Create a URL with query parameters
-  const payUrl = `pay.html?checkIn=${encodeURIComponent(checkInDate)}&checkOut=${encodeURIComponent(checkOutDate)}&guests=${encodeURIComponent(guests)}&total=${encodeURIComponent(totalPrice)}`;
-  
-  // Redirect to pay page
-  window.location.href = payUrl;
+async function saveBooking() {
+  try {
+    // Get guests selection
+    const guestsSelect = document.querySelector('select');
+    const guests = guestsSelect.options[guestsSelect.selectedIndex].text;
+
+    // Calculate nights and price details
+    const nights = Math.round((selectedCheckOut - selectedCheckIn) / (1000 * 60 * 60 * 24));
+    const nightlyRate = 6500;
+    const subtotal = nightlyRate * nights;
+    const serviceFee = Math.round(subtotal * 0.14);
+    const total = subtotal + serviceFee;
+
+    // Prepare the booking data
+    const bookingData = {
+      checkIn: Timestamp.fromDate(selectedCheckIn),
+      checkOut: Timestamp.fromDate(selectedCheckOut),
+      guests: guests,
+      nightlyRate: nightlyRate,
+      numberOfNights: nights,
+      subtotal: subtotal,
+      serviceFee: serviceFee,
+      totalPrice: total,
+      status: 'pending',
+      createdAt: Timestamp.fromDate(new Date()),
+      propertyDetails: {
+        name: 'Pine Haven Lodge',
+        location: 'Tagaytay, Philippines'
+      }
+    };
+
+    console.log('Attempting to save booking with data:', bookingData); // Debug log
+
+    // Save to Firestore
+    const bookingId = await addBooking(bookingData);
+    
+    if (!bookingId) {
+      throw new Error('Failed to get booking ID');
+    }
+
+    console.log('Booking saved successfully with ID:', bookingId); // Debug log
+    
+    // Store booking ID in localStorage
+    localStorage.setItem('currentBookingId', bookingId);
+    
+    return bookingId;
+  } catch (error) {
+    console.error('Error in saveBooking:', error);
+    throw error;
+  }
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-  const userIcon = document.querySelector('.ri-user-line');
-  const userDrawer = document.getElementById('userDrawer');
-  const closeDrawer = document.getElementById('closeDrawer');
-  const drawerOverlay = document.getElementById('drawerOverlay');
+async function handleReserveClick(event) {
+  event.preventDefault(); // Prevent default form submission
 
-  // Open drawer
-  userIcon.addEventListener('click', function() {
-    userDrawer.classList.remove('translate-x-full');
-    drawerOverlay.classList.remove('hidden');
-  });
+  try {
+    // Validate required fields
+    if (!selectedCheckIn || !selectedCheckOut) {
+      alert('Please select check-in and check-out dates');
+      return;
+    }
 
-  // Close drawer
-  closeDrawer.addEventListener('click', closeUserDrawer);
-  drawerOverlay.addEventListener('click', closeUserDrawer);
+    // Save the booking
+    const bookingId = await saveBooking();
 
-  function closeUserDrawer() {
-    userDrawer.classList.add('translate-x-full');
-    drawerOverlay.classList.add('hidden');
+    if (bookingId) {
+      // Redirect to payment page with booking ID
+      window.location.href = `pay.html?bookingId=${encodeURIComponent(bookingId)}`;
+    } else {
+      throw new Error('Failed to create booking');
+    }
+  } catch (error) {
+    console.error('Error handling reserve click:', error);
+    alert('There was an error processing your booking. Please try again.');
+  }
+}
+
+// Add event listener to reserve button
+document.addEventListener('DOMContentLoaded', () => {
+  const reserveBtn = document.getElementById('reserve-btn');
+  if (reserveBtn) {
+    reserveBtn.addEventListener('click', handleReserveClick);
+  } else {
+    console.error('Reserve button not found');
   }
 });
