@@ -1,4 +1,5 @@
-import { signIn, register, resetPassword } from '../firebase.js'; // Import Firebase Authentication functions
+import { signIn, register, auth } from '../firebase.js'; // Import Firebase Authentication functions
+import { sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-auth.js";
 
 new Vue({
     el: '#app',
@@ -6,103 +7,217 @@ new Vue({
         return {
             email: '',
             password: '',
+            fullname: '',
+            username: '',
+            confirmPassword: '',
             remember: false,
             loading: false,
             errorMessage: '',
             successMessage: '',
-            currentForm: 'login', // Default form to display
+            isLoginForm: true, // Toggle between login and registration forms
         };
     },
     methods: {
-        // Switch between forms
-        switchForm(form) {
-            this.currentForm = form;
-            this.resetMessages();
+        // Toggle between login and registration forms
+        toggleForm() {
+            this.isLoginForm = !this.isLoginForm;
+            this.resetForm();
         },
-        // Clear feedback messages
-        resetMessages() {
+
+        // Reset form and messages
+        resetForm() {
+            this.email = '';
+            this.password = '';
+            this.fullname = '';
+            this.username = '';
+            this.confirmPassword = '';
             this.errorMessage = '';
             this.successMessage = '';
+            this.loading = false;
         },
-        // Handle user login
+
+        validateEmail(email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailRegex.test(email);
+        },
+
+        validateUsername(username) {
+            const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+            return usernameRegex.test(username);
+        },
+
+        validatePassword(password) {
+            // At least 6 characters, 1 uppercase, 1 lowercase, 1 number
+            const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$/;
+            return passwordRegex.test(password);
+        },
+
+        // Handle login
         async handleLogin() {
-            this.resetMessages();
+            this.errorMessage = '';
+            
+            // Validate empty fields
+            if (!this.email || !this.password) {
+                this.errorMessage = 'Please fill in all fields';
+                return;
+            }
+
             this.loading = true;
-        
+
             try {
-                const user = await signIn(this.email, this.password);
-        
+                await signIn(this.email, this.password);
+                
                 if (this.remember) {
-                    // Save credentials locally if "Remember me" is checked
                     localStorage.setItem('userEmail', this.email);
                 } else {
                     localStorage.removeItem('userEmail');
                 }
-        
-                this.successMessage = `Welcome back, ${user.email}! Redirecting...`;
+
+                this.successMessage = 'Login successful! Redirecting...';
                 setTimeout(() => {
-                    window.location.href = '../Dashboard/dashboard.html'; // Redirect to dashboard
+                    window.location.href = '../Dashboard/dashboard.html';
                 }, 1500);
             } catch (error) {
-                console.error('Error during login:', error);
-        
-                if (error.code === 'auth/user-not-found') {
-                    this.errorMessage = `No account found for ${this.email}. Please sign up to create an account.`;
-                } else if (error.code === 'auth/wrong-password') {
-                    this.errorMessage = `Incorrect password for ${this.email}. Please try again.`;
-                } else if (error.code === 'auth/invalid-email') {
-                    this.errorMessage = `The email address is not valid. Please enter a valid email address.`;
-                } else if (error.code === 'auth/invalid-login-credentials') {
-                    this.errorMessage = 'Invalid login credentials. Please check your email and password.';
-                } else if (error.code === 'auth/too-many-requests') {
-                    this.errorMessage = 'Too many login attempts. Please try again later.';
-                } else {
-                    this.errorMessage = error.message || 'An error occurred during login.';
-                }
+                this.handleAuthError(error);
             } finally {
                 this.loading = false;
             }
-        },                
-        // Handle user registration
+        },
+
+        // Handle registration
         async handleRegister() {
-            this.resetMessages();
+            this.errorMessage = '';
+
+            // Validate empty fields
+            if (!this.fullname || !this.username || !this.email || !this.password || !this.confirmPassword) {
+                this.errorMessage = 'Please fill in all fields';
+                return;
+            }
+
+            // Validate fullname
+            if (this.fullname.length < 2) {
+                this.errorMessage = 'Full name must be at least 2 characters long';
+                return;
+            }
+
+            // Validate username
+            if (!this.validateUsername(this.username)) {
+                this.errorMessage = 'Username must be 3-20 characters long and can only contain letters, numbers, and underscores';
+                return;
+            }
+
+            // Validate email
+            if (!this.validateEmail(this.email)) {
+                this.errorMessage = 'Please enter a valid email address';
+                return;
+            }
+
+            // Validate password
+            if (!this.validatePassword(this.password)) {
+                this.errorMessage = 'Password must be at least 6 characters long and contain at least one uppercase letter, one lowercase letter, and one number';
+                return;
+            }
+
+            // Validate password confirmation
+            if (this.password !== this.confirmPassword) {
+                this.errorMessage = 'Passwords do not match';
+                return;
+            }
+
             this.loading = true;
 
             try {
-                const user = await register(this.email, this.password);
-                this.successMessage = `Account created successfully for ${user.email}. Please login.`;
-                this.switchForm('login');
+                await register(this.email, this.password, this.username, this.fullname);
+                this.successMessage = 'Account created successfully! Please log in.';
+                setTimeout(() => {
+                    this.isLoginForm = true;
+                    this.resetForm();
+                }, 1500);
             } catch (error) {
-                this.errorMessage = error.message || 'An error occurred during registration.';
+                this.handleAuthError(error);
             } finally {
                 this.loading = false;
             }
         },
-        // Handle password reset
-        async handleReset() {
-            this.resetMessages();
+
+        // Handle forgot password
+        async handleForgotPassword() {
+            if (!this.email) {
+                this.errorMessage = 'Please enter your email address';
+                return;
+            }
+
             this.loading = true;
+            this.errorMessage = '';
+            this.successMessage = '';
 
             try {
-                await resetPassword(this.email);
-                this.successMessage = `Password reset email sent to ${this.email}. Check your inbox.`;
-                this.switchForm('login');
+                await sendPasswordResetEmail(auth, this.email);
+                this.successMessage = 'Password reset email sent. Please check your inbox.';
             } catch (error) {
-                this.errorMessage = error.message || 'An error occurred during password reset.';
+                console.error('Password reset error:', error);
+                this.handleAuthError(error);
             } finally {
                 this.loading = false;
             }
         },
+
+        // Handle authentication errors
+        handleAuthError(error) {
+            console.error('Authentication error:', error);
+            
+            switch (error.code) {
+                // Login errors
+                case 'auth/user-not-found':
+                    this.errorMessage = 'No account found with this email or username';
+                    break;
+                case 'auth/wrong-password':
+                    this.errorMessage = 'Incorrect password. Please try again';
+                    break;
+                case 'auth/invalid-login-credentials':
+                    this.errorMessage = 'Invalid login credentials. Please check your email/username and password';
+                    break;
+                case 'auth/too-many-requests':
+                    this.errorMessage = 'Too many failed attempts. Please try again later or reset your password';
+                    break;
+
+                // Registration errors
+                case 'auth/email-already-in-use':
+                    this.errorMessage = 'This email is already registered. Please use a different email or try logging in';
+                    break;
+                case 'auth/invalid-email':
+                    this.errorMessage = 'Please enter a valid email address';
+                    break;
+                case 'auth/weak-password':
+                    this.errorMessage = 'Password is too weak. It must be at least 6 characters long with at least one uppercase letter, one lowercase letter, and one number';
+                    break;
+                case 'auth/username-already-exists':
+                    this.errorMessage = 'This username is already taken. Please choose another';
+                    break;
+
+                // Network errors
+                case 'auth/network-request-failed':
+                    this.errorMessage = 'Network error. Please check your internet connection and try again';
+                    break;
+
+                // Password reset errors
+                case 'auth/missing-email':
+                    this.errorMessage = 'Please enter your email address to reset your password';
+                    break;
+
+                // Default error
+                default:
+                    this.errorMessage = 'An error occurred. Please try again later';
+                    console.error('Detailed error:', error);
+            }
+        }
     },
     created() {
-        // Log the current form value for debugging
-        console.log('Current form:', this.currentForm);
-        
-        // Check if "Remember me" was previously set and autofill email
+        // Check for remembered email
         const savedEmail = localStorage.getItem('userEmail');
         if (savedEmail) {
             this.email = savedEmail;
             this.remember = true;
         }
-    },
+    }
 });
