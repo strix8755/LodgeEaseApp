@@ -101,5 +101,18 @@ export async function signIn(userIdentifier, password) {
     }
 }
 
+// Add booking function
+export async function addBooking(bookingData) {
+    try {
+        const bookingsRef = collection(db, "bookings");
+        const docRef = await addDoc(bookingsRef, bookingData);
+        console.log("Booking added with ID: ", docRef.id);
+        return docRef.id;
+    } catch (error) {
+        console.error("Error adding booking: ", error);
+        throw new Error('Failed to add booking');
+    }
+}
+
 // Export other functions and objects
 export { db, auth, analytics };
