@@ -114,5 +114,70 @@ export async function addBooking(bookingData) {
     }
 }
 
+// Fetch all rooms data
+export async function fetchRoomsData() {
+    try {
+        const roomsRef = collection(db, "rooms");
+        const querySnapshot = await getDocs(roomsRef);
+        const rooms = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        return rooms;
+    } catch (error) {
+        console.error("Error fetching rooms data: ", error);
+        throw new Error('Failed to fetch rooms data');
+    }
+}
+
+// Fetch a room by ID
+export async function fetchRoomById(roomId) {
+    try {
+        const roomRef = doc(db, "rooms", roomId);
+        const roomDoc = await getDoc(roomRef);
+        if (!roomDoc.exists()) {
+            throw new Error('Room not found');
+        }
+        return { id: roomDoc.id, ...roomDoc.data() };
+    } catch (error) {
+        console.error("Error fetching room by ID: ", error);
+        throw new Error('Failed to fetch room by ID');
+    }
+}
+
+// Add a new room
+export async function addRoom(roomData) {
+    try {
+        const roomsRef = collection(db, "rooms");
+        const docRef = await addDoc(roomsRef, roomData);
+        console.log("Room added with ID: ", docRef.id);
+        return docRef.id;
+    } catch (error) {
+        console.error("Error adding room: ", error);
+        throw new Error('Failed to add room');
+    }
+}
+
+// Update an existing room
+export async function updateRoom(roomId, roomData) {
+    try {
+        const roomRef = doc(db, "rooms", roomId);
+        await updateDoc(roomRef, roomData);
+        console.log("Room updated with ID: ", roomId);
+    } catch (error) {
+        console.error("Error updating room: ", error);
+        throw new Error('Failed to update room');
+    }
+}
+
+// Delete a room
+export async function deleteRoom(roomId) {
+    try {
+        const roomRef = doc(db, "rooms", roomId);
+        await deleteDoc(roomRef);
+        console.log("Room deleted with ID: ", roomId);
+    } catch (error) {
+        console.error("Error deleting room: ", error);
+        throw new Error('Failed to delete room');
+    }
+}
+
 // Export other functions and objects
 export { db, auth, analytics };
