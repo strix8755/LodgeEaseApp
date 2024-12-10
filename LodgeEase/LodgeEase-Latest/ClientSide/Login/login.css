@@ -9,17 +9,22 @@ body {
     background-size: cover;
     background-position: center;
     position: relative;
+    min-height: 100vh;
+    padding: 4rem 1rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 .glass-card {
-    background: rgba(255, 255, 255, 0.2);
-    backdrop-filter: blur(10px);
-    border-radius: 15px;
-    border: 1px solid rgba(255, 255, 255, 0.125);
-    padding: 1.5rem 2rem;
-    width: fit-content;
-    min-width: 400px;
-    max-width: 600px;
-    margin: 4.5rem auto 0;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 1.5rem;
+    width: auto;
+    min-width: 300px;
+    max-width: 400px;
+    margin: 2rem auto 0;
 }
 
 body {
@@ -51,15 +56,15 @@ body {
 
   /* Adjust text sizes to maintain proportions */
   .glass-card h1 {
-    font-size: 2.5rem;
-    line-height: 1;
+    font-size: 2rem;
+    line-height: 1.2;
     margin-bottom: 0.5rem;
   }
 
   .glass-card p {
-    font-size: 1.25rem;
-    line-height: 1.2;
-    margin-bottom: 0;
+    font-size: 1rem;
+    line-height: 1.5;
+    opacity: 0.9;
   }
 
   /* Error states for inputs */
@@ -82,4 +87,31 @@ body {
     0%, 100% { transform: translateX(0); }
     25% { transform: translateX(-5px); }
     75% { transform: translateX(5px); }
+  }
+
+  /* Form input styles */
+  .form-group input {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+  }
+
+  /* Social login buttons */
+  .social-login button {
+    font-size: 0.875rem;
+    padding: 0.5rem;
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 640px) {
+    .glass-card {
+        min-width: auto;
+        margin: 1rem;
+    }
+
+    #login {
+        margin: 1rem;
+        padding: 1.5rem;
+    }
   }

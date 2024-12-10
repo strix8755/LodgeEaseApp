@@ -21,92 +21,22 @@
         <ul class="flex space-x-6 items-center text-gray-700">
             <li><a href="../Login/index.html" class="hover:text-blue-600 transition-colors">Log In</a></li>
             <li><a href="../Homepage/rooms.html" class="hover:text-blue-600 transition-colors">Home</a></li>
-            <li>
-              <a href="#" class="text-gray-600 hover:text-blue-600 transition-colors">
-                  <i class="ri-user-line text-2xl"></i>
-              </a>
-          </li>
         </ul>
     </nav>
     </header>
 
-    <div 
-  id="userDrawer" 
-  class="fixed top-0 right-0 w-80 h-full bg-white shadow-xl transform transition-transform duration-300 z-50 translate-x-full"
->
-  <div class="p-6">
-    <div class="flex justify-between items-center mb-6">
-      <h2 class="text-xl font-bold text-gray-800">My Account</h2>
-      <button id="closeDrawer" class="text-gray-500 hover:text-gray-700">
-        <i class="ri-close-line text-2xl"></i>
-      </button>
-    </div>
-
-    <div class="space-y-4">
-      <div class="flex items-center space-x-4 bg-gray-100 p-4 rounded-lg">
-        <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-          <i class="ri-user-line text-blue-600"></i>
-        </div>
-        <div>
-          <h3 class="font-semibold">John Doe</h3>
-          <p class="text-sm text-gray-500">john.doe@example.com</p>
-        </div>
-      </div>
-
-      <div class="space-y-2">
-        <a href="#" class="flex items-center space-x-3 p-3 hover:bg-gray-100 rounded-lg transition">
-          <i class="ri-user-settings-line text-gray-600"></i>
-          <span>Profile Settings</span>
-        </a>
-        <a href="#" class="flex items-center space-x-3 p-3 hover:bg-gray-100 rounded-lg transition">
-          <i class="ri-heart-line text-gray-600"></i>
-          <span>Saved Lodges</span>
-        </a>
-        <a href="#" class="flex items-center space-x-3 p-3 hover:bg-gray-100 rounded-lg transition">
-          <i class="ri-book-line text-gray-600"></i>
-          <span>My Bookings</span>
-        </a>
-        <a href="#" class="flex items-center space-x-3 p-3 hover:bg-gray-100 rounded-lg transition">
-          <i class="ri-message-3-line text-gray-600"></i>
-          <span>Messages</span>
-        </a>
-        
-        <!-- New Dashboard and Bill Checkout sections -->
-        <a href="#" class="flex items-center space-x-3 p-3 hover:bg-gray-100 rounded-lg transition">
-          <i class="ri-dashboard-3-line text-green-600"></i>
-          <span>Dashboard</span>
-        </a>
-        <a href="#" class="flex items-center space-x-3 p-3 hover:bg-gray-100 rounded-lg transition">
-          <i class="ri-bill-line text-purple-600"></i>
-          <span>Bill Checkout</span>
-        </a>
-        
-        <a href="#" class="flex items-center space-x-3 p-3 hover:bg-gray-100 rounded-lg transition">
-          <i class="ri-logout-box-r-line text-red-600"></i>
-          <span class="text-red-600">Logout</span>
-        </a>
-      </div>
-    </div>
-  </div>
-</div>
-<!-- Overlay -->
-<div 
-  id="drawerOverlay" 
-  class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden"
-></div>
-
-<main>
+    <main>
   <section class="hero-bg h-screen flex items-center justify-center text-white relative">
-      <div class="container mx-auto px-6 z-10 text-center">
+      <div class="w-full max-w-md mx-auto px-4 z-10 text-center">
           <div class="glass-card p-10 max-w-2xl mx-auto">
-              <h1 class="text-5xl font-bold mb-4 text-white">Try LodgeEase now</h1>
-              <p class="text-xl mb-8 text-gray-200">Lodging made good as home</p>
+              <h1 class="text-3xl font-bold mb-2 text-white">Try LodgeEase now</h1>
+              <p class="text-base mb-4 text-gray-200">Lodging made good as home</p>
           </div>
           
           <!-- Login Form Section -->
-          <div id="login" class="mt-8 max-w-md mx-auto bg-white/20 backdrop-blur-md rounded-xl p-10 shadow-lg">
-            <h2 class="text-3xl font-bold mb-6 text-white text-center">Login</h2>
-            <form class="space-y-6">
+          <div id="login" class="mt-6 mx-auto bg-white/20 backdrop-blur-md rounded-xl p-6 shadow-lg">
+            <h2 class="text-2xl font-bold mb-4 text-white text-center">Login</h2>
+            <form class="space-y-4">
                 <div class="form-group">
                     <label for="username" class="block text-white mb-2 text-sm font-medium">Email or Username</label>
                     <input 
@@ -155,9 +85,9 @@
                 <div class="error-message text-red-400 mb-2"></div>
                 <div class="success-message text-green-400 mb-2"></div>
             </div>
-            <div class="social-login mt-6">
-                <p class="text-white mb-4 text-center">Or login with:</p>
-                <div class="grid grid-cols-3 gap-4">
+            <div class="social-login mt-4">
+                <p class="text-sm text-white mb-3 text-center">Or login with:</p>
+                <div class="grid grid-cols-3 gap-2">
                     <button class="bg-blue-700 text-white py-2 rounded-md flex items-center justify-center hover:bg-blue-800 transition">
                         <i class="fab fa-facebook-f mr-2"></i>Facebook
                     </button>

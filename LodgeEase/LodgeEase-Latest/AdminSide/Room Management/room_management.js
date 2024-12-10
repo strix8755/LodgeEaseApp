@@ -1,4 +1,5 @@
-import { fetchRoomsData, fetchRoomById, addRoom, updateRoom, deleteRoom } from '../firebase.js';
+import { fetchRoomsData, fetchRoomById, addRoom, updateRoom, deleteRoom, db } from '../firebase.js';
+import { collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore.js";
 
 // To store the room data in memory
 let roomsDataCache = [];
@@ -33,18 +34,27 @@ function resetForm(formId) {
 
 // Function to generate a row based on room data
 function generateRoomRow(room) {
+    const isLodgeBooking = room.source === 'lodge';
+    const actionButtons = isLodgeBooking ? 
+        `<button class="view-btn" data-id="${room.id}">View</button>` :
+        `<button class="edit-btn" data-id="${room.id}">Edit</button>
+         <button class="delete-btn" data-id="${room.id}">Delete</button>`;
+
     return `
-        <tr>
-            <td>${room.roomNumber || 'N/A'}</td>
-            <td>${room.type || 'N/A'}</td>
-            <td>${room.floor || 'N/A'}</td>
-            <td>${room.currentGuest || 'N/A'}</td>
-            <td>${room.checkIn || 'Not checked in'}</td>
-            <td>${room.checkOut || 'Not checked out'}</td>
-            <td>${room.status || 'Unknown'}</td>
+        <tr class="${isLodgeBooking ? 'lodge-booking' : 'manual-booking'}">
+            <td>${room.roomNumber}</td>
+            <td>${room.type}</td>
+            <td>${room.floor}</td>
+            <td>${room.currentGuest}</td>
+            <td>${room.checkIn}</td>
+            <td>${room.checkOut}</td>
             <td>
-                <button class="edit-btn" data-id="${room.id}">Edit</button>
-                <button class="delete-btn" data-id="${room.id}">Delete</button>
+                <span class="status-badge ${room.status.toLowerCase()}">
+                    ${room.status}
+                </span>
+            </td>
+            <td class="actions">
+                ${actionButtons}
             </td>
         </tr>`;
 }
@@ -150,16 +160,23 @@ function attachSearchListener() {
 // Load room data from Firebase
 async function loadRoomData() {
     try {
-        const roomsData = await fetchRoomsData();
-        roomsDataCache = roomsData;
-        populateFilters(roomsData);
+        // Fetch both manual rooms and Lodge bookings
+        const [manualRooms, lodgeBookings] = await Promise.all([
+            fetchRoomsData(),
+            fetchLodgeBookings()
+        ]);
+
+        // Combine both sets of data
+        roomsDataCache = [...manualRooms, ...lodgeBookings];
+        
+        // Update the UI
+        populateFilters(roomsDataCache);
         applyFilters();
     } catch (error) {
         console.error("Error loading room data:", error);
         alert("Failed to load room data. Please try again.");
     }
 }
-
 
 // Function to prepare room data for the dashboard
 // In room_management.js
@@ -197,6 +214,13 @@ function attachRowEventListeners() {
 
     document.querySelectorAll('.delete-btn').forEach(button => {
         button.addEventListener('click', () => handleDeleteRoom(button.dataset.id));
+    });
+
+    document.querySelectorAll('.view-btn').forEach(button => {
+        button.addEventListener('click', () => {
+            const bookingId = button.dataset.id;
+            viewLodgeBooking(bookingId);
+        });
     });
 }
 
@@ -321,3 +345,52 @@ window.addEventListener('DOMContentLoaded', () => {
     attachModalCloseListener();
     setupAddRoomButton();
 });
+
+// Add this function to fetch Lodge bookings
+async function fetchLodgeBookings() {
+    try {
+        const bookingsRef = collection(db, 'bookings');
+        const q = query(bookingsRef, orderBy('createdAt', 'desc'));
+        const querySnapshot = await getDocs(q);
+        
+        return querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                roomNumber: data.roomNumber || 'N/A',
+                type: data.propertyDetails?.name || 'N/A',
+                floor: data.floorLevel || 'N/A',
+                currentGuest: data.guestName || 'Guest',
+                checkIn: data.checkIn.toDate().toLocaleDateString(),
+                checkOut: data.checkOut.toDate().toLocaleDateString(),
+                status: data.status || 'pending',
+                source: 'lodge' // To identify bookings from Lodge
+            };
+        });
+    } catch (error) {
+        console.error("Error fetching Lodge bookings:", error);
+        return [];
+    }
+}
+
+// Add this function to handle viewing Lodge bookings
+async function viewLodgeBooking(bookingId) {
+    try {
+        const booking = roomsDataCache.find(room => room.id === bookingId);
+        if (booking) {
+            // You can create a modal or redirect to a detailed view
+            alert(`
+                Booking Details:
+                Guest: ${booking.currentGuest}
+                Room: ${booking.roomNumber}
+                Check-in: ${booking.checkIn}
+                Check-out: ${booking.checkOut}
+                Status: ${booking.status}
+                Property: ${booking.type}
+            `);
+        }
+    } catch (error) {
+        console.error("Error viewing booking:", error);
+        alert("Failed to load booking details.");
+    }
+}

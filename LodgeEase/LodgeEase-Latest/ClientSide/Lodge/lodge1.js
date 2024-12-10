@@ -19,7 +19,7 @@ const totalNightsPrice = document.getElementById('total-nights-price');
 const totalPrice = document.getElementById('total-price');
 let serviceFee = document.getElementById('service-fee');
 
-let currentDate = new Date(2025, 0, 1); // January 2025
+let currentDate = new Date(); // Current date
 let selectedCheckIn = null;
 let selectedCheckOut = null;
 
@@ -177,47 +177,42 @@ calendarModal.addEventListener('click', (e) => {
 
 async function saveBooking() {
   try {
-    // Get guests selection
     const guestsSelect = document.querySelector('select');
     const guests = guestsSelect.options[guestsSelect.selectedIndex].text;
-
-    // Calculate nights and price details
     const nights = Math.round((selectedCheckOut - selectedCheckIn) / (1000 * 60 * 60 * 24));
-    const nightlyRate = 6500;
-    const subtotal = nightlyRate * nights;
-    const serviceFee = Math.round(subtotal * 0.14);
-    const total = subtotal + serviceFee;
+    const subtotal = NIGHTLY_RATE * nights;
+    const serviceFeeAmount = Math.round(subtotal * SERVICE_FEE_PERCENTAGE);
+    const total = subtotal + serviceFeeAmount;
 
-    // Prepare the booking data
+    // Add more booking details
     const bookingData = {
       checkIn: Timestamp.fromDate(selectedCheckIn),
       checkOut: Timestamp.fromDate(selectedCheckOut),
-      guests: guests,
-      nightlyRate: nightlyRate,
+      guests,
+      nightlyRate: NIGHTLY_RATE,
       numberOfNights: nights,
-      subtotal: subtotal,
-      serviceFee: serviceFee,
+      subtotal,
+      serviceFee: serviceFeeAmount,
       totalPrice: total,
       status: 'pending',
       createdAt: Timestamp.fromDate(new Date()),
       propertyDetails: {
         name: 'Pine Haven Lodge',
         location: 'Tagaytay, Philippines'
-      }
+      },
+      // Add these new fields
+      roomNumber: 'A101',
+      roomType: 'Deluxe Suite',
+      floorLevel: '1st Floor',
+      guestName: 'Guest' // This should be replaced with actual user data when authentication is implemented
     };
 
-    console.log('Attempting to save booking with data:', bookingData); // Debug log
-
-    // Save to Firestore
+    console.log('Attempting to save booking with data:', bookingData);
+    
     const bookingId = await addBooking(bookingData);
+    if (!bookingId) throw new Error('Failed to get booking ID');
     
-    if (!bookingId) {
-      throw new Error('Failed to get booking ID');
-    }
-
-    console.log('Booking saved successfully with ID:', bookingId); // Debug log
-    
-    // Store booking ID in localStorage
+    console.log('Booking saved successfully with ID:', bookingId);
     localStorage.setItem('currentBookingId', bookingId);
     
     return bookingId;

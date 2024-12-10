@@ -1,15 +1,25 @@
+/* Base Styles */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
-        
+
 body {
     font-family: 'Poppins', sans-serif;
     background-color: #f5f5f5;
+    background-image: url('../components/marita-kavelashvili-ugnrXk1129g-unsplash.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed; 
+    background-repeat: no-repeat;
 }
+
+/* Hero Section */
 .hero-bg {
     background-image: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('../components/baguio-city-mirador-hill-sunset.jpg');
     background-size: cover;
     background-position: center;
     position: relative;
 }
+
+/* Card Styles */
 .glass-card {
     background: rgba(255, 255, 255, 0.2);
     backdrop-filter: blur(10px);
@@ -17,29 +27,296 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.125);
 }
 
-body {
-    background-image: url('../components/marita-kavelashvili-ugnrXk1129g-unsplash.jpg');
-    background-size: cover;
-    background-position: center;
-    background-attachment: fixed; 
-    background-repeat: no-repeat;
-  }
-  .page-content {
-    background-color: rgba(255, 255, 255, 0.85); /* Slightly transparent white */
-    max-width: 1200px; /* Contain content in a centered container */
+.page-content {
+    background-color: rgba(255, 255, 255, 0.85);
+    max-width: 1200px;
     margin: 0 auto;
-    box-shadow: 0 0 20px rgba(0,0,0,0.1); /* Optional subtle shadow */
-  }
+    box-shadow: 0 0 20px rgba(0,0,0,0.1);
+}
 
-  .selected-date {
+/* Lodge Card Animations */
+.lodge-card {
+    opacity: 0;
+    transform: translateY(20px);
+    animation: fadeInUp 0.5s ease forwards;
+}
+
+.lodge-card.hidden {
+    opacity: 0;
+    transform: translateY(20px);
+}
+
+.lodge-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+/* Map Styles */
+#map {
+    height: 100%;
+    width: 100%;
+    min-height: 500px;
+    border-radius: 0.5rem;
+}
+
+#mapView {
+    max-height: calc(100vh - 2rem);
+    max-width: 1200px;
+    margin: 0 auto;
+    transition: all 0.3s ease-in-out;
+    height: 80vh;
+}
+
+@media (max-width: 768px) {
+    #mapView {
+        inset: 0.5rem !important;
+    }
+}
+
+/* Map Controls */
+.map-control-button {
+    background: white;
+    border-radius: 9999px;
+    padding: 0.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: all 0.2s ease;
+}
+
+.map-control-button:hover {
+    background: #f8f9fa;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+/* Google Maps Custom Styles */
+.gm-style-iw {
+    padding: 0 !important;
+    border-radius: 8px !important;
+}
+
+.gm-style-iw-d {
+    overflow: hidden !important;
+    padding: 0 !important;
+}
+
+.gm-ui-hover-effect {
+    top: 0 !important;
+    right: 0 !important;
+    background: #f8f9fa !important;
+    border-radius: 50% !important;
+}
+
+/* Form Elements */
+input[type="number"] {
+    -moz-appearance: textfield;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.form-checkbox {
+    @apply h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500;
+}
+
+/* Date Selection */
+.selected-date {
     background-color: #3B82F6;
     color: white;
     border-radius: 9999px;
-  }
-  .in-range {
+}
+
+.in-range {
     background-color: #BFDBFE;
-  }
-  .hover-date:hover {
+}
+
+.hover-date:hover {
     background-color: #EFF6FF;
     cursor: pointer;
+}
+
+/* Drawer and Overlay */
+#compareDrawer {
+    transition: transform 0.3s ease-in-out;
+}
+
+.map-overlay {
+    background: linear-gradient(to bottom, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0) 100%);
+    pointer-events: none;
+}
+
+.map-overlay > * {
+    pointer-events: auto;
+}
+
+/* Navigation Elements */
+#closeMap {
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+#closeMap:hover {
+    background-color: #f3f4f6;
+}
+
+/* Show Map Button */
+#toggleView {
+    background: linear-gradient(to right, #3b82f6, #2563eb);
+    transition: all 0.3s ease;
+}
+
+#toggleView:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.5);
+}
+
+#toggleView:active {
+    transform: translateY(0);
+}
+
+/* Map Marker Animation */
+.map-marker {
+    animation: bounce 0.5s infinite alternate;
+    transform-origin: bottom center;
+}
+
+@keyframes bounce {
+    from { transform: translateY(0); }
+    to { transform: translateY(-10px); }
+}
+
+/* Add these styles for the loading spinner */
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+/* Add smooth transitions for lodge cards */
+.lodge-card {
+    opacity: 0;
+    transform: translateY(20px);
+    animation: fadeInUp 0.5s ease forwards;
+}
+
+@keyframes fadeInUp {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Add these styles */
+.lodge-card {
+    position: relative;
+}
+
+.lodge-card .image-gallery {
+    position: relative;
+    overflow: hidden;
+}
+
+.lodge-card .image-gallery:hover::after {
+    content: 'View Gallery';
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.125rem;
+    cursor: pointer;
+}
+
+.quick-view-modal {
+    animation: modalFade 0.3s ease-out;
+}
+
+@keyframes modalFade {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Filter styles */
+.filter-group {
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+}
+
+.filter-group:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+    margin-bottom: 0;
+}
+
+.filter-checkbox {
+    transition: all 0.2s ease;
+}
+
+.filter-checkbox:checked {
+    animation: checkboxPop 0.2s ease-out;
+}
+
+@keyframes checkboxPop {
+    50% {
+        transform: scale(1.2);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Add these styles for filter animations */
+.lodge-card {
+  transition: all 0.3s ease-in-out;
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Style for active filters */
+.form-checkbox:checked + span {
+  color: #2563eb;
+  font-weight: 500;
+}
+
+/* Add hover effect to filter labels */
+.filter-group label {
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.filter-group label:hover {
+  background-color: #f3f4f6;
+  border-radius: 0.375rem;
+}
