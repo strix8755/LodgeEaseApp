@@ -50,6 +50,8 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeLodgeCards();
     initializeAllFilters();
     initializeResetFilter();
+    checkLoginStatus();
+    initializeLogout();
   });
 
 function initializeSearch() {
@@ -118,6 +120,7 @@ function saveFavorites() {
     return btn.closest('.lodge-card').querySelector('h2').textContent;
   });
   localStorage.setItem('favorites', JSON.stringify(favorites));
+  updateSavedCount();
 }
 
 function initializeSort() {
@@ -927,4 +930,83 @@ function initializeResetFilter() {
       updateResults(lodgeCards);
     });
   }
+}
+
+// Add this function to check login status
+function checkLoginStatus() {
+  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+  const userIcon = document.querySelector('.user-nav-item');
+  const loginLink = document.querySelector('.login-nav-item');
+  
+  if (isLoggedIn) {
+    // Show user menu, hide login link
+    userIcon.classList.remove('hidden');
+    loginLink.classList.add('hidden');
+    
+    // Update user info in menu
+    const userName = document.querySelector('.user-name');
+    const userEmail = document.querySelector('.user-email');
+    if (userName) userName.textContent = localStorage.getItem('userName') || 'User';
+    if (userEmail) userEmail.textContent = localStorage.getItem('userEmail') || '';
+    
+    // Show welcome message if this is a new login
+    if (sessionStorage.getItem('welcomed') !== 'true') {
+      showWelcomeMessage();
+      sessionStorage.setItem('welcomed', 'true');
+    }
+  } else {
+    // Hide user menu, show login link
+    userIcon.classList.add('hidden');
+    loginLink.classList.remove('hidden');
+  }
+}
+
+// Add logout functionality
+function initializeLogout() {
+  const logoutButton = document.querySelector('.logout-button');
+  if (logoutButton) {
+    logoutButton.addEventListener('click', async (e) => {
+      e.preventDefault();
+      
+      try {
+        // Clear all auth-related data
+        localStorage.removeItem('isLoggedIn');
+        localStorage.removeItem('userEmail');
+        localStorage.removeItem('userId');
+        localStorage.removeItem('userName');
+        sessionStorage.removeItem('welcomed');
+        
+        // Redirect to login page
+        window.location.href = '../Login/index.html';
+      } catch (error) {
+        console.error('Logout error:', error);
+      }
+    });
+  }
+}
+
+function showWelcomeMessage() {
+  const notification = document.createElement('div');
+  notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg transform transition-all duration-500 translate-y-[-100px] opacity-0';
+  notification.innerHTML = `
+    <div class="flex items-center space-x-2">
+      <i class="ri-check-line text-xl"></i>
+      <span>Welcome back, John!</span>
+    </div>
+  `;
+  
+  document.body.appendChild(notification);
+  
+  // Animate in
+  setTimeout(() => {
+    notification.style.transform = 'translateY(0)';
+    notification.style.opacity = '1';
+  }, 100);
+  
+  // Animate out
+  setTimeout(() => {
+    notification.style.transform = 'translateY(-100px)';
+    notification.style.opacity = '0';
+    setTimeout(() => notification.remove(), 500);
+  }, 3000);
 }

@@ -56,9 +56,11 @@ document.addEventListener('DOMContentLoaded', function() {
             successMessage.textContent = 'Login successful! Redirecting...';
             successMessage.style.display = 'block';
 
-            // Store user info in localStorage
+            // Store user info and login state in localStorage
             localStorage.setItem('userEmail', user.email);
             localStorage.setItem('userId', user.uid);
+            localStorage.setItem('isLoggedIn', 'true');
+            localStorage.setItem('userName', user.displayName || 'User');
 
             // Redirect after a short delay
             setTimeout(() => {
@@ -113,3 +115,18 @@ document.addEventListener('DOMContentLoaded', function() {
       drawerOverlay.classList.add('hidden');
     }
   });
+
+function handleLogin(event) {
+  event.preventDefault();
+  // Your existing login validation code...
+  
+  if (loginSuccessful) {
+    localStorage.setItem('isLoggedIn', 'true');
+    window.location.href = '../Homepage/rooms.html';
+  }
+}
+
+function handleLogout() {
+  localStorage.removeItem('isLoggedIn');
+  window.location.href = '../Homepage/rooms.html';
+}
