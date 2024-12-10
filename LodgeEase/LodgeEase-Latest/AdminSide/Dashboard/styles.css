@@ -316,3 +316,19 @@ th {
         width: 100%;
     }
 }
+
+.status-pending {
+    background-color: #FEF3C7;
+    color: #92400E;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+}
+
+.status-occupied {
+    background-color: #DCFCE7;
+    color: #166534;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+}

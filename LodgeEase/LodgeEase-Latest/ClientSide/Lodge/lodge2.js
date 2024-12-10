@@ -24,7 +24,7 @@ const NIGHTLY_RATE = 3200;
 const SERVICE_FEE_PERCENTAGE = 0.14;
 
 // State
-let currentDate = new Date(2025, 0, 1);
+let currentDate = new Date();
 let selectedCheckIn = null;
 let selectedCheckOut = null;
 
@@ -223,18 +223,23 @@ function initializeUserDrawer() {
   const closeDrawer = document.getElementById('closeDrawer');
   const drawerOverlay = document.getElementById('drawerOverlay');
 
-  function closeUserDrawer() {
-    userDrawer.classList.add('translate-x-full');
-    drawerOverlay.classList.add('hidden');
+  // Only initialize if all required elements are present
+  if (userIcon && userDrawer && closeDrawer && drawerOverlay) {
+    function closeUserDrawer() {
+      userDrawer.classList.add('translate-x-full');
+      drawerOverlay.classList.add('hidden');
+    }
+
+    userIcon.addEventListener('click', () => {
+      userDrawer.classList.remove('translate-x-full');
+      drawerOverlay.classList.remove('hidden');
+    });
+
+    closeDrawer.addEventListener('click', closeUserDrawer);
+    drawerOverlay.addEventListener('click', closeUserDrawer);
+  } else {
+    console.warn('User drawer elements not found, skipping initialization');
   }
-
-  userIcon.addEventListener('click', () => {
-    userDrawer.classList.remove('translate-x-full');
-    drawerOverlay.classList.remove('hidden');
-  });
-
-  closeDrawer.addEventListener('click', closeUserDrawer);
-  drawerOverlay.addEventListener('click', closeUserDrawer);
 }
 
 // Event Listeners

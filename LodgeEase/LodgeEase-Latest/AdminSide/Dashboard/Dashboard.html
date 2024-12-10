@@ -108,7 +108,12 @@
                             <td>{{ room.guestName }}</td>
                             <td>{{ room.checkInDate }}</td>
                             <td>{{ room.checkOutDate }}</td>
-                            <td>{{ room.status }}</td>
+                            <td>
+                                <span :class="{
+                                    'status-pending': room.status === 'pending',
+                                    'status-occupied': room.status === 'occupied'
+                                }">{{ room.status }}</span>
+                            </td>
                             <td>
                                 <button class="action-btn edit" @click="editRoom(room)">Edit</button>
                                 <button class="action-btn delete" @click="deleteRoom(room.id)">Delete</button>
