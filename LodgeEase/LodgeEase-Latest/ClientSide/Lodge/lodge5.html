@@ -80,25 +80,150 @@
                     </p>
                 </div>
 
-                <!-- Booking Section -->
                 <div class="mt-8">
-                    <h2 class="text-xl font-semibold mb-4">Book your stay</h2>
+                    <h2 class="text-xl font-semibold mb-4">Long-Term Stay Options</h2>
                     <div class="bg-gray-50 p-6 rounded-lg">
-                        <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="mb-6">
+                            <h3 class="text-lg font-semibold mb-2">Rental Conditions</h3>
+                            <ul class="text-gray-600 space-y-2 pl-4">
+                                <li class="flex items-center">
+                                    <i class="ri-check-line text-green-600 mr-2"></i>
+                                    Minimum stay: 3 months
+                                </li>
+                                <li class="flex items-center">
+                                    <i class="ri-check-line text-green-600 mr-2"></i>
+                                    Security deposit: One month's rent
+                                </li>
+                                <li class="flex items-center">
+                                    <i class="ri-check-line text-green-600 mr-2"></i>
+                                    Utilities not included (estimated ₱2,000-3,000/month)
+                                </li>
+                                <li class="flex items-center">
+                                    <i class="ri-check-line text-green-600 mr-2"></i>
+                                    Advanced payment: First and last month's rent required
+                                </li>
+                            </ul>
+                        </div>
+                
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">Check-in</label>
-                                <input type="date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                <label class="block text-sm font-medium text-gray-700">Preferred Move-in Date</label>
+                                <input type="date" id="moveInDate" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">Check-out</label>
-                                <input type="date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                <label class="block text-sm font-medium text-gray-700">Lease Duration</label>
+                                <select id="leaseDuration" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                    <option value="3">3 Months</option>
+                                    <option value="6">6 Months</option>
+                                    <option value="12">1 Year</option>
+                                    <option value="24">2 Years</option>
+                                </select>
                             </div>
                         </div>
-                        <button onclick="window.location.href='pay.html'" class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition">
-                            Book Now
+                
+                        <div class="grid grid-cols-1 gap-4 mb-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Number of Occupants</label>
+                                <select id="occupantsCount" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                    <option value="1">1 Person</option>
+                                    <option value="2">2 Persons (+₱1,000/month)</option>
+                                    <option value="3">3 Persons (+₱2,000/month)</option>
+                                </select>
+                            </div>
+                        </div>
+                
+                        <div class="bg-white p-4 rounded-lg shadow-md mb-4">
+                            <h3 class="text-lg font-semibold mb-2">Cost Breakdown</h3>
+                            <div id="costBreakdown" class="text-gray-700">
+                                <div class="flex justify-between">
+                                    <span>Base Rent</span>
+                                    <span>₱6,000/month</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Additional Occupant Fee</span>
+                                    <span id="occupantFee">₱0/month</span>
+                                </div>
+                                <hr class="my-2 border-gray-200">
+                                <div class="flex justify-between font-bold">
+                                    <span>Total Monthly Rent</span>
+                                    <span id="totalMonthlyRent">₱6,000</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Security Deposit</span>
+                                    <span>₱6,000</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>First & Last Month's Rent</span>
+                                    <span id="firstLastMonthRent">₱12,000</span>
+                                </div>
+                                <hr class="my-2 border-gray-200">
+                                <div class="flex justify-between text-green-600 font-bold">
+                                    <span>Total Initial Payment</span>
+                                    <span id="totalInitialPayment">₱24,000</span>
+                                </div>
+                            </div>
+                        </div>
+                
+                        <button onclick="proceedToApplication()" class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition">
+                            Proceed with Application
                         </button>
                     </div>
                 </div>
+                
+                <script>
+                    function updateCostBreakdown() {
+                        const leaseDuration = document.getElementById('leaseDuration').value;
+                        const occupantsCount = document.getElementById('occupantsCount').value;
+                        
+                        const baseRent = 6000;
+                        let occupantFee = 0;
+                        
+                        if (occupantsCount === '2') {
+                            occupantFee = 1000;
+                        } else if (occupantsCount === '3') {
+                            occupantFee = 2000;
+                        }
+                        
+                        const totalMonthlyRent = baseRent + occupantFee;
+                        const securityDeposit = baseRent;
+                        const firstLastMonthRent = totalMonthlyRent * 2;
+                        const totalInitialPayment = totalMonthlyRent + securityDeposit + firstLastMonthRent;
+                        
+                        document.getElementById('occupantFee').textContent = `₱${occupantFee}/month`;
+                        document.getElementById('totalMonthlyRent').textContent = `₱${totalMonthlyRent}`;
+                        document.getElementById('firstLastMonthRent').textContent = `₱${firstLastMonthRent}`;
+                        document.getElementById('totalInitialPayment').textContent = `₱${totalInitialPayment.toLocaleString()}`;
+                    }
+                    
+                    function proceedToApplication() {
+                        const moveInDate = document.getElementById('moveInDate').value;
+                        const leaseDuration = document.getElementById('leaseDuration').value;
+                        const occupantsCount = document.getElementById('occupantsCount').value;
+                        
+                        if (!moveInDate) {
+                            alert('Please select a move-in date');
+                            return;
+                        }
+                        
+                        const applicationDetails = {
+                            moveInDate: moveInDate,
+                            leaseDuration: leaseDuration + ' months',
+                            occupants: occupantsCount,
+                            monthlyRent: document.getElementById('totalMonthlyRent').textContent,
+                            totalInitialPayment: document.getElementById('totalInitialPayment').textContent
+                        };
+                        
+                        localStorage.setItem('rentalApplication', JSON.stringify(applicationDetails));
+                        window.location.href = 'rental-application.html';
+                    }
+                    
+                    // Initialize and update cost breakdown
+                    document.getElementById('leaseDuration').addEventListener('change', updateCostBreakdown);
+                    document.getElementById('occupantsCount').addEventListener('change', updateCostBreakdown);
+                    
+                    // Initial calculation
+                    updateCostBreakdown();
+                </script>
             </div>
         </div>
     </main>
