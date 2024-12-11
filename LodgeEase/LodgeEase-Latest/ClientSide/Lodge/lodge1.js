@@ -2,6 +2,10 @@
 import { addBooking } from '../../AdminSide/firebase.js'; // Adjust the path if needed
 import { Timestamp } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore.js";
 
+// Constants for pricing
+const NIGHTLY_RATE = 6500; // ₱6,500 per night as shown in the HTML
+const SERVICE_FEE_PERCENTAGE = 0.14; // 14% service fee
+
 // Calendar Functionality
 const calendarModal = document.getElementById('calendar-modal');
 const calendarGrid = document.getElementById('calendar-grid');
@@ -176,75 +180,83 @@ calendarModal.addEventListener('click', (e) => {
 });
 
 async function saveBooking() {
-  try {
-    const guestsSelect = document.querySelector('select');
-    const guests = guestsSelect.options[guestsSelect.selectedIndex].text;
-    const nights = Math.round((selectedCheckOut - selectedCheckIn) / (1000 * 60 * 60 * 24));
-    const subtotal = NIGHTLY_RATE * nights;
-    const serviceFeeAmount = Math.round(subtotal * SERVICE_FEE_PERCENTAGE);
-    const total = subtotal + serviceFeeAmount;
+    try {
+        if (!selectedCheckIn || !selectedCheckOut) {
+            throw new Error('Please select check-in and check-out dates');
+        }
 
-    // Add more booking details
-    const bookingData = {
-      checkIn: Timestamp.fromDate(selectedCheckIn),
-      checkOut: Timestamp.fromDate(selectedCheckOut),
-      guests,
-      nightlyRate: NIGHTLY_RATE,
-      numberOfNights: nights,
-      subtotal,
-      serviceFee: serviceFeeAmount,
-      totalPrice: total,
-      status: 'pending',
-      createdAt: Timestamp.fromDate(new Date()),
-      propertyDetails: {
-        name: 'Pine Haven Lodge',
-        location: 'Tagaytay, Philippines'
-      },
-      // Add these new fields
-      roomNumber: 'A101',
-      roomType: 'Deluxe Suite',
-      floorLevel: '1st Floor',
-      guestName: 'Guest' // This should be replaced with actual user data when authentication is implemented
-    };
+        const guestsSelect = document.querySelector('select');
+        if (!guestsSelect) {
+            throw new Error('Guests selection not found');
+        }
 
-    console.log('Attempting to save booking with data:', bookingData);
-    
-    const bookingId = await addBooking(bookingData);
-    if (!bookingId) throw new Error('Failed to get booking ID');
-    
-    console.log('Booking saved successfully with ID:', bookingId);
-    localStorage.setItem('currentBookingId', bookingId);
-    
-    return bookingId;
-  } catch (error) {
-    console.error('Error in saveBooking:', error);
-    throw error;
-  }
+        const guests = guestsSelect.options[guestsSelect.selectedIndex].text;
+        const nights = Math.round((selectedCheckOut - selectedCheckIn) / (1000 * 60 * 60 * 24));
+        const subtotal = NIGHTLY_RATE * nights;
+        const serviceFeeAmount = Math.round(subtotal * SERVICE_FEE_PERCENTAGE);
+        const total = subtotal + serviceFeeAmount;
+
+        const bookingData = {
+            checkIn: Timestamp.fromDate(selectedCheckIn),
+            checkOut: Timestamp.fromDate(selectedCheckOut),
+            guests,
+            nightlyRate: NIGHTLY_RATE,
+            numberOfNights: nights,
+            subtotal,
+            serviceFee: serviceFeeAmount,
+            totalPrice: total,
+            status: 'pending',
+            createdAt: Timestamp.fromDate(new Date()),
+            propertyDetails: {
+                name: 'Pine Haven Lodge',
+                location: 'Baguio City, Philippines'
+            },
+            roomNumber: 'A101',
+            roomType: 'Deluxe Suite',
+            floorLevel: '1st Floor',
+            guestName: 'Guest'
+        };
+
+        // Store booking data in localStorage
+        localStorage.setItem('bookingData', JSON.stringify(bookingData));
+        localStorage.setItem('totalPrice', total.toString());
+        
+        console.log('Saving booking with data:', bookingData);
+        const bookingId = await addBooking(bookingData);
+        
+        if (!bookingId) {
+            throw new Error('Failed to get booking ID');
+        }
+        
+        console.log('Booking saved successfully with ID:', bookingId);
+        localStorage.setItem('currentBookingId', bookingId);
+        return bookingId;
+
+    } catch (error) {
+        console.error('Error in saveBooking:', error);
+        throw error;
+    }
 }
 
 async function handleReserveClick(event) {
-  event.preventDefault(); // Prevent default form submission
+    event.preventDefault();
 
-  try {
-    // Validate required fields
-    if (!selectedCheckIn || !selectedCheckOut) {
-      alert('Please select check-in and check-out dates');
-      return;
+    try {
+        if (!selectedCheckIn || !selectedCheckOut) {
+            alert('Please select check-in and check-out dates');
+            return;
+        }
+
+        const bookingId = await saveBooking();
+        if (bookingId) {
+            window.location.href = `pay.html?bookingId=${encodeURIComponent(bookingId)}`;
+        } else {
+            throw new Error('Failed to create booking');
+        }
+    } catch (error) {
+        console.error('Error handling reserve click:', error);
+        alert('There was an error processing your booking. Please try again.');
     }
-
-    // Save the booking
-    const bookingId = await saveBooking();
-
-    if (bookingId) {
-      // Redirect to payment page with booking ID
-      window.location.href = `pay.html?bookingId=${encodeURIComponent(bookingId)}`;
-    } else {
-      throw new Error('Failed to create booking');
-    }
-  } catch (error) {
-    console.error('Error handling reserve click:', error);
-    alert('There was an error processing your booking. Please try again.');
-  }
 }
 
 // Add event listener to reserve button

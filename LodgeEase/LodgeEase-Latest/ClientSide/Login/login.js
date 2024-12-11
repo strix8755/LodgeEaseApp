@@ -25,73 +25,25 @@ document.addEventListener('DOMContentLoaded', function() {
     userInput.addEventListener('input', () => clearError(userInput));
     passwordInput.addEventListener('input', () => clearError(passwordInput));
 
-    loginForm.addEventListener('submit', async function (e) {
+    loginForm.addEventListener('submit', function(e) {
         e.preventDefault();
-
-        const userIdentifier = userInput.value.trim();
-        const password = passwordInput.value;
-
-        // Clear previous messages
-        const errorMessage = document.querySelector('.error-message');
-        const successMessage = document.querySelector('.success-message');
-        errorMessage.textContent = '';
-        successMessage.textContent = '';
-
-        // Basic validation
-        if (!userIdentifier) {
-            showError(userInput, 'Please enter your email or username');
-            return;
-        }
-
-        if (!password) {
-            showError(passwordInput, 'Please enter your password');
-            return;
-        }
-
-        try {
-            // Attempt sign-in with Firebase Authentication
-            const user = await signIn(userIdentifier, password);
-
-            // Successful login
-            successMessage.textContent = 'Login successful! Redirecting...';
-            successMessage.style.display = 'block';
-
-            // Store user info and login state in localStorage
-            localStorage.setItem('userEmail', user.email);
-            localStorage.setItem('userId', user.uid);
-            localStorage.setItem('isLoggedIn', 'true');
-            localStorage.setItem('userName', user.displayName || 'User');
-
-            // Redirect after a short delay
-            setTimeout(() => {
-                window.location.href = '../Homepage/rooms.html';
-            }, 1500);
-
-        } catch (error) {
-            // Handle specific error cases
-            let errorMsg = '';
-            switch (error.message) {
-                case 'auth/user-not-found':
-                    errorMsg = 'Account not found. Please check your username/email or sign up.';
-                    showError(userInput, errorMsg);
-                    break;
-                case 'Firebase: Error (auth/wrong-password).':
-                    errorMsg = 'Incorrect password. Please try again.';
-                    showError(passwordInput, errorMsg);
-                    break;
-                case 'Firebase: Error (auth/invalid-email).':
-                    errorMsg = 'Invalid email format. Please enter a valid email address.';
-                    showError(userInput, errorMsg);
-                    break;
-                case 'Firebase: Error (auth/too-many-requests).':
-                    errorMsg = 'Too many failed attempts. Please try again later.';
-                    showError(passwordInput, errorMsg);
-                    break;
-                default:
-                    errorMsg = 'An error occurred. Please try again.';
-                    showError(userInput, errorMsg);
-                    showError(passwordInput, errorMsg);
-            }
+        
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        
+        // For demo purposes - in production, this should be a proper authentication
+        if (username && password) {
+            // Store user info in localStorage
+            const userInfo = {
+                name: username,
+                email: username.includes('@') ? username : `${username}@example.com`,
+                isLoggedIn: true
+            };
+            
+            localStorage.setItem('userInfo', JSON.stringify(userInfo));
+            
+            // Redirect to rooms page
+            window.location.href = '../Homepage/rooms.html';
         }
     });
 

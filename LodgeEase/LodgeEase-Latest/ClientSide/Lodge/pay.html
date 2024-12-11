@@ -11,7 +11,7 @@
   <Script src="rooms.js"></Script>
 </head>
 
-<body class="text-gray-800">
+<body class="text-gray-800 bg-gray-100">
   <header class="fixed w-full z-50 bg-white/80 backdrop-blur-md shadow-lg">
     <nav class="container mx-auto flex justify-between items-center py-4 px-6">
       <div class="text-3xl font-bold text-blue-600 tracking-wider">
@@ -28,14 +28,44 @@
       </ul>
   </nav>
   </header>
-  <div class="flex min-h-screen">
-<body class="bg-gray-100 font-sans">
-  <div class="max-w-2xl mx-auto p-6 bg-white shadow-lg mt-10 rounded-lg">
-    <!-- Header -->
-    <div class="mb-6">
-      <h1 class="text-2xl font-semibold text-gray-800">Confirm and Pay</h1>
-    </div>
-
+  <div class="pt-20">
+    <div class="max-w-2xl mx-auto p-6 bg-white shadow-lg rounded-lg">
+      <!-- Header -->
+      <div class="mb-6">
+        <h1 class="text-2xl font-semibold text-gray-800">Confirm and Pay</h1>
+      </div>
+      <!-- Add this section after the header and before payment options -->
+<div class="mb-6 border-b pb-6">
+  <h2 class="text-lg font-semibold text-gray-800 mb-4">Booking Summary</h2>
+  <div class="space-y-2" id="booking-summary">
+      <div class="flex justify-between">
+          <span class="text-gray-600">Check-in</span>
+          <span class="font-medium" id="summary-checkin"></span>
+      </div>
+      <div class="flex justify-between">
+          <span class="text-gray-600">Check-out</span>
+          <span class="font-medium" id="summary-checkout"></span>
+      </div>
+      <div class="flex justify-between">
+          <span class="text-gray-600">Guests</span>
+          <span class="font-medium" id="summary-guests"></span>
+      </div>
+      <div class="flex justify-between">
+          <span class="text-gray-600">Nights</span>
+          <span class="font-medium" id="summary-nights"></span>
+      </div>
+      <div class="flex justify-between">
+          <span class="text-gray-600">Rate per night</span>
+          <span class="font-medium" id="summary-rate"></span>
+      </div>
+      <div class="flex justify-between">
+          <span class="text-gray-600">Service fee</span>
+          <span class="font-medium" id="summary-fee"></span>
+      </div>
+      <div class="flex justify-between font-semibold mt-4 pt-4 border-t">
+          <span>Total</span>
+          <span id="summary-total"></span>
+      </div>
     <!-- Payment Options -->
     <div class="mb-6">
       <h2 class="text-lg font-semibold text-gray-800 mb-4">Choose how to pay</h2>
@@ -108,17 +138,19 @@
 
         <!-- GCash -->
         <div class="border rounded-lg p-4">
-          <label class="flex items-center space-x-2 cursor-pointer">
+          <label class="flex items-center space-x-4 cursor-pointer">
             <input type="radio" name="payment_method" class="text-indigo-600 focus:ring-indigo-500" value="gcash">
             <span class="font-medium text-gray-800">GCash</span>
+            <img src="../components/gcash-logo-png_seeklogo-498022.png" alt="GCash" class="h-8">
           </label>
         </div>
 
         <!-- PayPal -->
         <div class="border rounded-lg p-4">
-          <label class="flex items-center space-x-2 cursor-pointer">
+          <label class="flex items-center space-x-4 cursor-pointer">
             <input type="radio" name="payment_method" class="text-indigo-600 focus:ring-indigo-500" value="paypal">
             <span class="font-medium text-gray-800">PayPal</span>
+            <i class="fab fa-paypal text-2xl text-blue-600"></i>
           </label>
         </div>
       </div>
@@ -128,9 +160,15 @@
     <div class="text-right">
       <button
         id="confirm-button"
-        class="bg-indigo-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-indigo-700"
+        class="bg-indigo-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        Confirm and Pay
+        <span class="inline-flex items-center">
+          <span id="button-text">Confirm and Pay</span>
+          <svg id="loading-spinner" class="hidden w-5 h-5 ml-2 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </span>
       </button>
     </div>
   </div>
@@ -164,75 +202,10 @@
       </a>      
     </div>
   </div>
-  <div 
-  id="userDrawer" 
-  class="fixed top-0 right-0 w-80 h-full bg-white shadow-xl transform transition-transform duration-300 z-50 translate-x-full"
->
-  <div class="p-6">
-    <div class="flex justify-between items-center mb-6">
-      <h2 class="text-xl font-bold text-gray-800">My Account</h2>
-      <button id="closeDrawer" class="text-gray-500 hover:text-gray-700">
-        <i class="ri-close-line text-2xl"></i>
-      </button>
-    </div>
-
-    <div class="space-y-4">
-      <div class="flex items-center space-x-4 bg-gray-100 p-4 rounded-lg">
-        <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-          <i class="ri-user-line text-blue-600"></i>
-        </div>
-        <div>
-          <h3 class="font-semibold">John Doe</h3>
-          <p class="text-sm text-gray-500">john.doe@example.com</p>
-        </div>
-      </div>
-
-      <div class="space-y-2">
-        <a href="#" class="flex items-center space-x-3 p-3 hover:bg-gray-100 rounded-lg transition">
-          <i class="ri-user-settings-line text-gray-600"></i>
-          <span>Profile Settings</span>
-        </a>
-        <a href="#" class="flex items-center space-x-3 p-3 hover:bg-gray-100 rounded-lg transition">
-          <i class="ri-heart-line text-gray-600"></i>
-          <span>Saved Lodges</span>
-        </a>
-        <a href="#" class="flex items-center space-x-3 p-3 hover:bg-gray-100 rounded-lg transition">
-          <i class="ri-book-line text-gray-600"></i>
-          <span>My Bookings</span>
-        </a>
-        <a href="#" class="flex items-center space-x-3 p-3 hover:bg-gray-100 rounded-lg transition">
-          <i class="ri-message-3-line text-gray-600"></i>
-          <span>Messages</span>
-        </a>
-
-        <a href="#" class="flex items-center space-x-3 p-3 hover:bg-gray-100 rounded-lg transition">
-          <i class="ri-building-3-line text-gray-600"></i>
-          <span>Extend Stay</span>
-        </a>
-        <!-- New Dashboard and Bill Checkout sections -->
-        <a href="#" class="flex items-center space-x-3 p-3 hover:bg-gray-100 rounded-lg transition">
-          <i class="ri-dashboard-3-line text-green-600"></i>
-          <span>Dashboard</span>
-        </a>
-        <a href="#" class="flex items-center space-x-3 p-3 hover:bg-gray-100 rounded-lg transition">
-          <i class="ri-bill-line text-purple-600"></i>
-          <span>Bill Checkout</span>
-        </a>
-        
-        <a href="#" class="flex items-center space-x-3 p-3 hover:bg-gray-100 rounded-lg transition">
-          <i class="ri-logout-box-r-line text-red-600"></i>
-          <span class="text-red-600">Logout</span>
-        </a>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Overlay -->
-<div 
-  id="drawerOverlay" 
-  class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden"
-></div>
+  <script type="module">
+      import { initializeUserDrawer } from '../components/userDrawer.js';
+      document.addEventListener('DOMContentLoaded', initializeUserDrawer);
+  </script>
   <script src="../Lodge/pay.js"></script>
 </body>
 </html>

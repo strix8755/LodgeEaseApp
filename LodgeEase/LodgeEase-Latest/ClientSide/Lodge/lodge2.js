@@ -177,9 +177,17 @@ async function saveBooking() {
       propertyDetails: {
         name: 'Mountain View Lodge',
         location: 'Tagaytay, Philippines'
-      }
+      },
+      roomNumber: 'B201',
+      roomType: 'Standard Suite',
+      floorLevel: '2nd Floor',
+      guestName: 'Guest'
     };
 
+    // Store booking data in localStorage
+    localStorage.setItem('bookingData', JSON.stringify(bookingData));
+    localStorage.setItem('totalPrice', total.toString());
+    
     console.log('Attempting to save booking with data:', bookingData);
     
     const bookingId = await addBooking(bookingData);

@@ -164,118 +164,30 @@
         </main>
     </div>
 
-    <div 
-  id="userDrawer" 
-  class="fixed top-0 right-0 w-80 h-full bg-white shadow-xl transform transition-transform duration-300 z-50 translate-x-full"
->
-  <div class="p-6">
-    <div class="flex justify-between items-center mb-6">
-      <h2 class="text-xl font-bold text-gray-800">My Account</h2>
-      <button id="closeDrawer" class="text-gray-500 hover:text-gray-700">
-        <i class="ri-close-line text-2xl"></i>
-      </button>
-    </div>
+    <script type="module">
+        import { initializeUserDrawer } from '../components/userDrawer.js';
+        document.addEventListener('DOMContentLoaded', initializeUserDrawer);
+    </script>
 
-    <div class="space-y-4">
-      <div class="flex items-center space-x-4 bg-gray-100 p-4 rounded-lg">
-        <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-          <i class="ri-user-line text-blue-600"></i>
+    <footer class="bg-gray-900 text-white py-12">
+      <div class="container mx-auto px-6 text-center">
+        <div class="mb-8">
+          <h3 class="text-3xl font-bold text-blue-500 mb-4">LodgeEase</h3>
+          <p class="text-gray-300">Aspiras palispis highway, Baguio City, Benguet, 2600 Philippines</p>
+          <p class="text-gray-300">Contact: +(63) 9129 912 6584 | lodgeease.baguio@email.com</p>
         </div>
-        <div>
-          <h3 class="font-semibold">John Doe</h3>
-          <p class="text-sm text-gray-500">john.doe@example.com</p>
+        <div class="flex justify-center space-x-6">
+          <a href="#" class="text-2xl text-blue-400 hover:text-white transition-colors">
+            <i class="fab fa-instagram"></i>
+          </a>
+          <a href="#" class="text-2xl text-blue-400 hover:text-white transition-colors">
+            <i class="fab fa-facebook"></i>
+          </a>
+          <a href="#" class="text-2xl text-blue-400 hover:text-white transition-colors">
+            <i class="fab fa-twitter"></i>
+          </a>
         </div>
       </div>
-
-      <div class="space-y-2">
-        <a href="#" class="flex items-center space-x-3 p-3 hover:bg-gray-100 rounded-lg transition">
-          <i class="ri-user-settings-line text-gray-600"></i>
-          <span>Profile Settings</span>
-        </a>
-        <a href="#" class="flex items-center space-x-3 p-3 hover:bg-gray-100 rounded-lg transition">
-          <i class="ri-heart-line text-gray-600"></i>
-          <span>Saved Lodges</span>
-        </a>
-        <a href="#" class="flex items-center space-x-3 p-3 hover:bg-gray-100 rounded-lg transition">
-          <i class="ri-book-line text-gray-600"></i>
-          <span>My Bookings</span>
-        </a>
-        <a href="#" class="flex items-center space-x-3 p-3 hover:bg-gray-100 rounded-lg transition">
-          <i class="ri-message-3-line text-gray-600"></i>
-          <span>Messages</span>
-        </a>
-
-        <a href="#" class="flex items-center space-x-3 p-3 hover:bg-gray-100 rounded-lg transition">
-          <i class="ri-building-3-line text-gray-600"></i>
-          <span>Extend Stay</span>
-        </a>
-        <!-- New Dashboard and Bill Checkout sections -->
-        <a href="#" class="flex items-center space-x-3 p-3 hover:bg-gray-100 rounded-lg transition">
-          <i class="ri-dashboard-3-line text-green-600"></i>
-          <span>Dashboard</span>
-        </a>
-        <a href="#" class="flex items-center space-x-3 p-3 hover:bg-gray-100 rounded-lg transition">
-          <i class="ri-bill-line text-purple-600"></i>
-          <span>Bill Checkout</span>
-        </a>
-        
-        <a href="#" class="flex items-center space-x-3 p-3 hover:bg-gray-100 rounded-lg transition">
-          <i class="ri-logout-box-r-line text-red-600"></i>
-          <span class="text-red-600">Logout</span>
-        </a>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Overlay -->
-<div 
-  id="drawerOverlay" 
-  class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden"
-></div>
-
-<footer class="bg-gray-900 text-white py-12">
-  <div class="container mx-auto px-6 text-center">
-    <div class="mb-8">
-      <h3 class="text-3xl font-bold text-blue-500 mb-4">LodgeEase</h3>
-      <p class="text-gray-300">Aspiras palispis highway, Baguio City, Benguet, 2600 Philippines</p>
-      <p class="text-gray-300">Contact: +(63) 9129 912 6584 | lodgeease.baguio@email.com</p>
-    </div>
-    <div class="flex justify-center space-x-6">
-      <a href="#" class="text-2xl text-blue-400 hover:text-white transition-colors">
-        <i class="fab fa-instagram"></i>
-      </a>
-      <a href="#" class="text-2xl text-blue-400 hover:text-white transition-colors">
-        <i class="fab fa-facebook"></i>
-      </a>
-      <a href="#" class="text-2xl text-blue-400 hover:text-white transition-colors">
-        <i class="fab fa-twitter"></i>
-      </a>
-    </div>
-  </div>
-</footer>
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    const userIcon = document.querySelector('.ri-user-line');
-    const userDrawer = document.getElementById('userDrawer');
-    const closeDrawer = document.getElementById('closeDrawer');
-    const drawerOverlay = document.getElementById('drawerOverlay');
-  
-    // Open drawer
-    userIcon.addEventListener('click', function() {
-      userDrawer.classList.remove('translate-x-full');
-      drawerOverlay.classList.remove('hidden');
-    });
-  
-    // Close drawer
-    closeDrawer.addEventListener('click', closeUserDrawer);
-    drawerOverlay.addEventListener('click', closeUserDrawer);
-  
-    function closeUserDrawer() {
-      userDrawer.classList.add('translate-x-full');
-      drawerOverlay.classList.add('hidden');
-    }
-  });
-  </script>
+    </footer>
 </body>
 </html>
