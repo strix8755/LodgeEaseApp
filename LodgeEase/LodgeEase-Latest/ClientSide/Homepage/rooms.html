@@ -100,44 +100,52 @@
   
           <!-- Enhanced Filter Sections -->
           <div class="space-y-4">
-            <div>
-              <h3 class="font-semibold mb-3">Neighborhoods</h3>
-              <div class="space-y-2">
-                <label class="flex items-center space-x-2">
-                  <input type="checkbox" class="form-checkbox text-blue-600">
-                  <span>Camp John Hay</span>
-                </label>
-                <label class="flex items-center space-x-2">
-                  <input type="checkbox" class="form-checkbox text-blue-600">
-                  <span>Session Road</span>
-                </label>
-                <label class="flex items-center space-x-2">
-                  <input type="checkbox" class="form-checkbox text-blue-600">
-                  <span>Burnham Park</span>
-                </label>
-                <label class="flex items-center space-x-2">
-                  <input type="checkbox" class="form-checkbox text-blue-600">
-                  <span>Wright Park</span>
-                </label>
-              </div>
+            <div class="mb-6">
+                <h3 class="font-semibold mb-3">Neighborhoods</h3>
+                <div class="space-y-2">
+                    <label class="flex items-center">
+                        <input type="checkbox" name="neighborhood" value="Camp John Hay" class="form-checkbox">
+                        <span class="ml-2">Camp John Hay</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" name="neighborhood" value="Session Road" class="form-checkbox">
+                        <span class="ml-2">Session Road</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" name="neighborhood" value="Burnham Park" class="form-checkbox">
+                        <span class="ml-2">Burnham Park</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" name="neighborhood" value="Wright Park" class="form-checkbox">
+                        <span class="ml-2">Wright Park</span>
+                    </label>
+                </div>
             </div>
   
-            <div>
-              <h3 class="font-semibold mb-3">Amenities</h3>
-              <div class="space-y-2">
-                <label class="flex items-center space-x-2">
-                  <input type="checkbox" class="form-checkbox text-blue-600">
-                  <span>Fireplace</span>
-                </label>
-                <label class="flex items-center space-x-2">
-                  <input type="checkbox" class="form-checkbox text-blue-600">
-                  <span>Mountain View</span>
-                </label>
-                <label class="flex items-center space-x-2">
-                  <input type="checkbox" class="form-checkbox text-blue-600">
-                  <span>Free Breakfast</span>
-                </label>
-              </div>
+            <div class="mb-6">
+                <h3 class="font-semibold mb-3">Amenities</h3>
+                <div class="space-y-2">
+                    <label class="flex items-center">
+                        <input type="checkbox" name="amenity" value="Fireplace" class="form-checkbox">
+                        <span class="ml-2">Fireplace</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" name="amenity" value="Mountain View" class="form-checkbox">
+                        <span class="ml-2">Mountain View</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" name="amenity" value="WiFi" class="form-checkbox">
+                        <span class="ml-2">WiFi</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" name="amenity" value="Kitchen" class="form-checkbox">
+                        <span class="ml-2">Kitchen</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" name="amenity" value="Parking" class="form-checkbox">
+                        <span class="ml-2">Parking</span>
+                    </label>
+                </div>
             </div>
 
             <!-- Add these new filter sections inside the filters sidebar -->
@@ -243,366 +251,27 @@
 
       <!-- Hotel Listings -->
       <main class="w-3/4">
-        <!-- Sorting Options -->
+        <!-- Sorting and count display -->
         <div class="flex justify-between items-center mb-6 bg-white p-4 rounded-lg shadow-md">
-          <div class="text-sm text-gray-600">
-            Showing <span class="font-bold">2</span> of <span class="font-bold">50</span> lodges
-          </div>
-          <div class="flex items-center space-x-4">
-            <span class="text-sm text-gray-600">Sort by:</span>
-            <select class="border rounded-lg px-3 py-2 text-sm">
-              <option>Recommended</option>
-              <option>Price: Low to High</option>
-              <option>Mountain View</option>
-              <option>Top Rated</option>
-            </select>
-          </div>
+            <div class="text-sm text-gray-600 lodge-count">
+                Showing 2 of 50 lodges
+            </div>
+            <div class="flex items-center space-x-4">
+                <span class="text-sm text-gray-600">Sort by:</span>
+                <select class="border rounded-lg px-3 py-2 text-sm">
+                    <option>Recommended</option>
+                    <option>Price: Low to High</option>
+                    <option>Price: High to Low</option>
+                    <option>Top Rated</option>
+                </select>
+            </div>
         </div>
 
-        <!-- Lodge Card 1 -->
-        <div class="bg-white shadow-md rounded-xl mb-6 overflow-hidden transition duration-300 hover:shadow-xl lodge-card" 
-          data-property-type="hotel" 
-          data-room-type="double" 
-          data-rating="9.0"
-        >
-          <div class="flex p-6">
-            <div class="w-1/3 pr-6">
-              <img 
-                src="../components/cloud9.jpg" 
-                alt="Pine Haven Lodge" 
-                class="w-full h-56 object-cover rounded-lg"
-              >
-            </div>
-            <div class="w-2/3">
-              <div class="flex justify-between items-start mb-4">
-                <div>
-                  <h2 class="text-xl font-bold text-gray-800">Pine Haven Lodge</h2>
-                  <p class="text-sm text-gray-500 flex items-center">
-                    <i class="ri-map-pin-line mr-2"></i>Camp John Hay, Baguio City
-                  </p>
-                </div>
-                <div class="flex items-center space-x-2">
-                  <button class="text-green-500 hover:bg-green-50 p-2 rounded-full">
-                    <i class="ri-heart-line"></i>
-                  </button>
-                  <div class="bg-green-100 text-green-600 px-3 py-1 rounded-full text-sm font-semibold">
-                    ₱2,500 per night
-                  </div>
-                </div>
-              </div>
-              
-              <div class="flex items-center mb-4">
-                <div class="flex text-yellow-500 mr-2">
-                  <i class="ri-star-fill"></i>
-                  <i class="ri-star-fill"></i>
-                  <i class="ri-star-fill"></i>
-                  <i class="ri-star-fill"></i>
-                  <i class="ri-star-half-line"></i>
-                </div>
-                <span class="text-green-600 font-bold mr-2">9.0 Outstanding</span>
-                <span class="text-gray-500 text-sm">(842 reviews)</span>
-              </div>
-
-              <div class="grid grid-cols-3 gap-2 mb-4">
-                <div class="bg-blue-50 p-2 rounded-lg text-center">
-                  <i class="ri-fire-line text-blue-600 block mb-1"></i>
-                  <span class="text-xs">Fireplace</span>
-                </div>
-                <div class="bg-green-50 p-2 rounded-lg text-center">
-                  <i class="ri-landscape-line text-green-600 block mb-1"></i>
-                  <span class="text-xs">Mountain View</span>
-                </div>
-                <div class="bg-purple-50 p-2 rounded-lg text-center">
-                  <i class="ri-restaurant-line text-purple-600 block mb-1"></i>
-                  <span class="text-xs">Free Breakfast</span>
-                </div>
-              </div>
-
-              <div class="flex justify-between items-center">
-                <a href="../Lodge/lodge1.html" class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
-                  Book Now
-                </a>
-                <a href="#" class="text-green-600 hover:underline">
-                  View Details
-                </a>
-              </div>
-            </div>
-          </div>
+        <!-- Lodge cards grid container -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 lodge-container">
+            <!-- Lodge cards will be here -->
         </div>
-
-        <!-- Lodge Card 2 -->
-        <div class="bg-white shadow-md rounded-xl mb-6 overflow-hidden transition duration-300 hover:shadow-xl lodge-card">
-          <div class="flex p-6">
-            <div class="w-1/3 pr-6">
-              <img 
-                src="../components/pinehaven.jpg" 
-                alt="Cloud 9 Retreat" 
-                class="w-full h-56 object-cover rounded-lg"
-              >
-            </div>
-            <div class="w-2/3">
-              <div class="flex justify-between items-start mb-4">
-                <div>
-                  <h2 class="text-xl font-bold text-gray-800">Cloud 9 Retreat</h2>
-                  <p class="text-sm text-gray-500 flex items-center">
-                    <i class="ri-map-pin-line mr-2"></i>Wright Park, Baguio City
-                  </p>
-                </div>
-                <div class="flex items-center space-x-2">
-                  <button class="text-green-500 hover:bg-green-50 p-2 rounded-full">
-                    <i class="ri-heart-line"></i>
-                  </button>
-                  <div class="bg-green-100 text-green-600 px-3 py-1 rounded-full text-sm font-semibold">
-                    ₱3,200 per night
-                  </div>
-                </div>
-              </div>
-              
-              <div class="flex items-center mb-4">
-                <div class="flex text-yellow-500 mr-2">
-                  <i class="ri-star-fill"></i>
-                  <i class="ri-star-fill"></i>
-                  <i class="ri-star-fill"></i>
-                  <i class="ri-star-fill"></i>
-                  <i class="ri-star-line"></i>
-                </div>
-                <span class="text-green-600 font-bold mr-2">8.5 Very Good</span>
-                <span class="text-gray-500 text-sm">(521 reviews)</span>
-              </div>
-
-              <div class="grid grid-cols-3 gap-2 mb-4">
-                <div class="bg-blue-50 p-2 rounded-lg text-center">
-                  <i class="ri-wifi-line text-blue-600 block mb-1"></i>
-                  <span class="text-xs">Free Wi-Fi</span>
-                </div>
-                <div class="bg-green-50 p-2 rounded-lg text-center">
-                  <i class="ri-home-smile-line text-green-600 block mb-1"></i>
-                  <span class="text-xs">Cozy Rooms</span>
-                </div>
-                <div class="bg-purple-50 p-2 rounded-lg text-center">
-                  <i class="ri-car-line text-purple-600 block mb-1"></i>
-                  <span class="text-xs">Parking</span>
-                </div>
-              </div>
-
-              <div class="flex justify-between items-center">
-                <a href="../Lodge/lodge2.html" class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
-                  Book Now
-                </a>
-                <a href="#" class="text-green-600 hover:underline">
-                  View Details
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Lodge Card 3 -->
-        <div class="bg-white shadow-md rounded-xl mb-6 overflow-hidden transition duration-300 hover:shadow-xl lodge-card">
-          <div class="flex p-6">
-            <div class="w-1/3 pr-6">
-              <img 
-                src="../components/cloud9.jpg" 
-                alt="Mountain View Resort" 
-                class="w-full h-56 object-cover rounded-lg"
-              >
-            </div>
-            <div class="w-2/3">
-              <div class="flex justify-between items-start mb-4">
-                <div>
-                  <h2 class="text-xl font-bold text-gray-800">Mountain View Resort</h2>
-                  <p class="text-sm text-gray-500 flex items-center">
-                    <i class="ri-map-pin-line mr-2"></i>Mines View Park, Baguio City
-                  </p>
-                </div>
-                <div class="flex items-center space-x-2">
-                  <button class="text-green-500 hover:bg-green-50 p-2 rounded-full">
-                    <i class="ri-heart-line"></i>
-                  </button>
-                  <div class="bg-green-100 text-green-600 px-3 py-1 rounded-full text-sm font-semibold">
-                    ₱2,800 per night
-                  </div>
-                </div>
-              </div>
-              
-              <div class="flex items-center mb-4">
-                <div class="flex text-yellow-500 mr-2">
-                  <i class="ri-star-fill"></i>
-                  <i class="ri-star-fill"></i>
-                  <i class="ri-star-fill"></i>
-                  <i class="ri-star-fill"></i>
-                  <i class="ri-star-half-line"></i>
-                </div>
-                <span class="text-green-600 font-bold mr-2">8.8 Very Good</span>
-                <span class="text-gray-500 text-sm">(324 reviews)</span>
-              </div>
-
-              <div class="grid grid-cols-3 gap-2 mb-4">
-                <div class="bg-blue-50 p-2 rounded-lg text-center">
-                  <i class="ri-wifi-line text-blue-600 block mb-1"></i>
-                  <span class="text-xs">Free Wi-Fi</span>
-                </div>
-                <div class="bg-green-50 p-2 rounded-lg text-center">
-                  <i class="ri-landscape-line text-green-600 block mb-1"></i>
-                  <span class="text-xs">Mountain View</span>
-                </div>
-                <div class="bg-purple-50 p-2 rounded-lg text-center">
-                  <i class="ri-car-line text-purple-600 block mb-1"></i>
-                  <span class="text-xs">Free Parking</span>
-                </div>
-              </div>
-
-              <div class="flex justify-between items-center">
-                <a href="#" class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
-                  Book Now
-                </a>
-                <a href="#" class="text-green-600 hover:underline">
-                  View Details
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Lodge Card 4 -->
-        <div class="bg-white shadow-md rounded-xl mb-6 overflow-hidden transition duration-300 hover:shadow-xl lodge-card">
-          <div class="flex p-6">
-            <div class="w-1/3 pr-6">
-              <img 
-                src="../components/pinehaven.jpg" 
-                alt="The Forest Lodge" 
-                class="w-full h-56 object-cover rounded-lg"
-              >
-            </div>
-            <div class="w-2/3">
-              <div class="flex justify-between items-start mb-4">
-                <div>
-                  <h2 class="text-xl font-bold text-gray-800">The Forest Lodge</h2>
-                  <p class="text-sm text-gray-500 flex items-center">
-                    <i class="ri-map-pin-line mr-2"></i>Camp John Hay, Baguio City
-                  </p>
-                </div>
-                <div class="flex items-center space-x-2">
-                  <button class="text-green-500 hover:bg-green-50 p-2 rounded-full">
-                    <i class="ri-heart-line"></i>
-                  </button>
-                  <div class="bg-green-100 text-green-600 px-3 py-1 rounded-full text-sm font-semibold">
-                    ₱4,500 per night
-                  </div>
-                </div>
-              </div>
-              
-              <div class="flex items-center mb-4">
-                <div class="flex text-yellow-500 mr-2">
-                  <i class="ri-star-fill"></i>
-                  <i class="ri-star-fill"></i>
-                  <i class="ri-star-fill"></i>
-                  <i class="ri-star-fill"></i>
-                  <i class="ri-star-fill"></i>
-                </div>
-                <span class="text-green-600 font-bold mr-2">9.2 Outstanding</span>
-                <span class="text-gray-500 text-sm">(512 reviews)</span>
-              </div>
-
-              <div class="grid grid-cols-3 gap-2 mb-4">
-                <div class="bg-yellow-50 p-2 rounded-lg text-center">
-                  <i class="ri-hotel-line text-yellow-600 block mb-1"></i>
-                  <span class="text-xs">Luxury Rooms</span>
-                </div>
-                <div class="bg-purple-50 p-2 rounded-lg text-center">
-                  <i class="ri-goblet-line text-purple-600 block mb-1"></i>
-                  <span class="text-xs">Bar & Lounge</span>
-                </div>
-                <div class="bg-blue-50 p-2 rounded-lg text-center">
-                  <i class="ri-spa-line text-blue-600 block mb-1"></i>
-                  <span class="text-xs">Spa Services</span>
-                </div>
-              </div>
-
-              <div class="flex justify-between items-center">
-                <a href="#" class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
-                  Book Now
-                </a>
-                <a href="#" class="text-green-600 hover:underline">
-                  View Details
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Lodge Card 5 -->
-        <div class="bg-white shadow-md rounded-xl mb-6 overflow-hidden transition duration-300 hover:shadow-xl lodge-card">
-          <div class="flex p-6">
-            <div class="w-1/3 pr-6">
-              <img 
-                src="../components/cloud9.jpg" 
-                alt="Burnham Suites" 
-                class="w-full h-56 object-cover rounded-lg"
-              >
-            </div>
-            <div class="w-2/3">
-              <div class="flex justify-between items-start mb-4">
-                <div>
-                  <h2 class="text-xl font-bold text-gray-800">Burnham Suites</h2>
-                  <p class="text-sm text-gray-500 flex items-center">
-                    <i class="ri-map-pin-line mr-2"></i>Burnham Park, Baguio City
-                  </p>
-                </div>
-                <div class="flex items-center space-x-2">
-                  <button class="text-green-500 hover:bg-green-50 p-2 rounded-full">
-                    <i class="ri-heart-line"></i>
-                  </button>
-                  <div class="bg-green-100 text-green-600 px-3 py-1 rounded-full text-sm font-semibold">
-                    ₱3,300 per night
-                  </div>
-                </div>
-              </div>
-              
-              <div class="flex items-center mb-4">
-                <div class="flex text-yellow-500 mr-2">
-                  <i class="ri-star-fill"></i>
-                  <i class="ri-star-fill"></i>
-                  <i class="ri-star-fill"></i>
-                  <i class="ri-star-fill"></i>
-                  <i class="ri-star-half-line"></i>
-                </div>
-                <span class="text-green-600 font-bold mr-2">8.7 Excellent</span>
-                <span class="text-gray-500 text-sm">(423 reviews)</span>
-              </div>
-
-              <div class="grid grid-cols-3 gap-2 mb-4">
-                <div class="bg-green-50 p-2 rounded-lg text-center">
-                  <i class="ri-bike-line text-green-600 block mb-1"></i>
-                  <span class="text-xs">Bike Rental</span>
-                </div>
-                <div class="bg-red-50 p-2 rounded-lg text-center">
-                  <i class="ri-restaurant-2-line text-red-600 block mb-1"></i>
-                  <span class="text-xs">Café</span>
-                </div>
-                <div class="bg-blue-50 p-2 rounded-lg text-center">
-                  <i class="ri-parking-box-line text-blue-600 block mb-1"></i>
-                  <span class="text-xs">Parking</span>
-                </div>
-              </div>
-
-              <div class="flex justify-between items-center">
-                <a href="#" class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
-                  Book Now
-                </a>
-                <a href="#" class="text-green-600 hover:underline">
-                  View Details
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Add this after your lodge cards, inside the main tag -->
-        <div id="loadingSpinner" class="hidden flex justify-center items-center py-8">
-          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        </div>
-      </main>
+    </main>
     </div>
 
     <div 
@@ -798,16 +467,32 @@
     import { initializeUserDrawer } from '../components/userDrawer.js';
     document.addEventListener('DOMContentLoaded', initializeUserDrawer);
 </script>
+
+<!-- Google Maps initialization -->
 <script>
-  (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.${c}apis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})
-({
-  key: "AIzaSyDx_ff9LO94r2h3pkAI9hUWJ_r7cKKyWKs",
-  v: "weekly",
-  libraries: ["places"]
-});
+    function initMap() {
+        try {
+            const map = new google.maps.Map(document.getElementById('map'), {
+                center: { lat: 16.4023, lng: 120.5960 },
+                zoom: 14,
+                mapTypeControl: false,
+                streetViewControl: false,
+                fullscreenControl: false,
+                zoomControl: true
+            });
+            window.lodgeMap = map;
+        } catch (error) {
+            console.error('Error initializing map:', error);
+        }
+    }
+    window.initMap = initMap;
 </script>
-<script>
-  window.initMap = initMap;
+
+<script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap">
 </script>
+
+<!-- Your main JavaScript -->
+<script src="rooms.js"></script>
 </body>
 </html>

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Forest Lodge - LodgeEase</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <link rel="stylesheet" href="lodge.css">
+</head>
+<body class="bg-gray-100">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-lg">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <a href="../Homepage/rooms.html" class="text-2xl font-bold text-blue-600">LodgeEase</a>
+                <div class="flex space-x-4 items-center">
+                    <button id="userButton" class="text-gray-600 hover:text-gray-800">
+                        <i class="ri-user-line text-2xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-6xl mx-auto px-4 py-8">
+        <!-- Lodge Details -->
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+            <!-- Image Gallery -->
+            <div class="relative h-96">
+                <img src="../components/4.jpg" alt="The Forest Lodge" class="w-full h-full object-cover">
+                <button class="absolute top-4 right-4 text-gray-500 hover:text-red-500">
+                    <i class="ri-heart-line text-2xl"></i>
+                </button>
+            </div>
+
+            <!-- Lodge Information -->
+            <div class="p-6">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-900">The Forest Lodge</h1>
+                        <p class="text-gray-600 mt-2">Camp John Hay, Baguio City</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-2xl font-bold text-green-600">₱7,500/night</p>
+                        <div class="flex items-center mt-1">
+                            <i class="ri-star-fill text-yellow-400"></i>
+                            <span class="ml-1 text-gray-600">4.9 (56 reviews)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Amenities -->
+                <div class="mt-6">
+                    <h2 class="text-xl font-semibold mb-4">Amenities</h2>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="flex items-center space-x-2">
+                            <i class="ri-landscape-line text-blue-600"></i>
+                            <span>Mountain View</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <i class="ri-fire-line text-blue-600"></i>
+                            <span>Fireplace</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <i class="ri-customer-service-2-line text-blue-600"></i>
+                            <span>Room Service</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <i class="ri-spa-line text-blue-600"></i>
+                            <span>Spa</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Description -->
+                <div class="mt-6">
+                    <h2 class="text-xl font-semibold mb-4">About this place</h2>
+                    <p class="text-gray-600">
+                        Nestled in the heart of Camp John Hay, The Forest Lodge offers a luxurious mountain retreat 
+                        experience. Enjoy premium amenities including a cozy fireplace, full-service spa, and 
+                        round-the-clock room service. Perfect for those seeking a sophisticated escape in Baguio's 
+                        most prestigious location.
+                    </p>
+                </div>
+
+                <!-- Booking Section -->
+                <div class="mt-8">
+                    <h2 class="text-xl font-semibold mb-4">Book your stay</h2>
+                    <div class="bg-gray-50 p-6 rounded-lg">
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Check-in</label>
+                                <input type="date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Check-out</label>
+                                <input type="date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                            </div>
+                        </div>
+                        <button onclick="window.location.href='pay.html'" class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition">
+                            Book Now
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Image Attribution Note -->
+    <div class="text-xs text-gray-500 mt-2 text-center">
+        Images sourced from Unsplash/Pexels. For demonstration purposes only.
+    </div>
+
+    <!-- User Drawer -->
+    <div id="userDrawer" class="fixed top-0 right-0 w-80 h-full bg-white shadow-xl transform translate-x-full transition-transform duration-300 z-50">
+        <!-- User drawer content -->
+    </div>
+</body>
+</html> 
