@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>City Lights Inn - LodgeEase</title>
+    <title>Super Apartment - Room 6</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
     <link rel="stylesheet" href="lodge.css">
@@ -29,7 +29,7 @@
         <div class="bg-white rounded-lg shadow-lg overflow-hidden">
             <!-- Image Gallery -->
             <div class="relative h-96">
-                <img src="../components/5.jpg" alt="City Lights Inn" class="w-full h-full object-cover">
+                <img src="../components/SuperApartmentRoom6.jpg" alt="City Lights Inn" class="w-full h-full object-cover">
                 <button class="absolute top-4 right-4 text-gray-500 hover:text-red-500">
                     <i class="ri-heart-line text-2xl"></i>
                 </button>
@@ -39,11 +39,11 @@
             <div class="p-6">
                 <div class="flex justify-between items-start">
                     <div>
-                        <h1 class="text-3xl font-bold text-gray-900">City Lights Inn</h1>
-                        <p class="text-gray-600 mt-2">Session Road, Baguio City</p>
+                        <h1 class="text-3xl font-bold text-gray-900">Super Apartment- Room 6</h1>
+                        <p class="text-gray-600 mt-2">Bonifacio Street, Baguio City</p>
                     </div>
                     <div class="text-right">
-                        <p class="text-2xl font-bold text-green-600">₱2,800/night</p>
+                        <p class="text-2xl font-bold text-green-600">₱6,000/month</p>
                         <div class="flex items-center mt-1">
                             <i class="ri-star-fill text-yellow-400"></i>
                             <span class="ml-1 text-gray-600">4.3 (38 reviews)</span>
@@ -65,7 +65,7 @@
                         </div>
                         <div class="flex items-center space-x-2">
                             <i class="ri-restaurant-line text-blue-600"></i>
-                            <span>Restaurant</span>
+                            <span>Near Eatery</span>
                         </div>
                     </div>
                 </div>
@@ -74,32 +74,156 @@
                 <div class="mt-6">
                     <h2 class="text-xl font-semibold mb-4">About this place</h2>
                     <p class="text-gray-600">
-                        Located in the heart of Baguio's bustling Session Road, City Lights Inn offers comfortable 
-                        accommodations with stunning city views. Enjoy convenient access to restaurants, shops, and 
-                        local attractions. Perfect for business travelers and tourists seeking a central location 
-                        with modern amenities.
+                        Located in Upper Bonifacion Street, Baguio City, Super Apartment offers affordable rooms with comfort
+                        and Security. Enjoy convenient access to the market. Perfect for students or working adults seeking a central location 
+                        near the Jeepney stop.
                     </p>
                 </div>
 
-                <!-- Booking Section -->
                 <div class="mt-8">
-                    <h2 class="text-xl font-semibold mb-4">Book your stay</h2>
+                    <h2 class="text-xl font-semibold mb-4">Long-Term Stay Options</h2>
                     <div class="bg-gray-50 p-6 rounded-lg">
-                        <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="mb-6">
+                            <h3 class="text-lg font-semibold mb-2">Rental Conditions</h3>
+                            <ul class="text-gray-600 space-y-2 pl-4">
+                                <li class="flex items-center">
+                                    <i class="ri-check-line text-green-600 mr-2"></i>
+                                    Minimum stay: 3 months
+                                </li>
+                                <li class="flex items-center">
+                                    <i class="ri-check-line text-green-600 mr-2"></i>
+                                    Security deposit: One month's rent
+                                </li>
+                                <li class="flex items-center">
+                                    <i class="ri-check-line text-green-600 mr-2"></i>
+                                    Utilities not included (estimated ₱2,000-3,000/month)
+                                </li>
+                                <li class="flex items-center">
+                                    <i class="ri-check-line text-green-600 mr-2"></i>
+                                    Advanced payment: First and last month's rent required
+                                </li>
+                            </ul>
+                        </div>
+                
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">Check-in</label>
-                                <input type="date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                <label class="block text-sm font-medium text-gray-700">Preferred Move-in Date</label>
+                                <input type="date" id="moveInDate" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">Check-out</label>
-                                <input type="date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                <label class="block text-sm font-medium text-gray-700">Lease Duration</label>
+                                <select id="leaseDuration" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                    <option value="3">3 Months</option>
+                                    <option value="6">6 Months</option>
+                                    <option value="12">1 Year</option>
+                                    <option value="24">2 Years</option>
+                                </select>
                             </div>
                         </div>
-                        <button onclick="window.location.href='pay.html'" class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition">
-                            Book Now
+                
+                        <div class="grid grid-cols-1 gap-4 mb-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Number of Occupants</label>
+                                <select id="occupantsCount" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                    <option value="1">1 Person</option>
+                                    <option value="2">2 Persons (+₱1,000/month)</option>
+                                    <option value="3">3 Persons (+₱2,000/month)</option>
+                                </select>
+                            </div>
+                        </div>
+                
+                        <div class="bg-white p-4 rounded-lg shadow-md mb-4">
+                            <h3 class="text-lg font-semibold mb-2">Cost Breakdown</h3>
+                            <div id="costBreakdown" class="text-gray-700">
+                                <div class="flex justify-between">
+                                    <span>Base Rent</span>
+                                    <span>₱6,000/month</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Additional Occupant Fee</span>
+                                    <span id="occupantFee">₱0/month</span>
+                                </div>
+                                <hr class="my-2 border-gray-200">
+                                <div class="flex justify-between font-bold">
+                                    <span>Total Monthly Rent</span>
+                                    <span id="totalMonthlyRent">₱6,000</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Security Deposit</span>
+                                    <span>₱6,000</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>First & Last Month's Rent</span>
+                                    <span id="firstLastMonthRent">₱12,000</span>
+                                </div>
+                                <hr class="my-2 border-gray-200">
+                                <div class="flex justify-between text-green-600 font-bold">
+                                    <span>Total Initial Payment</span>
+                                    <span id="totalInitialPayment">₱24,000</span>
+                                </div>
+                            </div>
+                        </div>
+                
+                        <button onclick="proceedToApplication()" class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition">
+                            Proceed with Application
                         </button>
                     </div>
                 </div>
+                
+                <script>
+                    function updateCostBreakdown() {
+                        const leaseDuration = document.getElementById('leaseDuration').value;
+                        const occupantsCount = document.getElementById('occupantsCount').value;
+                        
+                        const baseRent = 6000;
+                        let occupantFee = 0;
+                        
+                        if (occupantsCount === '2') {
+                            occupantFee = 1000;
+                        } else if (occupantsCount === '3') {
+                            occupantFee = 2000;
+                        }
+                        
+                        const totalMonthlyRent = baseRent + occupantFee;
+                        const securityDeposit = baseRent;
+                        const firstLastMonthRent = totalMonthlyRent * 2;
+                        const totalInitialPayment = totalMonthlyRent + securityDeposit + firstLastMonthRent;
+                        
+                        document.getElementById('occupantFee').textContent = `₱${occupantFee}/month`;
+                        document.getElementById('totalMonthlyRent').textContent = `₱${totalMonthlyRent}`;
+                        document.getElementById('firstLastMonthRent').textContent = `₱${firstLastMonthRent}`;
+                        document.getElementById('totalInitialPayment').textContent = `₱${totalInitialPayment.toLocaleString()}`;
+                    }
+                    
+                    function proceedToApplication() {
+                        const moveInDate = document.getElementById('moveInDate').value;
+                        const leaseDuration = document.getElementById('leaseDuration').value;
+                        const occupantsCount = document.getElementById('occupantsCount').value;
+                        
+                        if (!moveInDate) {
+                            alert('Please select a move-in date');
+                            return;
+                        }
+                        
+                        const applicationDetails = {
+                            moveInDate: moveInDate,
+                            leaseDuration: leaseDuration + ' months',
+                            occupants: occupantsCount,
+                            monthlyRent: document.getElementById('totalMonthlyRent').textContent,
+                            totalInitialPayment: document.getElementById('totalInitialPayment').textContent
+                        };
+                        
+                        localStorage.setItem('rentalApplication', JSON.stringify(applicationDetails));
+                        window.location.href = 'rental-application.html';
+                    }
+                    
+                    // Initialize and update cost breakdown
+                    document.getElementById('leaseDuration').addEventListener('change', updateCostBreakdown);
+                    document.getElementById('occupantsCount').addEventListener('change', updateCostBreakdown);
+                    
+                    // Initial calculation
+                    updateCostBreakdown();
+                </script>
             </div>
         </div>
     </main>
