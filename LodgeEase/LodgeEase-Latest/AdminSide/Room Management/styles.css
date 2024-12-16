@@ -131,6 +131,11 @@ body {
     font-size: 14px;
 }
 
+.search-container input:focus {
+    outline: none;
+    border-color: #1e3c72;
+}
+
 .search-icon {
     position: absolute;
     right: 15px;
@@ -139,363 +144,657 @@ body {
     color: #666;
 }
 
-/* Button Styles */
+#clear-search {
+    position: absolute;
+    right: 40px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #666;
+    cursor: pointer;
+    padding: 5px;
+    display: none;
+}
+
+.suggestions-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-top: 5px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    display: none;
+    z-index: 1000;
+}
+
+/* Primary Button */
 .primary-button {
     background-color: #1e3c72;
     color: white;
     padding: 10px 20px;
     border: none;
-    border-radius: 25px;
-    font-size: 14px;
+    border-radius: 5px;
     cursor: pointer;
     display: flex;
     align-items: center;
     gap: 8px;
+    font-size: 14px;
     transition: background-color 0.3s;
 }
 
 .primary-button:hover {
-    background-color: #2b5277;
+    background-color: #2a4d8f;
 }
 
-.filter-btn {
-    padding: 10px 20px;
-    margin-right: 10px;
-    background-color: #fff;
-    color: #333;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s;
+.primary-button i {
+    font-size: 16px;
 }
 
-.filter-btn.active, .filter-btn:hover {
-    background-color: #f1f1f1;
-}
-
-/* Room Stats */
-.room-stats {
-    display: flex;
-    gap: 15px;
-}
-
-.stat-card {
-    background-color: white;
+/* Table Styles */
+.table-container {
+    background: white;
     padding: 20px;
     border-radius: 10px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    flex: 1;
+    overflow-x: auto;
 }
 
-.stat-card i {
-    font-size: 24px;
-    color: #1e3c72;
-}
-
-.stat-info h3 {
-    font-size: 16px;
-    margin-bottom: 5px;
-}
-
-.stat-info p {
-    font-size: 20px;
-    font-weight: bold;
-}
-
-/* Room Table */
-.rooms-grid {
+.rooms-table {
+    width: 100%;
+    border-collapse: collapse;
     margin-top: 20px;
 }
 
-.rooms-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 20px;
-}
-
-.rooms-table th, .rooms-table td {
+.rooms-table th,
+.rooms-table td {
     padding: 15px;
     text-align: left;
+    border-bottom: 1px solid #eee;
 }
 
 .rooms-table th {
-    background-color: #f8f8f8;
+    background-color: #f8f9fa;
     font-weight: 600;
+    color: #1e3c72;
 }
 
-.rooms-table tbody tr {
-    background-color: #fff;
+.rooms-table tr:hover {
+    background-color: #f8f9fa;
 }
 
-.rooms-table tbody tr:hover {
-    background-color: #f1f1f1;
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
 }
 
-/* Filters Section */
-.filters-section {
-    display: flex;
-    justify-content: space-between;
+.modal-content {
+    background-color: white;
+    margin: 50px auto;
+    padding: 20px;
+    width: 90%;
+    max-width: 600px;
+    border-radius: 10px;
+    position: relative;
+}
+
+.close-btn {
+    position: absolute;
+    right: 20px;
+    top: 20px;
+    font-size: 24px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    color: #666;
+}
+
+/* Form Styles */
+.form-group {
     margin-bottom: 20px;
 }
 
-.filters-section .filter-buttons {
-    display: flex;
-    gap: 10px;
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
 }
 
-.filters-section .advanced-filters {
-    display: flex;
-    gap: 10px;
-}
-
-.filter-select {
-    padding: 8px;
-    font-size: 14px;
-    border-radius: 5px;
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 10px;
     border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
 }
 
-.modal {
-    display: none; /* Hide the modal by default */
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #1e3c72;
+}
+
+.form-group small {
+    display: block;
+    margin-top: 5px;
+    color: #666;
+    font-size: 12px;
+}
+
+/* Loading Spinner */
+.spinner {
+    display: flex;
+    justify-content: center;
+    align-items: center;
     position: fixed;
-    z-index: 1;
-    left: 0;
     top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
-    overflow: auto;
-    background-color: rgba(0, 0, 0, 0.4); /* Black w/ opacity */
+    background-color: rgba(255, 255, 255, 0.8);
+    z-index: 9999;
 }
 
-/* Modal content adjustments */
-.modal-content {
-    background-color: #fefefe;
-    padding: 20px;
-    border: 1px solid #888;
-    width: 100%; /* Adjust the width as per your design */
-    max-width: 600px; /* Optional: Max width to ensure the modal doesn't get too wide */
-    position: absolute; /* Positioning relative to the nearest positioned ancestor */
-    top: 50%; /* Move it 50% down the screen */
-    left: 60%; /* Move it 50% from the left */
-    transform: translate(-50%, -50%); /* Adjust the modal to be centered */
+.spinner i {
+    font-size: 40px;
+    color: #1e3c72;
 }
 
-/* Form container inside modal */
-.modal-content form {
-    display: flex;
-    flex-direction: column; /* Stack form elements vertically */
-    gap: 15px; /* Add space between input fields */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
-/* Form field styles */
-.modal-content input,
-.modal-content select {
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    font-size: 14px;
-}
-
-/* Optional: Add labels for inputs */
-.modal-content label {
-    font-weight: bold;
-    margin-bottom: 5px;
-    font-size: 14px;
-}
-
-/* Modal close button */
-.close-btn {
-    color: #aaa;
-    float: right;
-    font-size: 28px;
-    font-weight: bold;
-}
-
-.close-btn:hover,
-.close-btn:focus {
-    color: black;
-    text-decoration: none;
-    cursor: pointer;
-}
-
-.filter-btn.active {
-    background-color: #007BFF;
-    color: white;
-}
-
-.suggestions-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    border: 1px solid #ddd;
-    max-height: 150px;
-    overflow-y: auto;
-    position: absolute;
-    background: #fff;
-    width: 100%;
-    z-index: 10;
-}
-
-.suggestions-list li {
-    padding: 10px;
-    cursor: pointer;
-}
-
-.suggestions-list li:hover {
-    background-color: #f0f0f0;
-}
-
-.rooms-grid {
-    margin: 20px auto;
-    padding: 10px;
-    border-radius: 8px;
-    background-color: #f0f8ff; /* Light blue background */
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    overflow-x: auto; /* Ensure responsiveness for smaller screens */
-}
-
-.rooms-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-family: 'Roboto', sans-serif;
-    font-size: 16px;
-    text-align: left;
-}
-
-.rooms-table thead {
-    background-color: #007BFF; /* Primary light blue */
-    color: black;
-}
-
-.rooms-table th, .rooms-table td {
-    padding: 12px 15px;
-    border: 1px solid #ddd;
-}
-
-.rooms-table th {
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    font-size: 14px;
-}
-
-.rooms-table tbody tr:nth-child(odd) {
-    background-color: #e3f2fd; /* Very light blue for alternating rows */
-}
-
-.rooms-table tbody tr:nth-child(even) {
-    background-color: #ffffff; /* White for contrast */
-}
-
-.rooms-table tbody tr:hover {
-    background-color: #bbdefb; /* Highlight on hover */
-    cursor: pointer;
-}
-
-.rooms-table td {
-    color: #333;
-}
-
-.rooms-table td.actions {
-    text-align: center;
-}
-
-.rooms-table .actions button {
-    padding: 8px 12px;
-    border: none;
-    border-radius: 4px;
-    font-size: 14px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-}
-
-.rooms-table .actions .edit-btn {
-    background-color: #0288d1; /* Light blue for edit button */
-    color: black;
-}
-
-.rooms-table .actions .edit-btn:hover {
-    background-color: #01579b; /* Darker blue for hover */
-}
-
-.rooms-table .actions .delete-btn {
-    background-color: #b3e5fc; /* Light blue for delete button */
-    color: #01579b; /* Darker blue text */
-}
-
-.rooms-table .actions .delete-btn:hover {
-    background-color: #81d4fa; /* Slightly darker light blue for hover */
-}
-
-/* Add these styles to your existing CSS */
-.lodge-booking {
-    background-color: #e8f5e9 !important; /* Light green background for Lodge bookings */
-}
-
+/* Status Badges */
 .status-badge {
-    padding: 4px 8px;
-    border-radius: 12px;
+    padding: 5px 10px;
+    border-radius: 15px;
     font-size: 12px;
     font-weight: 500;
 }
 
-.status-badge.pending {
-    background-color: #fff3e0;
-    color: #e65100;
+.status-badge.available {
+    background-color: #d4edda;
+    color: #155724;
 }
 
 .status-badge.occupied {
-    background-color: #e8f5e9;
-    color: #2e7d32;
+    background-color: #cce5ff;
+    color: #004085;
+}
+
+.status-badge.maintenance {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+/* Action Buttons */
+.action-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.action-btn {
+    padding: 6px;
+    margin: 0 2px;
+    border: none;
+    border-radius: 4px;
+    background-color: #f8f9fa;
+    color: #1e3c72;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.action-btn:hover {
+    background-color: #1e3c72;
+    color: white;
 }
 
 .view-btn {
-    background-color: #4caf50 !important;
-    color: white !important;
-    padding: 6px 12px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-.view-btn:hover {
-    background-color: #388e3c !important;
-}
-
-/* Style for source indicator */
-.booking-source {
-    font-size: 12px;
-    padding: 2px 6px;
-    border-radius: 4px;
-    margin-left: 8px;
-}
-
-.booking-source.lodge {
-    background-color: #c8e6c9;
-    color: #2e7d32;
-}
-
-.booking-source.manual {
     background-color: #e3f2fd;
-    color: #1565c0;
 }
 
-/* Responsiveness */
+.status-btn {
+    background-color: #fff3cd;
+}
+
+.delete-btn {
+    background-color: #fee2e2;
+    color: #dc2626;
+}
+
+.delete-btn:hover {
+    background-color: #dc2626;
+    color: white;
+}
+
+/* Add spacing between action buttons */
+.actions {
+    display: flex;
+    gap: 4px;
+    justify-content: flex-start;
+    align-items: center;
+}
+
+/* Responsive Design */
 @media (max-width: 768px) {
     .sidebar {
-        width: 200px;
+        width: 0;
+        padding: 0;
+        overflow: hidden;
     }
 
     .main-content {
-        margin-left: 200px;
-        width: calc(100% - 200px);
+        margin-left: 0;
+        width: 100%;
     }
 
-    .rooms-table th, .rooms-table td {
-        padding: 10px;
+    .header-actions {
+        flex-direction: column;
+        gap: 10px;
     }
 
-    .primary-button {
-        font-size: 12px;
-        padding: 8px 15px;
+    .search-container input {
+        width: 100%;
+    }
+
+    .modal-content {
+        width: 95%;
+        margin: 20px auto;
+    }
+}
+
+/* Add these styles to your existing CSS */
+.booking-details {
+    padding: 20px;
+}
+
+.detail-section {
+    margin-bottom: 25px;
+}
+
+.detail-section h3 {
+    color: #1e3c72;
+    margin-bottom: 15px;
+    font-size: 1.1em;
+}
+
+.detail-section p {
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+
+.detail-section strong {
+    color: #2c3e50;
+    min-width: 140px;
+    display: inline-block;
+}
+
+.modal {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+/* Add these styles for the updated table */
+.guest-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.guest-name {
+    font-weight: 500;
+}
+
+.guest-contact {
+    color: #666;
+    font-size: 0.85em;
+}
+
+.date-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.9em;
+}
+
+.date-info div {
+    white-space: nowrap;
+}
+
+.rooms-table td {
+    vertical-align: middle;
+    padding: 12px 15px;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.85em;
+    font-weight: 500;
+    text-transform: capitalize;
+}
+
+.status-badge.pending {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.status-badge.confirmed {
+    background-color: #cce5ff;
+    color: #004085;
+}
+
+.status-badge.checked-in {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.status-badge.checked-out {
+    background-color: #e2e3e5;
+    color: #383d41;
+}
+
+.status-badge.cancelled {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.action-btn {
+    padding: 6px;
+    margin: 0 2px;
+    border: none;
+    border-radius: 4px;
+    background-color: #f8f9fa;
+    color: #1e3c72;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.action-btn:hover {
+    background-color: #1e3c72;
+    color: white;
+}
+
+.view-btn {
+    background-color: #e3f2fd;
+}
+
+.status-btn {
+    background-color: #fff3cd;
+}
+
+/* Add Room Modal Styles */
+.add-room-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-group label {
+    font-weight: 500;
+    color: #333;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.cancel-btn {
+    background-color: #f8f9fa;
+    color: #333;
+}
+
+.submit-btn {
+    background-color: #1e3c72;
+    color: white;
+}
+
+.btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+/* Add Room Form Styles */
+.form-group select {
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+    background-color: white;
+    cursor: pointer;
+}
+
+.form-group select:focus {
+    border-color: #1e3c72;
+    outline: none;
+}
+
+.form-group select option {
+    padding: 0.5rem;
+}
+
+/* Required field indicator */
+.form-group label:after {
+    content: "*";
+    color: #dc3545;
+    margin-left: 4px;
+}
+
+.form-group label[for="description"]:after {
+    content: "";
+}
+
+/* Image Upload Styles */
+.image-upload-container {
+    border: 2px dashed #ddd;
+    border-radius: 4px;
+    padding: 20px;
+    text-align: center;
+    background-color: #f8f9fa;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.image-upload-container:hover {
+    border-color: #1e3c72;
+    background-color: #f1f4f9;
+}
+
+.image-input {
+    display: none;
+}
+
+.image-upload-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.image-upload-label i {
+    font-size: 2rem;
+    color: #1e3c72;
+}
+
+.image-upload-label small {
+    color: #666;
+}
+
+.image-preview-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 10px;
+    margin-top: 1rem;
+}
+
+.image-preview {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.image-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.remove-image {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: rgba(220, 53, 69, 0.8);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.remove-image:hover {
+    background: rgb(220, 53, 69);
+}
+
+.image-help-text {
+    color: #666;
+    font-size: 0.8rem;
+    margin-top: 0.5rem;
+}
+
+/* Manual Booking Styles */
+.manual-booking-form {
+    padding: 1rem;
+}
+
+.form-section {
+    margin-bottom: 2rem;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+}
+
+.form-section h3 {
+    color: #1e3c72;
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.payment-summary {
+    background-color: white;
+    padding: 1rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #eee;
+}
+
+.summary-row:last-child {
+    border-bottom: none;
+}
+
+.summary-row.total {
+    font-weight: bold;
+    color: #1e3c72;
+    border-top: 2px solid #eee;
+    margin-top: 0.5rem;
+    padding-top: 1rem;
+}
+
+/* Button group styles */
+.button-group {
+    display: flex;
+    gap: 1rem;
+}
+
+.booking-button {
+    background-color: #28a745;
+}
+
+.booking-button:hover {
+    background-color: #218838;
+}
+
+/* Form validation styles */
+.form-group input:invalid,
+.form-group select:invalid {
+    border-color: #dc3545;
+}
+
+.form-group input:focus:invalid,
+.form-group select:focus:invalid {
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .button-group {
+        flex-direction: column;
+    }
+
+    .modal-content {
+        width: 95%;
+        margin: 20px auto;
+        max-height: 90vh;
+        overflow-y: auto;
     }
 }

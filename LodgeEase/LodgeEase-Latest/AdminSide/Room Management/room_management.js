@@ -1,396 +1,564 @@
-import { fetchRoomsData, fetchRoomById, addRoom, updateRoom, deleteRoom, db } from '../firebase.js';
-import { collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore.js";
+import { db, auth } from '../firebase.js';
+import { 
+    collection, 
+    getDocs, 
+    query, 
+    orderBy, 
+    doc, 
+    updateDoc, 
+    deleteDoc, 
+    Timestamp,
+    where,
+    getDoc,
+    addDoc
+} from "https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore.js";
+import { 
+    getStorage, 
+    ref, 
+    uploadBytes, 
+    getDownloadURL 
+} from "https://www.gstatic.com/firebasejs/9.18.0/firebase-storage.js";
 
-// To store the room data in memory
-let roomsDataCache = [];
+// Initialize Firebase Storage
+const storage = getStorage();
 
-// Utility Functions
-function showModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.style.display = 'block';
-    } else {
-        console.error(`Modal with ID "${modalId}" not found.`);
-    }
-}
-
-function hideModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.style.display = 'none';
-    } else {
-        console.error(`Modal with ID "${modalId}" not found.`);
-    }
-}
-
-function resetForm(formId) {
-    const form = document.getElementById(formId);
-    if (form) {
-        form.reset();
-    } else {
-        console.error(`Form with ID "${formId}" not found.`);
-    }
-}
-
-// Function to generate a row based on room data
-function generateRoomRow(room) {
-    const isLodgeBooking = room.source === 'lodge';
-    const actionButtons = isLodgeBooking ? 
-        `<button class="view-btn" data-id="${room.id}">View</button>` :
-        `<button class="edit-btn" data-id="${room.id}">Edit</button>
-         <button class="delete-btn" data-id="${room.id}">Delete</button>`;
-
-    return `
-        <tr class="${isLodgeBooking ? 'lodge-booking' : 'manual-booking'}">
-            <td>${room.roomNumber}</td>
-            <td>${room.type}</td>
-            <td>${room.floor}</td>
-            <td>${room.currentGuest}</td>
-            <td>${room.checkIn}</td>
-            <td>${room.checkOut}</td>
-            <td>
-                <span class="status-badge ${room.status.toLowerCase()}">
-                    ${room.status}
-                </span>
-            </td>
-            <td class="actions">
-                ${actionButtons}
-            </td>
-        </tr>`;
-}
-
-// Display rooms in the table
-function displayRooms(rooms) {
-    const roomDataContainer = document.getElementById('roomData');
-    roomDataContainer.innerHTML = ''; // Clear existing rows
-
-    if (rooms.length === 0) {
-        roomDataContainer.innerHTML = '<tr><td colspan="8">No rooms found.</td></tr>';
-        return;
-    }
-
-    rooms.forEach(room => {
-        roomDataContainer.innerHTML += generateRoomRow(room);
-    });
-
-    attachRowEventListeners(); // Reattach event listeners after rendering
-}
-
-// Populate filter options dynamically
-function populateFilters(rooms) {
-    const filters = {
-        room: document.getElementById('filter-room'),
-        type: document.getElementById('filter-type'),
-        floor: document.getElementById('filter-floor'),
-        guest: document.getElementById('filter-guest'),
-        status: document.getElementById('filter-status'),
-    };
-
-    // Clear existing filter options
-    Object.values(filters).forEach(filter => {
-        if (filter) {
-            filter.innerHTML = '<option value="">All</option>'; // Reset options
+new Vue({
+    el: '#app',
+    data: {
+        bookings: [],
+        rooms: [],  // Remove default rooms, we'll fetch all from Firestore
+        searchQuery: '',
+        loading: true,
+        selectedBooking: null,
+        isAuthenticated: false,
+        showAddRoomModal: false,
+        newRoom: {
+            establishment: '',
+            roomNumber: '',
+            roomType: '',
+            floorLevel: '',
+            price: '',
+            description: '',
+            status: 'Available'
+        },
+        establishments: {
+            lodge1: {
+                name: 'Pine Haven Lodge',
+                location: 'Baguio City'
+            },
+            lodge2: {
+                name: 'Mountain View Lodge',
+                location: 'La Trinidad'
+            }
+        },
+        selectedImages: [], // Array to store selected images
+        maxImages: 5,
+        maxImageSize: 5 * 1024 * 1024, // 5MB in bytes
+        showManualBookingModal: false,
+        availableRooms: [],
+        manualBooking: {
+            guestName: '',
+            email: '',
+            contactNumber: '',
+            establishment: '',
+            roomId: '',
+            checkIn: '',
+            checkOut: '',
+            numberOfGuests: 1,
+            paymentStatus: 'Pending'
         }
-    });
-
-    const roomAttributes = {
-        room: new Set(),
-        type: new Set(),
-        floor: new Set(),
-        guest: new Set(),
-        status: new Set(),
-    };
-
-    rooms.forEach(room => {
-        roomAttributes.room.add(room.roomNumber || 'N/A');
-        roomAttributes.type.add(room.type || 'N/A');
-        roomAttributes.floor.add(room.floor || 'N/A');
-        roomAttributes.guest.add(room.currentGuest || 'N/A');
-        roomAttributes.status.add(room.status || 'N/A');
-    });
-
-    // Dynamically create filter options for each attribute
-    Object.entries(filters).forEach(([key, filter]) => {
-        if (filter && roomAttributes[key]) {
-            roomAttributes[key].forEach(value => {
-                const option = document.createElement('option');
-                option.value = value;
-                option.textContent = value;
-                filter.appendChild(option);
+    },
+    computed: {
+        filteredBookings() {
+            const query = this.searchQuery.toLowerCase();
+            return this.bookings.filter(booking => {
+                const roomNumber = (booking.propertyDetails?.roomNumber || '').toString().toLowerCase();
+                const roomType = (booking.propertyDetails?.roomType || '').toString().toLowerCase();
+                const guestName = (booking.guestName || '').toLowerCase();
+                const status = (booking.status || '').toLowerCase();
+                
+                return roomNumber.includes(query) || 
+                       roomType.includes(query) ||
+                       guestName.includes(query) ||
+                       status.includes(query);
             });
+        },
+
+        minCheckInDate() {
+            const now = new Date();
+            return now.toISOString().slice(0, 16); // Format: YYYY-MM-DDThh:mm
+        },
+
+        calculateNights() {
+            if (!this.manualBooking.checkIn || !this.manualBooking.checkOut) return 0;
+            const checkIn = new Date(this.manualBooking.checkIn);
+            const checkOut = new Date(this.manualBooking.checkOut);
+            const diffTime = Math.abs(checkOut - checkIn);
+            return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        },
+
+        calculateRoomRate() {
+            if (!this.manualBooking.roomId) return 0;
+            const selectedRoom = this.availableRooms.find(room => room.id === this.manualBooking.roomId);
+            return selectedRoom ? selectedRoom.price : 0;
+        },
+
+        calculateSubtotal() {
+            return this.calculateRoomRate * this.calculateNights;
+        },
+
+        calculateServiceFee() {
+            return this.calculateSubtotal * 0.10; // 10% service fee
+        },
+
+        calculateTotal() {
+            return this.calculateSubtotal + this.calculateServiceFee;
         }
-    });
-}
-
-// Apply filters to room data (strictly search by room number)
-function applyFilters() {
-    const searchQuery = document.getElementById('search-for-rooms') ? document.getElementById('search-for-rooms').value.trim().toLowerCase() : '';
-
-    // Check if the search query is numeric
-    const isNumericSearch = !isNaN(searchQuery) && searchQuery !== '';
-
-    const filteredRooms = roomsDataCache.filter(room => {
-        // Normalize room data to lowercase for consistent comparison
-        const roomNumber = (room.roomNumber || '').toString().toLowerCase().trim();
-
-        // If the search is numeric, match only room number
-        if (isNumericSearch) {
-            return roomNumber === searchQuery;
-        }
-
-        // Otherwise, check if the search query matches any value in the room object
-        return Object.values(room).some(value =>
-            (value || '').toString().toLowerCase().includes(searchQuery)
-        );
-    });
-
-    displayRooms(filteredRooms);
-}
-
-// Attach search listener
-function attachSearchListener() {
-    const searchBar = document.getElementById('search-for-rooms');
-    if (searchBar) {
-        searchBar.addEventListener('input', applyFilters);
-    } else {
-        console.error('Search bar not found.');
-    }
-}
-
-// Load room data from Firebase
-async function loadRoomData() {
-    try {
-        // Fetch both manual rooms and Lodge bookings
-        const [manualRooms, lodgeBookings] = await Promise.all([
-            fetchRoomsData(),
-            fetchLodgeBookings()
-        ]);
-
-        // Combine both sets of data
-        roomsDataCache = [...manualRooms, ...lodgeBookings];
-        
-        // Update the UI
-        populateFilters(roomsDataCache);
-        applyFilters();
-    } catch (error) {
-        console.error("Error loading room data:", error);
-        alert("Failed to load room data. Please try again.");
-    }
-}
-
-// Function to prepare room data for the dashboard
-// In room_management.js
-export async function sendRoomDataToDashboard() {
-    try {
-        const roomsData = await fetchRoomsData();
-
-        // Calculate relevant metrics
-        const totalRooms = roomsData.length;
-        const availableRooms = roomsData.filter(room => room.status === "Available").length;
-        const occupiedRooms = roomsData.filter(room => room.status === "Occupied").length;
-
-        const recentCheckIns = roomsData
-            .filter(room => room.status === "Occupied")
-            .map(room => ({
-                roomNumber: room.roomNumber,
-                guestName: room.currentGuest,
-                checkInDate: room.checkIn,
-            }))
-            .slice(0, 5); // Latest 5 check-ins
-
-        // Return an object containing the room data
-        return { totalRooms, availableRooms, occupiedRooms, recentCheckIns };
-    } catch (error) {
-        console.error("Error preparing room data for dashboard:", error);
-        throw error; // Re-throw the error to handle it at the call site
-    }
-}
-
-// Attach event listeners for room rows
-function attachRowEventListeners() {
-    document.querySelectorAll('.edit-btn').forEach(button => {
-        button.addEventListener('click', () => editRoom(button.dataset.id));
-    });
-
-    document.querySelectorAll('.delete-btn').forEach(button => {
-        button.addEventListener('click', () => handleDeleteRoom(button.dataset.id));
-    });
-
-    document.querySelectorAll('.view-btn').forEach(button => {
-        button.addEventListener('click', () => {
-            const bookingId = button.dataset.id;
-            viewLodgeBooking(bookingId);
-        });
-    });
-}
-
-// Attach event listeners for filters
-function attachFilterListeners() {
-    document.querySelectorAll('.filter').forEach(filter =>
-        filter.addEventListener('change', applyFilters)
-    );
-}
-
-// Attach modal close event listener
-function attachModalCloseListener() {
-    document.getElementById('close-modal')?.addEventListener('click', () => hideModal('add-room-modal'));
-}
-
-const formFields = ['room-number', 'room-type', 'room-floor', 'room-status', 'check-in', 'check-out'];
-
-// Edit Room Function
-async function editRoom(roomId) {
-    try {
-        const roomData = await fetchRoomById(roomId);
-        if (!roomData) throw new Error(`Room with ID ${roomId} not found.`);
-
-        const fieldMappings = {
-            'room-number': 'roomNumber',
-            'room-type': 'type',
-            'room-floor': 'floor',
-            'room-status': 'status',
-            'check-in': 'checkIn',
-            'check-out': 'checkOut',
-        };
-
-        // Populate form fields with room data
-        formFields.forEach(fieldId => {
-            const input = document.getElementById(fieldId);
-            const key = fieldMappings[fieldId];
-            if (input) input.value = roomData[key] || '';
-        });
-
-        showModal('add-room-modal');
-
-        // Set up the form submission for editing only
-        document.getElementById('add-room-form').onsubmit = async function (e) {
-            e.preventDefault();
-
-            const updatedRoom = formFields.reduce((acc, fieldId) => {
-                const key = fieldMappings[fieldId];
-                acc[key] = document.getElementById(fieldId).value;
-                return acc;
-            }, {});
-
+    },
+    methods: {
+        async fetchBookings() {
             try {
-                // Ensure this function only updates the existing room
-                await updateRoom(roomId, updatedRoom);
-                loadRoomData(); // Refresh data to show updated room
-                hideModal('add-room-modal');
+                console.log('Starting to fetch bookings...');
+                this.loading = true;
+
+                // Fetch all bookings
+                const bookingsRef = collection(db, 'bookings');
+                const bookingsQuery = query(bookingsRef, orderBy('createdAt', 'desc')); // Sort by creation date
+                const bookingsSnapshot = await getDocs(bookingsQuery);
+
+                // Map the bookings data
+                this.bookings = bookingsSnapshot.docs.map(doc => {
+                    const data = doc.data();
+                    console.log('Raw booking data:', data);
+
+                    return {
+                        id: doc.id,
+                        ...data,
+                        propertyDetails: {
+                            roomNumber: data.roomNumber || data.propertyDetails?.roomNumber || 'N/A',
+                            roomType: data.roomType || data.propertyDetails?.roomType || 'N/A',
+                            floorLevel: data.floorLevel || data.propertyDetails?.floorLevel || 'N/A',
+                            name: data.propertyName || data.propertyDetails?.name || 'N/A',
+                            location: data.location || data.propertyDetails?.location || 'N/A'
+                        },
+                        guestName: data.guestName || data.guest?.name || 'N/A',
+                        email: data.email || data.guest?.email || 'N/A',
+                        contactNumber: data.contactNumber || data.guest?.contact || 'N/A',
+                        checkIn: data.checkIn?.toDate?.() || new Date(data.checkIn) || null,
+                        checkOut: data.checkOut?.toDate?.() || new Date(data.checkOut) || null,
+                        status: this.determineStatus(data),
+                        totalPrice: data.totalPrice || 0,
+                        serviceFee: data.serviceFee || 0,
+                        paymentStatus: data.paymentStatus || 'Pending',
+                        createdAt: data.createdAt?.toDate?.() || new Date(data.createdAt) || new Date(),
+                        updatedAt: data.updatedAt?.toDate?.() || new Date(data.updatedAt) || new Date()
+                    };
+                });
+
+                console.log('Processed bookings:', this.bookings);
+                this.loading = false;
             } catch (error) {
-                console.error("Error updating room:", error);
-                alert("Failed to update room.");
+                console.error('Error fetching bookings:', error);
+                alert('Error fetching bookings: ' + error.message);
             }
-        };
-    } catch (error) {
-        console.error("Error editing room:", error);
-        alert("Failed to load room details.");
-    }
-}
+        },
 
-// Delete room
-async function handleDeleteRoom(roomId) {
-    try {
-        await deleteRoom(roomId);
-        loadRoomData();
-    } catch (error) {
-        console.error("Error deleting room:", error);
-        alert("Failed to delete room.");
-    }
-}
+        determineStatus(booking) {
+            if (!booking.checkIn || !booking.checkOut) return 'Available';
+            
+            const now = new Date();
+            const checkIn = booking.checkIn?.toDate?.() || new Date(booking.checkIn);
+            const checkOut = booking.checkOut?.toDate?.() || new Date(booking.checkOut);
 
-function setupAddRoomButton() {
-    document.getElementById('button-rooms-add')?.addEventListener('click', () => {
-        resetForm('add-room-form');
-        showModal('add-room-modal');
+            if (now < checkIn) return 'Confirmed';
+            if (now >= checkIn && now <= checkOut) return 'Checked In';
+            if (now > checkOut) return 'Checked Out';
+            
+            return booking.status || 'Pending';
+        },
 
-        // Remove any previous submit event listeners before adding a new one
-        document.getElementById('add-room-form').onsubmit = async function (e) {
-            e.preventDefault();
+        formatDate(date) {
+            if (!date) return '-';
+            try {
+                if (typeof date === 'string') date = new Date(date);
+                if (date.toDate) date = date.toDate();
+                return date.toLocaleString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            } catch (error) {
+                console.error('Date formatting error:', error);
+                return '-';
+            }
+        },
 
-            const fieldMappings = {
-                'room-number': 'roomNumber',
-                'room-type': 'type',
-                'room-floor': 'floor',
-                'room-status': 'status',
-                'check-in': 'checkIn',
-                'check-out': 'checkOut',
+        async checkAdminStatus(user) {
+            try {
+                const userDoc = await getDoc(doc(db, 'users', user.uid));
+                if (userDoc.exists()) {
+                    return userDoc.data().role === 'admin';
+                }
+                return false;
+            } catch (error) {
+                console.error('Error checking admin status:', error);
+                return false;
+            }
+        },
+
+        async updateBookingStatus(booking) {
+            try {
+                if (!booking.id) {
+                    alert('Cannot update a room without a booking');
+                    return;
+                }
+
+                // Check if user is authenticated and is admin
+                const user = auth.currentUser;
+                if (!user) {
+                    alert('Please log in to update booking status');
+                    return;
+                }
+
+                // Check admin status
+                const isAdmin = await this.checkAdminStatus(user);
+                if (!isAdmin) {
+                    alert('You need administrator privileges to update bookings');
+                    return;
+                }
+
+                const newStatus = prompt(
+                    'Update status to (type exactly):\n- Pending\n- Confirmed\n- Checked In\n- Checked Out\n- Cancelled',
+                    booking.status
+                );
+
+                if (!newStatus) return;
+
+                const bookingRef = doc(db, 'bookings', booking.id);
+                await updateDoc(bookingRef, {
+                    status: newStatus,
+                    updatedAt: Timestamp.now(),
+                    updatedBy: user.uid
+                });
+
+                // Update local state
+                const index = this.bookings.findIndex(b => b.id === booking.id);
+                if (index !== -1) {
+                    this.bookings[index].status = newStatus;
+                }
+
+                alert('Booking status updated successfully!');
+            } catch (error) {
+                console.error('Error updating booking status:', error);
+                if (error.code === 'permission-denied') {
+                    alert('You do not have permission to update bookings. Please contact your administrator.');
+                } else {
+                    alert('Failed to update booking status: ' + error.message);
+                }
+            }
+        },
+
+        async deleteBooking(booking) {
+            try {
+                if (!booking.id) {
+                    alert('Cannot delete a room without a booking');
+                    return;
+                }
+
+                // Check if user is authenticated and is admin
+                const user = auth.currentUser;
+                if (!user) {
+                    alert('Please log in to delete bookings');
+                    return;
+                }
+
+                // Check admin status
+                const isAdmin = await this.checkAdminStatus(user);
+                if (!isAdmin) {
+                    alert('You need administrator privileges to delete bookings');
+                    return;
+                }
+
+                if (!confirm('Are you sure you want to delete this booking? This action cannot be undone.')) {
+                    return;
+                }
+
+                const bookingRef = doc(db, 'bookings', booking.id);
+                await deleteDoc(bookingRef);
+
+                // Remove from local state
+                this.bookings = this.bookings.filter(b => b.id !== booking.id);
+                
+                alert('Booking deleted successfully!');
+            } catch (error) {
+                console.error('Error deleting booking:', error);
+                if (error.code === 'permission-denied') {
+                    alert('You do not have permission to delete bookings. Please contact your administrator.');
+                } else {
+                    alert('Failed to delete booking: ' + error.message);
+                }
+            }
+        },
+
+        viewBookingDetails(booking) {
+            this.selectedBooking = booking;
+        },
+
+        closeModal() {
+            this.selectedBooking = null;
+        },
+
+        openAddRoomModal() {
+            this.showAddRoomModal = true;
+        },
+
+        closeAddRoomModal() {
+            this.showAddRoomModal = false;
+        },
+
+        async addNewRoom() {
+            try {
+                this.loading = true;
+
+                if (!this.newRoom.establishment) {
+                    alert('Please select an establishment');
+                    return;
+                }
+
+                const establishment = this.establishments[this.newRoom.establishment];
+
+                // Create room data object
+                const roomData = {
+                    propertyDetails: {
+                        roomNumber: this.newRoom.roomNumber,
+                        roomType: this.newRoom.roomType,
+                        floorLevel: this.newRoom.floorLevel,
+                        name: establishment.name,
+                        location: establishment.location
+                    },
+                    price: parseFloat(this.newRoom.price),
+                    description: this.newRoom.description,
+                    status: 'Available',
+                    establishment: this.newRoom.establishment,
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                };
+
+                // Add to Firestore
+                const roomsRef = collection(db, 'rooms');
+                const docRef = await addDoc(roomsRef, roomData);
+
+                // Upload images if any
+                if (this.selectedImages.length > 0) {
+                    const imageUrls = await this.uploadImages(docRef.id);
+                    // Update room document with image URLs
+                    await updateDoc(docRef, { images: imageUrls });
+                }
+
+                // Reset form and close modal
+                this.resetNewRoomForm();
+                this.closeAddRoomModal();
+                
+                // Refresh the rooms list
+                await this.fetchBookings();
+                
+                alert('Room added successfully!');
+            } catch (error) {
+                console.error('Error adding room:', error);
+                alert('Failed to add room: ' + error.message);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        resetNewRoomForm() {
+            this.newRoom = {
+                establishment: '',
+                roomNumber: '',
+                roomType: '',
+                floorLevel: '',
+                price: '',
+                description: '',
+                status: 'Available'
             };
+            this.selectedImages = [];
+        },
 
-            // Create a new room object based on the input fields and field mappings
-            const newRoom = Object.entries(fieldMappings).reduce((acc, [fieldId, key]) => {
-                const input = document.getElementById(fieldId);
-                acc[key] = input ? input.value : null;
-                return acc;
-            }, {});
+        closeAddRoomModal() {
+            this.showAddRoomModal = false;
+            this.resetNewRoomForm();
+        },
+
+        async handleImageUpload(event) {
+            const files = Array.from(event.target.files);
+            
+            // Validate number of images
+            if (this.selectedImages.length + files.length > this.maxImages) {
+                alert(`You can only upload up to ${this.maxImages} images`);
+                return;
+            }
+
+            // Process each file
+            for (const file of files) {
+                // Validate file size
+                if (file.size > this.maxImageSize) {
+                    alert(`Image ${file.name} is too large. Maximum size is 5MB`);
+                    continue;
+                }
+
+                // Validate file type
+                if (!file.type.startsWith('image/')) {
+                    alert(`File ${file.name} is not an image`);
+                    continue;
+                }
+
+                // Create preview URL
+                const url = URL.createObjectURL(file);
+                this.selectedImages.push({
+                    file,
+                    url,
+                    name: file.name
+                });
+            }
+        },
+
+        removeImage(index) {
+            URL.revokeObjectURL(this.selectedImages[index].url);
+            this.selectedImages.splice(index, 1);
+        },
+
+        async uploadImages(roomId) {
+            const imageUrls = [];
+            
+            for (const image of this.selectedImages) {
+                const storageRef = ref(storage, `rooms/${roomId}/${image.name}`);
+                
+                try {
+                    const snapshot = await uploadBytes(storageRef, image.file);
+                    const url = await getDownloadURL(snapshot.ref);
+                    imageUrls.push(url);
+                } catch (error) {
+                    console.error('Error uploading image:', error);
+                    throw error;
+                }
+            }
+            
+            return imageUrls;
+        },
+
+        openManualBookingModal() {
+            this.showManualBookingModal = true;
+            this.resetManualBookingForm();
+        },
+
+        closeManualBookingModal() {
+            this.showManualBookingModal = false;
+            this.resetManualBookingForm();
+        },
+
+        resetManualBookingForm() {
+            this.manualBooking = {
+                guestName: '',
+                email: '',
+                contactNumber: '',
+                establishment: '',
+                roomId: '',
+                checkIn: '',
+                checkOut: '',
+                numberOfGuests: 1,
+                paymentStatus: 'Pending'
+            };
+            this.availableRooms = [];
+        },
+
+        async fetchAvailableRooms() {
+            if (!this.manualBooking.establishment) return;
 
             try {
-                console.log("New Room Data:", newRoom); // Debugging: Log the new room data
-                await addRoom(newRoom);
-                loadRoomData();
-                hideModal('add-room-modal');
+                const roomsRef = collection(db, 'rooms');
+                const q = query(
+                    roomsRef, 
+                    where('establishment', '==', this.manualBooking.establishment),
+                    where('status', '==', 'Available')
+                );
+                
+                const snapshot = await getDocs(q);
+                this.availableRooms = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
             } catch (error) {
-                console.error("Error adding room:", error);
-                alert("Failed to add room.");
+                console.error('Error fetching available rooms:', error);
+                alert('Failed to fetch available rooms');
             }
-        };
-    });
-}
+        },
 
-// Call loadRoomData on DOMContentLoaded
-window.addEventListener('DOMContentLoaded', () => {
-    loadRoomData();
-    attachSearchListener();
-    attachFilterListeners();
-    attachModalCloseListener();
-    setupAddRoomButton();
+        async submitManualBooking() {
+            try {
+                this.loading = true;
+
+                const selectedRoom = this.availableRooms.find(room => room.id === this.manualBooking.roomId);
+                if (!selectedRoom) {
+                    alert('Please select a valid room');
+                    return;
+                }
+
+                const bookingData = {
+                    guestName: this.manualBooking.guestName,
+                    email: this.manualBooking.email,
+                    contactNumber: this.manualBooking.contactNumber,
+                    establishment: this.manualBooking.establishment,
+                    roomId: this.manualBooking.roomId,
+                    propertyDetails: selectedRoom.propertyDetails,
+                    checkIn: new Date(this.manualBooking.checkIn),
+                    checkOut: new Date(this.manualBooking.checkOut),
+                    numberOfGuests: parseInt(this.manualBooking.numberOfGuests),
+                    numberOfNights: this.calculateNights,
+                    nightlyRate: this.calculateRoomRate,
+                    serviceFee: this.calculateServiceFee,
+                    totalPrice: this.calculateTotal,
+                    paymentStatus: this.manualBooking.paymentStatus,
+                    status: 'Confirmed',
+                    bookingType: 'Walk-in',
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                };
+
+                // Add booking to Firestore
+                const bookingsRef = collection(db, 'bookings');
+                await addDoc(bookingsRef, bookingData);
+
+                // Update room status
+                const roomRef = doc(db, 'rooms', this.manualBooking.roomId);
+                await updateDoc(roomRef, {
+                    status: 'Occupied',
+                    currentBooking: bookingData
+                });
+
+                // Reset form and close modal
+                this.closeManualBookingModal();
+                
+                // Refresh bookings list
+                await this.fetchBookings();
+                
+                alert('Booking created successfully!');
+            } catch (error) {
+                console.error('Error creating booking:', error);
+                alert('Failed to create booking: ' + error.message);
+            } finally {
+                this.loading = false;
+            }
+        }
+    },
+    async mounted() {
+        try {
+            console.log('Component mounted, fetching bookings...');
+            await this.fetchBookings();
+        } catch (error) {
+            console.error('Error in mounted:', error);
+            alert('Error loading page: ' + error.message);
+        }
+    }
 });
-
-// Add this function to fetch Lodge bookings
-async function fetchLodgeBookings() {
-    try {
-        const bookingsRef = collection(db, 'bookings');
-        const q = query(bookingsRef, orderBy('createdAt', 'desc'));
-        const querySnapshot = await getDocs(q);
-        
-        return querySnapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-                id: doc.id,
-                roomNumber: data.roomNumber || 'N/A',
-                type: data.propertyDetails?.name || 'N/A',
-                floor: data.floorLevel || 'N/A',
-                currentGuest: data.guestName || 'Guest',
-                checkIn: data.checkIn.toDate().toLocaleDateString(),
-                checkOut: data.checkOut.toDate().toLocaleDateString(),
-                status: data.status || 'pending',
-                source: 'lodge' // To identify bookings from Lodge
-            };
-        });
-    } catch (error) {
-        console.error("Error fetching Lodge bookings:", error);
-        return [];
-    }
-}
-
-// Add this function to handle viewing Lodge bookings
-async function viewLodgeBooking(bookingId) {
-    try {
-        const booking = roomsDataCache.find(room => room.id === bookingId);
-        if (booking) {
-            // You can create a modal or redirect to a detailed view
-            alert(`
-                Booking Details:
-                Guest: ${booking.currentGuest}
-                Room: ${booking.roomNumber}
-                Check-in: ${booking.checkIn}
-                Check-out: ${booking.checkOut}
-                Status: ${booking.status}
-                Property: ${booking.type}
-            `);
-        }
-    } catch (error) {
-        console.error("Error viewing booking:", error);
-        alert("Failed to load booking details.");
-    }
-}

@@ -2,7 +2,7 @@
         
 body {
     font-family: 'Poppins', sans-serif;
-    background-color: #f5f5f5;
+    background: linear-gradient(135deg, #1e3c72, #2a5298);
 }
 .hero-bg {
     background-image: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('../components/baguio-city-mirador-hill-sunset.jpg');
@@ -10,7 +10,7 @@ body {
     background-position: center;
     position: relative;
     min-height: 100vh;
-    padding: 4rem 1rem;
+    padding: 2rem 1rem;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -18,13 +18,13 @@ body {
 .glass-card {
     background: rgba(255, 255, 255, 0.15);
     backdrop-filter: blur(8px);
-    border-radius: 12px;
+    border-radius: 6px;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 1.5rem;
+    padding: 0.75rem;
     width: auto;
-    min-width: 300px;
-    max-width: 400px;
-    margin: 2rem auto 0;
+    min-width: 260px;
+    max-width: 300px;
+    margin: 0.25rem auto;
 }
 
 body {
@@ -55,9 +55,8 @@ body {
   }
 
   /* Adjust text sizes to maintain proportions */
-  .glass-card h1 {
-    font-size: 2rem;
-    line-height: 1.2;
+  .glass-card h2 {
+    font-size: 1.25rem;
     margin-bottom: 0.5rem;
   }
 
@@ -93,8 +92,9 @@ body {
   .form-group input {
     background: rgba(0, 0, 0, 0.2);
     border: 1px solid rgba(255, 255, 255, 0.2);
-    padding: 0.75rem 1rem;
-    font-size: 0.875rem;
+    padding: 0.3rem 0.4rem;
+    font-size: 0.75rem;
+    height: 2rem;
   }
 
   /* Social login buttons */
@@ -106,12 +106,91 @@ body {
   /* Responsive adjustments */
   @media (max-width: 640px) {
     .glass-card {
-        min-width: auto;
-        margin: 1rem;
+        margin: 0.25rem;
+        padding: 0.5rem;
     }
 
     #login {
         margin: 1rem;
         padding: 1.5rem;
     }
+  }
+
+  .password-requirements {
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 0.25rem;
+    border-radius: 0.375rem;
+    margin-top: 0.15rem;
+    font-size: 0.65rem;
+  }
+
+  .password-requirements p {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .password-requirements ul {
+    margin-top: 0.2rem;
+  }
+
+  .password-requirements li {
+    line-height: 1.1;
+  }
+
+  /* Make the password requirements more compact */
+  .password-requirements {
+    padding: 0.25rem;
+    margin-top: 0.15rem;
+    font-size: 0.65rem;
+  }
+
+  /* Adjust button sizes */
+  button {
+    padding: 0.3rem 0.5rem;
+    font-size: 0.75rem;
+    height: 2rem;
+  }
+
+  /* Make social login buttons more compact */
+  .social-signup {
+    margin-top: 0.35rem;
+  }
+
+  .social-signup p {
+    font-size: 0.7rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .social-signup button {
+    padding: 0.2rem 0.35rem;
+    font-size: 0.65rem;
+  }
+
+  /* Adjust spacing for error and success messages */
+  .error-message,
+  .success-message {
+    margin-top: 0.25rem;
+    padding: 0.2rem 0.35rem;
+    font-size: 0.65rem;
+  }
+
+  /* Add more compact form styling */
+  .form-group {
+    margin-bottom: 0.35rem;
+  }
+
+  .form-group label {
+    font-size: 0.75rem;
+    margin-bottom: 0.15rem;
+  }
+
+  /* Adjust checkbox size */
+  input[type="checkbox"] {
+    transform: scale(0.75);
+  }
+
+  /* Terms text */
+  label[for="terms"] {
+    font-size: 0.7rem;
   }

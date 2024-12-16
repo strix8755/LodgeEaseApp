@@ -4,14 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Lodge Ease</title>
+    <!-- Firebase and Auth Check must be first -->
+    <script type="module" src="../firebase.js"></script>
+    <script type="module" src="../js/auth-check.js"></script>
+    <script type="module" src="app.js"></script>
+    <!-- Other resources -->
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600&family=Roboto:wght@400&display=swap" rel="stylesheet">
-    
-    <!-- Load Vue.js from CDN -->
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
-    
-    <!-- Load Chart.js from CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
 </head>
 <body>
@@ -35,97 +36,127 @@
 
         <!-- Main Content -->
         <main class="main-content">
-            <header>
-                <h1>Dashboard</h1>
-            </header>
-
-            <!-- Overview Section -->
-            <section class="overview">
-                <div class="overview-header">
-                    <h2>Overview Data</h2>
-                    <button @click="analyzeData" class="analyze-button">AI Analyze Data</button>
+            <div v-if="loading" class="flex items-center justify-center h-screen">
+                <div class="text-center">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+                    <p class="mt-4 text-gray-600">Loading...</p>
                 </div>
-                <div class="dashboard-panels">
-                    <div class="panel overview-item">
-                        <h3>Check-ins Today</h3>
-                        <p>{{ todayCheckIns }}</p>
+            </div>
+
+            <div v-else-if="!isAuthenticated" class="flex items-center justify-center h-screen">
+                <div class="text-center">
+                    <p class="text-xl text-gray-800 mb-4">Please log in to access the dashboard</p>
+                    <a href="../Login/index.html" class="bg-blue-500 text-white px-6 py-2 rounded-md hover:bg-blue-600">
+                        Log In
+                    </a>
+                </div>
+            </div>
+
+            <div v-else>
+                <header>
+                    <h1>Dashboard</h1>
+                </header>
+
+                <!-- Overview Section -->
+                <section class="overview">
+                    <div class="overview-header">
+                        <h2>Overview Data</h2>
+                        <button @click="analyzeData" class="analyze-button">AI Analyze Data</button>
                     </div>
-                    <div class="panel overview-item">
-                        <h3>Available Rooms</h3>
-                        <p>{{ availableRooms }}</p>
+                    <div class="dashboard-panels">
+                        <div class="panel overview-item">
+                            <h3>Check-ins Today</h3>
+                            <p>{{ todayCheckIns }}</p>
+                        </div>
+                        <div class="panel overview-item">
+                            <h3>Available Rooms</h3>
+                            <p>{{ availableRooms }}</p>
+                        </div>
+                        <div class="panel overview-item">
+                            <h3>Occupied Rooms</h3>
+                            <p>{{ occupiedRooms }}</p>
+                        </div>
                     </div>
-                    <div class="panel overview-item">
-                        <h3>Occupied Rooms</h3>
-                        <p>{{ occupiedRooms }}</p>
+                    <div v-if="analysisFeedback" class="analysis-feedback">
+                        <h4>Analysis Feedback:</h4>
+                        <p>{{ analysisFeedback }}</p>
                     </div>
-                </div>
-                <div v-if="analysisFeedback" class="analysis-feedback">
-                    <h4>Analysis Feedback:</h4>
-                    <p>{{ analysisFeedback }}</p>
-                </div>
-            </section>
+                </section>
 
-            <!-- Dashboard Panels -->
-            <section class="dashboard-panels">
-                <div class="panel">
-                    <h2>Analytics</h2>
-                    <canvas ref="analyticsChart" id="analyticsChart"></canvas>
-                </div>
+                <!-- Dashboard Panels -->
+                <section class="dashboard-panels">
+                    <div class="panel">
+                        <h2>Analytics</h2>
+                        <canvas ref="analyticsChart" id="analyticsChart"></canvas>
+                    </div>
 
-                <div class="panel">
-                    <h2>Revenue</h2>
-                    <canvas ref="revenueChart" id="revenueChart"></canvas>
-                </div>
-            </section>
+                    <div class="panel">
+                        <h2>Revenue</h2>
+                        <canvas ref="revenueChart" id="revenueChart"></canvas>
+                    </div>
+                </section>
 
-            <!-- Search bar and bookings table -->
-            <section class="recent-bookings">
-                <h2>Recent Bookings</h2>
-                <input 
-                    v-model="searchQuery" 
-                    id="search-bar" 
-                    placeholder="Search by Guest Name or Room Number" 
-                    class="search-input"
-                >
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Room Number</th>
-                            <th>Room Type</th>
-                            <th>Floor Level</th>
-                            <th>Guest Name</th>
-                            <th>Check-in</th>
-                            <th>Check-out</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="roomData">
-                        <tr v-for="room in filteredBookings" :key="room.id">
-                            <td>{{ room.roomNumber }}</td>
-                            <td>{{ room.roomType }}</td>
-                            <td>{{ room.floorLevel }}</td>
-                            <td>{{ room.guestName }}</td>
-                            <td>{{ room.checkInDate }}</td>
-                            <td>{{ room.checkOutDate }}</td>
-                            <td>
-                                <span :class="{
-                                    'status-pending': room.status === 'pending',
-                                    'status-occupied': room.status === 'occupied'
-                                }">{{ room.status }}</span>
-                            </td>
-                            <td>
-                                <button class="action-btn edit" @click="editRoom(room)">Edit</button>
-                                <button class="action-btn delete" @click="deleteRoom(room.id)">Delete</button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>                
-            </section>          
+                <!-- Search bar and bookings table -->
+                <section class="recent-bookings">
+                    <h2>Recent Bookings</h2>
+                    <input 
+                        v-model="searchQuery" 
+                        id="search-bar" 
+                        placeholder="Search by Guest Name or Room Number" 
+                        class="search-input mb-4"
+                    >
+                    <table class="min-w-full bg-white shadow-md rounded-lg overflow-hidden">
+                        <thead class="bg-gray-800 text-white">
+                            <tr>
+                                <th class="px-4 py-3 text-left">Room Number</th>
+                                <th class="px-4 py-3 text-left">Room Type</th>
+                                <th class="px-4 py-3 text-left">Floor Level</th>
+                                <th class="px-4 py-3 text-left">Guest Name</th>
+                                <th class="px-4 py-3 text-left">Check-in</th>
+                                <th class="px-4 py-3 text-left">Check-out</th>
+                                <th class="px-4 py-3 text-left">Status</th>
+                                <th class="px-4 py-3 text-left">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-if="bookings.length === 0">
+                                <td colspan="8" class="px-4 py-3 text-center text-gray-500">No bookings found</td>
+                            </tr>
+                            <tr v-else v-for="booking in filteredBookings" :key="booking.id" class="border-b hover:bg-gray-50">
+                                <td class="px-4 py-3">{{ booking.propertyDetails.roomNumber }}</td>
+                                <td class="px-4 py-3">{{ booking.propertyDetails.roomType }}</td>
+                                <td class="px-4 py-3">{{ booking.floorLevel }}</td>
+                                <td class="px-4 py-3">{{ booking.guestName }}</td>
+                                <td class="px-4 py-3">{{ formatDate(booking.checkIn) }}</td>
+                                <td class="px-4 py-3">{{ formatDate(booking.checkOut) }}</td>
+                                <td class="px-4 py-3">
+                                    <span :class="{
+                                        'status-pending': booking.status === 'pending',
+                                        'status-occupied': booking.status === 'occupied'
+                                    }">
+                                        {{ booking.status }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="flex space-x-2">
+                                        <button 
+                                            @click="editBooking(booking)"
+                                            class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm transition-colors">
+                                            Edit
+                                        </button>
+                                        <button 
+                                            @click="deleteBooking(booking.id)"
+                                            class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm transition-colors">
+                                            Delete
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+            </div>
         </main>
     </div>
-
-    <!-- Load Vue App Script -->
-    <script src="app.js" type="module"></script>
 </body>
 </html>

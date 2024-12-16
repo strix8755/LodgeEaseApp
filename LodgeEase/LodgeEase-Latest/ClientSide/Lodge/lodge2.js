@@ -164,24 +164,23 @@ async function saveBooking() {
     const total = subtotal + serviceFeeAmount;
 
     const bookingData = {
+      propertyDetails: {
+        name: "Pine Haven Lodge",
+        location: "Baguio City, Philippines",
+        roomNumber: "A101",
+        roomType: "Deluxe Suite"
+      },
+      floorLevel: "1st Floor",
+      guestName: "Guest",
       checkIn: Timestamp.fromDate(selectedCheckIn),
       checkOut: Timestamp.fromDate(selectedCheckOut),
-      guests,
+      guests: guests,
       nightlyRate: NIGHTLY_RATE,
       numberOfNights: nights,
-      subtotal,
       serviceFee: serviceFeeAmount,
       totalPrice: total,
       status: 'pending',
-      createdAt: Timestamp.fromDate(new Date()),
-      propertyDetails: {
-        name: 'Mountain View Lodge',
-        location: 'Tagaytay, Philippines'
-      },
-      roomNumber: 'B201',
-      roomType: 'Standard Suite',
-      floorLevel: '2nd Floor',
-      guestName: 'Guest'
+      createdAt: Timestamp.fromDate(new Date())
     };
 
     // Store booking data in localStorage

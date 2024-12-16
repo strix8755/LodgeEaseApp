@@ -5,11 +5,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hotel Room Management</title>
+    <script type="module" src="../firebase.js"></script>
+    <script type="module" src="../js/auth-check.js"></script>
+    <script type="module" src="room_management.js"></script>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600&family=Roboto:wght@400&display=swap" rel="stylesheet">
     <meta name="description" content="Manage rooms, reservations, and more with ease at Lodge Ease.">
     <meta name="robots" content="noindex, nofollow">
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
 </head>
 
 <body>
@@ -33,99 +37,400 @@
 
         <!-- Main Content -->
         <main class="main-content">
+            <div v-if="loading" class="spinner">
+                <i class="fas fa-spinner fa-spin"></i>
+            </div>
+            
             <header>
                 <h1>Room Management</h1>
             </header>
+
             <header class="page-header">
                 <div class="header-content">
                     <div class="header-actions">
                         <div class="search-container">
-                            <input type="text" id="search-for-rooms" placeholder="Search rooms, guests, or reservations..." aria-label="Search rooms" title="Search">
-                            <button id="clear-search" title="Clear Search">X</button>
-                            <ul id="search-suggestions" class="suggestions-list"></ul>
+                            <input 
+                                type="text" 
+                                v-model="searchQuery" 
+                                placeholder="Search rooms, guests, or reservations..." 
+                                aria-label="Search rooms" 
+                                title="Search"
+                            >
                             <i class="fas fa-search search-icon"></i>
                         </div>
-                        <button id="button-rooms-add" class="primary-button" title="Add Room">
-                            <i class="fas fa-plus"></i> Add Room
-                        </button>
+                        <div class="button-group">
+                            <button @click="openAddRoomModal" class="primary-button" title="Add Room">
+                                <i class="fas fa-plus"></i> Add Room
+                            </button>
+                            <button @click="openManualBookingModal" class="primary-button booking-button" title="Manual Booking">
+                                <i class="fas fa-book"></i> Manual Booking
+                            </button>
+                        </div>
                     </div>
                 </div>
             </header>
-            <!-- Room Table without Dropdown Filters -->
-                    <div class="rooms-grid">
-                        <table class="rooms-table">
-                            <thead>
-                                <tr>
-                                    <th>Room</th>
-                                    <th>Type</th>
-                                    <th>Floor</th>
-                                    <th>Current Guest</th>
-                                    <th>Check-in</th>
-                                    <th>Check-out</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="roomData">
-                                <!-- Room data will be populated dynamically -->
-                            </tbody>
-                        </table>
+
+            <!-- Room Table -->
+            <div class="table-container">
+                <table class="rooms-table">
+                    <thead>
+                        <tr>
+                            <th>ROOM NUMBER</th>
+                            <th>ROOM TYPE</th>
+                            <th>FLOOR</th>
+                            <th>STATUS</th>
+                            <th>CURRENT GUEST</th>
+                            <th>CHECK-IN/OUT</th>
+                            <th>ACTIONS</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-if="loading">
+                            <td colspan="7" class="text-center">Loading bookings...</td>
+                        </tr>
+                        <tr v-else-if="filteredBookings.length === 0">
+                            <td colspan="7" class="text-center">No bookings found</td>
+                        </tr>
+                        <tr v-else v-for="booking in filteredBookings" :key="booking.id">
+                            <td>{{ booking.propertyDetails.roomNumber }}</td>
+                            <td>{{ booking.propertyDetails.roomType }}</td>
+                            <td>{{ booking.propertyDetails.floorLevel }}</td>
+                            <td>
+                                <span :class="['status-badge', booking.status.toLowerCase()]">
+                                    {{ booking.status }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="guest-info" v-if="booking.guestName !== 'N/A'">
+                                    <span class="guest-name">{{ booking.guestName }}</span>
+                                    <small class="guest-contact">{{ booking.contactNumber }}</small>
+                                </div>
+                                <span v-else>No guest</span>
+                            </td>
+                            <td>
+                                <div class="date-info">
+                                    <div>In: {{ formatDate(booking.checkIn) }}</div>
+                                    <div>Out: {{ formatDate(booking.checkOut) }}</div>
+                                </div>
+                            </td>
+                            <td class="actions">
+                                <button @click="viewBookingDetails(booking)" class="action-btn view-btn" title="View Details">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button @click="updateBookingStatus(booking)" class="action-btn status-btn" title="Update Status">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                                <button @click="deleteBooking(booking)" class="action-btn delete-btn" title="Delete Booking">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Booking Details Modal -->
+            <div v-if="selectedBooking" class="modal" @click.self="closeModal">
+                <div class="modal-content">
+                    <button class="close-btn" @click="closeModal">&times;</button>
+                    <h2>Booking Details</h2>
+                    <div class="booking-details">
+                        <div class="detail-section">
+                            <h3>Guest Information</h3>
+                            <p><strong>Name:</strong> {{ selectedBooking.guestName || 'N/A' }}</p>
+                            <p><strong>Email:</strong> {{ selectedBooking.email || 'N/A' }}</p>
+                            <p><strong>Contact:</strong> {{ selectedBooking.contactNumber || 'N/A' }}</p>
+                            <p><strong>Number of Guests:</strong> {{ selectedBooking.guests || 'N/A' }}</p>
+                        </div>
+                        
+                        <div class="detail-section">
+                            <h3>Room Details</h3>
+                            <p><strong>Property:</strong> {{ selectedBooking.propertyDetails?.name || 'N/A' }}</p>
+                            <p><strong>Location:</strong> {{ selectedBooking.propertyDetails?.location || 'N/A' }}</p>
+                            <p><strong>Room Number:</strong> {{ selectedBooking.propertyDetails?.roomNumber || 'N/A' }}</p>
+                            <p><strong>Room Type:</strong> {{ selectedBooking.propertyDetails?.roomType || 'N/A' }}</p>
+                            <p><strong>Floor Level:</strong> {{ selectedBooking.propertyDetails?.floorLevel || 'N/A' }}</p>
+                        </div>
+                        
+                        <div class="detail-section">
+                            <h3>Booking Details</h3>
+                            <p><strong>Check In:</strong> {{ formatDate(selectedBooking.checkIn) }}</p>
+                            <p><strong>Check Out:</strong> {{ formatDate(selectedBooking.checkOut) }}</p>
+                            <p><strong>Number of Nights:</strong> {{ selectedBooking.numberOfNights || 'N/A' }}</p>
+                            <p><strong>Nightly Rate:</strong> ₱{{ selectedBooking.nightlyRate?.toLocaleString() || '0.00' }}</p>
+                        </div>
+                        
+                        <div class="detail-section">
+                            <h3>Payment Information</h3>
+                            <p><strong>Subtotal:</strong> ₱{{ (selectedBooking.nightlyRate * selectedBooking.numberOfNights)?.toLocaleString() || '0.00' }}</p>
+                            <p><strong>Service Fee:</strong> ₱{{ selectedBooking.serviceFee?.toLocaleString() || '0.00' }}</p>
+                            <p><strong>Total Amount:</strong> ₱{{ selectedBooking.totalPrice?.toLocaleString() || '0.00' }}</p>
+                            <p><strong>Payment Status:</strong> {{ selectedBooking.paymentStatus || 'Pending' }}</p>
+                            <p><strong>Booking Status:</strong> {{ selectedBooking.status || 'Pending' }}</p>
+                            <p><strong>Booked On:</strong> {{ formatDate(selectedBooking.createdAt) }}</p>
+                        </div>
                     </div>
-                <!-- Loading spinner while data is being fetched -->
-                <div id="loading-spinner" class="spinner" aria-live="polite" aria-hidden="true" style="display: none;"></div>
+                </div>
             </div>
 
             <!-- Add Room Modal -->
-            <div id="add-room-modal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="add-room-modal-label">
+            <div v-if="showAddRoomModal" class="modal" @click.self="closeAddRoomModal">
                 <div class="modal-content">
-                    <!-- Close Button -->
-                    <button class="close-btn" id="close-modal" aria-label="Close Modal">&times;</button>
-                    <h2 id="add-room-modal-label">Add or Edit Room</h2>
-
-                    <!-- Room Form -->
-                    <form id="add-room-form" novalidate>
+                    <button class="close-btn" @click="closeAddRoomModal">&times;</button>
+                    <h2>Add New Room</h2>
+                    <form @submit.prevent="addNewRoom" class="add-room-form">
                         <div class="form-group">
-                            <label for="room-number">Room Number:</label>
-                            <input type="text" id="room-number" placeholder="Enter room number" required aria-required="true" aria-describedby="room-number-helper" pattern="^[0-9]{1,4}$">
-                            <small id="room-number-helper">Enter a valid room number (1-4 digits).</small>
-                        </div>
-                        <div class="form-group">
-                            <label for="room-type">Room Type:</label>
-                            <input type="text" id="room-type" placeholder="Enter room type (e.g., Deluxe, Standard)" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="room-floor">Floor:</label>
-                            <input type="number" id="room-floor" placeholder="Enter floor number" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="check-in">Check-in:</label>
-                            <input type="datetime-local" id="check-in" required aria-label="Select check-in date and time">
-                        </div>
-                        <div class="form-group">
-                            <label for="check-out">Check-out:</label>
-                            <input type="datetime-local" id="check-out" required aria-label="Select check-out date and time">
-                        </div>
-                        <div class="form-group">
-                            <label for="room-status">Status:</label>
-                            <select id="room-status" required aria-label="Select room status">
-                                <option value="">Select Status</option>
-                                <option value="Available">Available</option>
-                                <option value="Occupied">Occupied</option>
-                                <option value="Maintenance">Maintenance</option>
+                            <label for="establishment">Establishment*</label>
+                            <select id="establishment" v-model="newRoom.establishment" required>
+                                <option value="">Select establishment</option>
+                                <option value="lodge1">Pine Haven Lodge</option>
+                                <option value="lodge2">Mountain View Lodge</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <button type="submit" class="primary-button">Save Room</button>
+                            <label for="roomNumber">Room Number*</label>
+                            <input 
+                                type="text" 
+                                id="roomNumber" 
+                                v-model="newRoom.roomNumber" 
+                                required 
+                                placeholder="Enter room number"
+                            >
+                        </div>
+                        <div class="form-group">
+                            <label for="roomType">Room Type*</label>
+                            <select id="roomType" v-model="newRoom.roomType" required>
+                                <option value="">Select room type</option>
+                                <option value="Standard">Standard</option>
+                                <option value="Deluxe">Deluxe</option>
+                                <option value="Suite">Suite</option>
+                                <option value="Family">Family</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="floorLevel">Floor Level*</label>
+                            <input 
+                                type="text" 
+                                id="floorLevel" 
+                                v-model="newRoom.floorLevel" 
+                                required 
+                                placeholder="Enter floor level"
+                            >
+                        </div>
+                        <div class="form-group">
+                            <label for="price">Price per Night*</label>
+                            <input 
+                                type="number" 
+                                id="price" 
+                                v-model="newRoom.price" 
+                                required 
+                                min="0" 
+                                step="0.01"
+                                placeholder="Enter price per night"
+                            >
+                        </div>
+                        <div class="form-group">
+                            <label for="description">Description</label>
+                            <textarea 
+                                id="description" 
+                                v-model="newRoom.description" 
+                                rows="3"
+                                placeholder="Enter room description"
+                            ></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="roomImages">Room Images</label>
+                            <div class="image-upload-container">
+                                <input 
+                                    type="file" 
+                                    id="roomImages" 
+                                    @change="handleImageUpload" 
+                                    accept="image/*" 
+                                    multiple
+                                    class="image-input"
+                                >
+                                <label for="roomImages" class="image-upload-label">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <span>Click to upload images</span>
+                                    <small>or drag and drop images here</small>
+                                </label>
+                            </div>
+                            <!-- Preview selected images -->
+                            <div v-if="selectedImages.length" class="image-preview-container">
+                                <div v-for="(image, index) in selectedImages" :key="index" class="image-preview">
+                                    <img :src="image.url" :alt="'Room image ' + (index + 1)">
+                                    <button type="button" @click="removeImage(index)" class="remove-image">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <small class="image-help-text">You can upload up to 5 images (max 5MB each)</small>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn cancel-btn" @click="closeAddRoomModal">Cancel</button>
+                            <button type="submit" class="btn submit-btn" :disabled="loading">
+                                {{ loading ? 'Adding...' : 'Add Room' }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Manual Booking Modal -->
+            <div v-if="showManualBookingModal" class="modal" @click.self="closeManualBookingModal">
+                <div class="modal-content">
+                    <button class="close-btn" @click="closeManualBookingModal">&times;</button>
+                    <h2>Manual Booking</h2>
+                    <form @submit.prevent="submitManualBooking" class="manual-booking-form">
+                        <!-- Guest Information -->
+                        <div class="form-section">
+                            <h3>Guest Information</h3>
+                            <div class="form-group">
+                                <label for="guestName">Guest Name*</label>
+                                <input 
+                                    type="text" 
+                                    id="guestName" 
+                                    v-model="manualBooking.guestName" 
+                                    required 
+                                    placeholder="Enter guest name"
+                                >
+                            </div>
+                            <div class="form-group">
+                                <label for="guestEmail">Email</label>
+                                <input 
+                                    type="email" 
+                                    id="guestEmail" 
+                                    v-model="manualBooking.email" 
+                                    placeholder="Enter guest email"
+                                >
+                            </div>
+                            <div class="form-group">
+                                <label for="guestContact">Contact Number*</label>
+                                <input 
+                                    type="tel" 
+                                    id="guestContact" 
+                                    v-model="manualBooking.contactNumber" 
+                                    required 
+                                    placeholder="Enter contact number"
+                                >
+                            </div>
+                        </div>
+
+                        <!-- Booking Details -->
+                        <div class="form-section">
+                            <h3>Booking Details</h3>
+                            <div class="form-group">
+                                <label for="bookingEstablishment">Establishment*</label>
+                                <select 
+                                    id="bookingEstablishment" 
+                                    v-model="manualBooking.establishment" 
+                                    required
+                                    @change="fetchAvailableRooms"
+                                >
+                                    <option value="">Select establishment</option>
+                                    <option value="lodge1">Pine Haven Lodge</option>
+                                    <option value="lodge2">Mountain View Lodge</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="bookingRoom">Room*</label>
+                                <select 
+                                    id="bookingRoom" 
+                                    v-model="manualBooking.roomId" 
+                                    required
+                                    :disabled="!manualBooking.establishment"
+                                >
+                                    <option value="">Select room</option>
+                                    <option 
+                                        v-for="room in availableRooms" 
+                                        :key="room.id" 
+                                        :value="room.id"
+                                    >
+                                        {{ room.propertyDetails.roomNumber }} - {{ room.propertyDetails.roomType }}
+                                        (₱{{ room.price }}/night)
+                                    </option>
+                                </select>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="checkInDate">Check-in Date*</label>
+                                    <input 
+                                        type="datetime-local" 
+                                        id="checkInDate" 
+                                        v-model="manualBooking.checkIn" 
+                                        required
+                                        :min="minCheckInDate"
+                                    >
+                                </div>
+                                <div class="form-group">
+                                    <label for="checkOutDate">Check-out Date*</label>
+                                    <input 
+                                        type="datetime-local" 
+                                        id="checkOutDate" 
+                                        v-model="manualBooking.checkOut" 
+                                        required
+                                        :min="manualBooking.checkIn"
+                                    >
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="numberOfGuests">Number of Guests*</label>
+                                <input 
+                                    type="number" 
+                                    id="numberOfGuests" 
+                                    v-model="manualBooking.numberOfGuests" 
+                                    required 
+                                    min="1"
+                                >
+                            </div>
+                        </div>
+
+                        <!-- Payment Information -->
+                        <div class="form-section">
+                            <h3>Payment Information</h3>
+                            <div class="payment-summary">
+                                <div class="summary-row">
+                                    <span>Room Rate:</span>
+                                    <span>₱{{ calculateRoomRate }}</span>
+                                </div>
+                                <div class="summary-row">
+                                    <span>Number of Nights:</span>
+                                    <span>{{ calculateNights }}</span>
+                                </div>
+                                <div class="summary-row">
+                                    <span>Subtotal:</span>
+                                    <span>₱{{ calculateSubtotal }}</span>
+                                </div>
+                                <div class="summary-row">
+                                    <span>Service Fee (10%):</span>
+                                    <span>₱{{ calculateServiceFee }}</span>
+                                </div>
+                                <div class="summary-row total">
+                                    <span>Total Amount:</span>
+                                    <span>₱{{ calculateTotal }}</span>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="paymentStatus">Payment Status*</label>
+                                <select id="paymentStatus" v-model="manualBooking.paymentStatus" required>
+                                    <option value="Pending">Pending</option>
+                                    <option value="Paid">Paid</option>
+                                    <option value="Partially Paid">Partially Paid</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="button" class="btn cancel-btn" @click="closeManualBookingModal">Cancel</button>
+                            <button type="submit" class="btn submit-btn" :disabled="loading">
+                                {{ loading ? 'Processing...' : 'Create Booking' }}
+                            </button>
                         </div>
                     </form>
                 </div>
             </div>
         </main>
     </div>
-
-    <!-- Link Firebase and dashboard scripts -->
-    <script src="../firebase.js" type="module"></script>
-    <script src="room_management.js" type="module" defer></script>
 </body>
 
 </html>

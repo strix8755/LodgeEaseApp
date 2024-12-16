@@ -1,5 +1,8 @@
 import { signIn, register, auth } from '../firebase.js'; // Import Firebase Authentication functions
 import { sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-auth.js";
+import { doc, getDoc, setDoc, getFirestore } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore.js";
+
+const db = getFirestore();
 
 new Vue({
     el: '#app',
@@ -15,6 +18,7 @@ new Vue({
             errorMessage: '',
             successMessage: '',
             isLoginForm: true, // Toggle between login and registration forms
+            isAdmin: true, // Set default to true since this is admin registration
         };
     },
     methods: {
@@ -55,18 +59,22 @@ new Vue({
         // Handle login
         async handleLogin() {
             this.errorMessage = '';
+            this.successMessage = '';
             
-            // Validate empty fields
             if (!this.email || !this.password) {
-                this.errorMessage = 'Please fill in all fields';
+                this.errorMessage = 'Please enter both email and password';
                 return;
             }
 
             this.loading = true;
 
             try {
-                await signIn(this.email, this.password);
+                const result = await signIn(this.email, this.password);
                 
+                if (!result || !result.user) {
+                    throw new Error('Invalid login credentials');
+                }
+
                 if (this.remember) {
                     localStorage.setItem('userEmail', this.email);
                 } else {
@@ -75,10 +83,17 @@ new Vue({
 
                 this.successMessage = 'Login successful! Redirecting...';
                 setTimeout(() => {
-                    window.location.href = '../Dashboard/dashboard.html';
+                    window.location.href = '../Dashboard/Dashboard.html';
                 }, 1500);
             } catch (error) {
-                this.handleAuthError(error);
+                console.error('Login error:', error);
+                if (error.message === 'access-denied') {
+                    this.errorMessage = 'Access denied. This portal is for administrators only.';
+                } else if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+                    this.errorMessage = 'Invalid email or password';
+                } else {
+                    this.errorMessage = 'Failed to login. Please try again.';
+                }
             } finally {
                 this.loading = false;
             }
@@ -87,10 +102,31 @@ new Vue({
         // Handle registration
         async handleRegister() {
             this.errorMessage = '';
+            this.successMessage = '';
 
-            // Validate empty fields
-            if (!this.fullname || !this.username || !this.email || !this.password || !this.confirmPassword) {
-                this.errorMessage = 'Please fill in all fields';
+            // Individual field validation with specific messages
+            if (!this.fullname) {
+                this.errorMessage = 'Please enter your full name';
+                return;
+            }
+
+            if (!this.username) {
+                this.errorMessage = 'Please enter a username';
+                return;
+            }
+
+            if (!this.email) {
+                this.errorMessage = 'Please enter your email address';
+                return;
+            }
+
+            if (!this.password) {
+                this.errorMessage = 'Please enter a password';
+                return;
+            }
+
+            if (!this.confirmPassword) {
+                this.errorMessage = 'Please confirm your password';
                 return;
             }
 
@@ -127,13 +163,27 @@ new Vue({
             this.loading = true;
 
             try {
-                await register(this.email, this.password, this.username, this.fullname);
-                this.successMessage = 'Account created successfully! Please log in.';
-                setTimeout(() => {
-                    this.isLoginForm = true;
-                    this.resetForm();
-                }, 1500);
+                // Register the user
+                const result = await register(this.email, this.password, this.username, this.fullname);
+                
+                if (result && result.user) {
+                    // Set admin role in Firestore
+                    await setDoc(doc(db, 'users', result.user.uid), {
+                        email: this.email,
+                        username: this.username,
+                        fullname: this.fullname,
+                        role: 'admin', // Set role as admin
+                        createdAt: new Date()
+                    });
+
+                    this.successMessage = 'Admin account created successfully! Please log in.';
+                    setTimeout(() => {
+                        this.isLoginForm = true;
+                        this.resetForm();
+                    }, 1500);
+                }
             } catch (error) {
+                console.error('Registration error:', error);
                 this.handleAuthError(error);
             } finally {
                 this.loading = false;
@@ -166,48 +216,32 @@ new Vue({
         handleAuthError(error) {
             console.error('Authentication error:', error);
             
-            switch (error.code) {
-                // Login errors
-                case 'auth/user-not-found':
-                    this.errorMessage = 'No account found with this email or username';
+            const errorMessage = error.message || error.code;
+            
+            switch (errorMessage) {
+                case 'This email is already registered':
+                    this.errorMessage = 'This email address is already registered. Please use a different email or try logging in.';
                     break;
-                case 'auth/wrong-password':
-                    this.errorMessage = 'Incorrect password. Please try again';
-                    break;
-                case 'auth/invalid-login-credentials':
-                    this.errorMessage = 'Invalid login credentials. Please check your email/username and password';
-                    break;
-                case 'auth/too-many-requests':
-                    this.errorMessage = 'Too many failed attempts. Please try again later or reset your password';
-                    break;
-
-                // Registration errors
-                case 'auth/email-already-in-use':
-                    this.errorMessage = 'This email is already registered. Please use a different email or try logging in';
+                case 'This username is already taken':
+                    this.errorMessage = 'This username is already taken. Please choose a different username.';
                     break;
                 case 'auth/invalid-email':
-                    this.errorMessage = 'Please enter a valid email address';
+                    this.errorMessage = 'Please enter a valid email address.';
                     break;
                 case 'auth/weak-password':
-                    this.errorMessage = 'Password is too weak. It must be at least 6 characters long with at least one uppercase letter, one lowercase letter, and one number';
+                    this.errorMessage = 'Password must be at least 6 characters long with at least one uppercase letter, one lowercase letter, and one number.';
                     break;
-                case 'auth/username-already-exists':
-                    this.errorMessage = 'This username is already taken. Please choose another';
-                    break;
-
-                // Network errors
                 case 'auth/network-request-failed':
-                    this.errorMessage = 'Network error. Please check your internet connection and try again';
+                    this.errorMessage = 'Network error. Please check your internet connection and try again.';
                     break;
-
-                // Password reset errors
-                case 'auth/missing-email':
-                    this.errorMessage = 'Please enter your email address to reset your password';
+                case 'Server error. Please try again later.':
+                    this.errorMessage = 'Server error. Please try again later.';
                     break;
-
-                // Default error
+                case 'access-denied':
+                    this.errorMessage = 'Access denied. This portal is for administrators only.';
+                    break;
                 default:
-                    this.errorMessage = 'An error occurred. Please try again later';
+                    this.errorMessage = 'An error occurred. Please try again.';
                     console.error('Detailed error:', error);
             }
         }

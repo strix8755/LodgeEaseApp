@@ -6,6 +6,7 @@
     <title>LodgeEase - Create Account</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
     <script type="module" src="register.js"></script>
     <link rel="stylesheet" href="login.css">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
@@ -32,15 +33,17 @@
 
     <main>
         <div class="hero-bg h-screen flex items-center justify-center text-white relative">
+            <div id="app">
                 <!-- Registration Form Section -->
-                <div id="register" class="mt-8 max-w-md mx-auto bg-white/20 backdrop-blur-md rounded-xl p-8 shadow-2xl">
+                <div class="mt-8 max-w-md mx-auto bg-white/20 backdrop-blur-md rounded-xl p-8 shadow-2xl">
                     <h2 class="text-3xl font-bold mb-6 text-white">Create Account</h2>
-                    <form class="space-y-4">
+                    <form @submit.prevent="handleRegister" class="space-y-4" novalidate>
                         <div class="form-group">
                             <label for="fullname" class="block text-white mb-2">Full Name</label>
                             <input 
                                 type="text" 
                                 id="fullname" 
+                                v-model="fullname"
                                 required 
                                 class="w-full px-3 py-2 bg-white/20 backdrop-blur-md text-white border border-white/30 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
@@ -50,6 +53,7 @@
                             <input 
                                 type="email" 
                                 id="email" 
+                                v-model="email"
                                 required 
                                 class="w-full px-3 py-2 bg-white/20 backdrop-blur-md text-white border border-white/30 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
@@ -59,6 +63,7 @@
                             <input 
                                 type="text" 
                                 id="username" 
+                                v-model="username"
                                 required 
                                 class="w-full px-3 py-2 bg-white/20 backdrop-blur-md text-white border border-white/30 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
@@ -68,15 +73,27 @@
                             <input 
                                 type="password" 
                                 id="password" 
+                                v-model="password"
                                 required 
                                 class="w-full px-3 py-2 bg-white/20 backdrop-blur-md text-white border border-white/30 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
+                            <div class="text-sm text-white/80 mt-1">
+                                Password must contain:
+                                <ul class="list-disc list-inside">
+                                    <li>At least 6 characters</li>
+                                    <li>One uppercase letter</li>
+                                    <li>One lowercase letter</li>
+                                    <li>One number</li>
+                                    <li>One special character (!@#$%^&*)</li>
+                                </ul>
+                            </div>
                         </div>
                         <div class="form-group">
-                            <label for="confirm-password" class="block text-white mb-2">Confirm Password</label>
+                            <label for="confirmPassword" class="block text-white mb-2">Confirm Password</label>
                             <input 
                                 type="password" 
-                                id="confirm-password" 
+                                id="confirmPassword" 
+                                v-model="confirmPassword"
                                 required 
                                 class="w-full px-3 py-2 bg-white/20 backdrop-blur-md text-white border border-white/30 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
@@ -85,6 +102,7 @@
                             <input 
                                 type="checkbox" 
                                 id="terms" 
+                                v-model="terms"
                                 class="mr-2 text-blue-500"
                                 required
                             >
@@ -92,14 +110,22 @@
                         </div>
                         <button 
                             type="submit" 
-                            class="w-full bg-green-600 text-white py-3 rounded-md hover:bg-green-700 transition-colors"
+                            :disabled="loading"
+                            class="w-full bg-green-600 text-white py-3 rounded-md hover:bg-green-700 transition-colors flex items-center justify-center"
+                            :class="{ 'opacity-75 cursor-not-allowed': loading }"
                         >
-                            Create Account
+                            <span v-if="!loading">Create Account</span>
+                            <span v-else class="flex items-center">
+                                <span class="spinner mr-2"></span>
+                                Creating Account...
+                            </span>
                         </button>
                     </form>
-                    <div class="mt-4 text-center">
-                        <div class="error-message text-red-400"></div>
-                        <div class="success-message text-green-400"></div>
+                    <div v-if="errorMessage" class="error-message bg-red-500/80 text-white mt-4 p-3 rounded">
+                        {{ errorMessage }}
+                    </div>
+                    <div v-if="successMessage" class="success-message bg-green-500/80 text-white mt-4 p-3 rounded">
+                        {{ successMessage }}
                     </div>
                     <div class="social-signup mt-4">
                         <p class="text-white mb-2">Or sign up with:</p>
@@ -121,7 +147,7 @@
                     </div>
                 </div>
             </div>
-        </section>
+        </div>
     </main>
 
     <footer class="bg-gray-900 text-white py-12">

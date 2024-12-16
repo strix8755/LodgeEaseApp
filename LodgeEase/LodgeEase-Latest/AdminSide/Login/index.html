@@ -6,14 +6,15 @@
     <title>LodgeEase - Login</title>
     <link rel="stylesheet" href="login.css">
     <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+    <script type="module" src="../firebase.js"></script>
     <script type="module" src="login.js"></script>
 </head>
 <body>
     <div class="brand">Lodge<span>Ease</span></div>
     <div class="login-container" id="app">
         <div class="header">
-            <h1>{{ isLoginForm ? 'Welcome' : 'Create Account' }}</h1>
-            <p>{{ isLoginForm ? 'Please login to access the system' : 'Fill in the details to create an account' }}</p>
+            <h1>{{ isLoginForm ? 'Admin Portal' : 'Create Admin Account' }}</h1>
+            <p>{{ isLoginForm ? 'Please login to access the admin system' : 'Create an administrator account' }}</p>
         </div>
 
         <!-- Login Form -->

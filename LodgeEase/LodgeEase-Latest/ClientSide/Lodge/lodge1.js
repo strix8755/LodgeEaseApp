@@ -1,6 +1,5 @@
-// Import the addBooking function from firebase.js
-import { addBooking } from '../../AdminSide/firebase.js'; // Adjust the path if needed
-import { Timestamp } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore.js";
+import { db, auth, addBooking } from '../../AdminSide/firebase.js';
+import { doc, getDoc, Timestamp } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore.js";
 
 // Constants for pricing
 const NIGHTLY_RATE = 6500; // ₱6,500 per night as shown in the HTML
@@ -179,92 +178,273 @@ calendarModal.addEventListener('click', (e) => {
   }
 });
 
+// Get current user data
+async function getCurrentUserData() {
+    try {
+        const user = auth.currentUser;
+        
+        if (!user) {
+            window.location.href = '../Login/index.html';
+            throw new Error('User not logged in');
+        }
+
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if (userDoc.exists()) {
+            return userDoc.data();
+        } else {
+            throw new Error('User data not found');
+        }
+    } catch (error) {
+        console.error('Error getting user data:', error);
+        throw error;
+    }
+}
+
 async function saveBooking() {
     try {
-        if (!selectedCheckIn || !selectedCheckOut) {
-            throw new Error('Please select check-in and check-out dates');
+        // Get current user data
+        const userData = await getCurrentUserData();
+        if (!userData) {
+            throw new Error('Unable to get user data');
         }
 
-        const guestsSelect = document.querySelector('select');
-        if (!guestsSelect) {
-            throw new Error('Guests selection not found');
+        // Verify user is logged in
+        if (!auth.currentUser) {
+            window.location.href = '../Login/index.html';
+            throw new Error('Please log in to make a booking');
         }
 
-        const guests = guestsSelect.options[guestsSelect.selectedIndex].text;
+        // Get contact number
+        const contactNumber = document.getElementById('guest-contact')?.value;
+        if (!contactNumber) {
+            throw new Error('Please enter your contact number');
+        }
+
+        // Calculate booking details
         const nights = Math.round((selectedCheckOut - selectedCheckIn) / (1000 * 60 * 60 * 24));
         const subtotal = NIGHTLY_RATE * nights;
         const serviceFeeAmount = Math.round(subtotal * SERVICE_FEE_PERCENTAGE);
         const total = subtotal + serviceFeeAmount;
 
+        // Create booking data
         const bookingData = {
+            // Guest Information
+            guestName: userData.fullname,
+            email: userData.email,
+            contactNumber: contactNumber,
+            
+            // Dates
             checkIn: Timestamp.fromDate(selectedCheckIn),
             checkOut: Timestamp.fromDate(selectedCheckOut),
-            guests,
-            nightlyRate: NIGHTLY_RATE,
-            numberOfNights: nights,
-            subtotal,
-            serviceFee: serviceFeeAmount,
-            totalPrice: total,
-            status: 'pending',
             createdAt: Timestamp.fromDate(new Date()),
+            
+            // Property Details
             propertyDetails: {
                 name: 'Pine Haven Lodge',
-                location: 'Baguio City, Philippines'
+                location: 'Baguio City, Philippines',
+                roomNumber: 'A101',
+                roomType: 'Deluxe Suite',
+                floorLevel: '1st Floor'
             },
-            roomNumber: 'A101',
-            roomType: 'Deluxe Suite',
-            floorLevel: '1st Floor',
-            guestName: 'Guest'
+            
+            // Booking Details
+            guests: document.querySelector('select').value,
+            numberOfNights: nights,
+            nightlyRate: NIGHTLY_RATE,
+            
+            // Payment Information
+            subtotal: subtotal,
+            serviceFee: serviceFeeAmount,
+            totalPrice: total,
+            paymentStatus: 'pending',
+            
+            // Status
+            status: 'pending'
         };
 
-        // Store booking data in localStorage
-        localStorage.setItem('bookingData', JSON.stringify(bookingData));
-        localStorage.setItem('totalPrice', total.toString());
-        
-        console.log('Saving booking with data:', bookingData);
+        // Save booking using firebase.js addBooking function
         const bookingId = await addBooking(bookingData);
-        
         if (!bookingId) {
-            throw new Error('Failed to get booking ID');
+            throw new Error('Failed to save booking');
         }
-        
-        console.log('Booking saved successfully with ID:', bookingId);
+
+        // Store booking data for payment page
+        localStorage.setItem('bookingData', JSON.stringify(bookingData));
         localStorage.setItem('currentBookingId', bookingId);
+
         return bookingId;
 
     } catch (error) {
         console.error('Error in saveBooking:', error);
+        if (error.message.includes('permissions')) {
+            window.location.href = '../Login/index.html';
+            throw new Error('Please log in to make a booking');
+        }
         throw error;
     }
 }
 
-async function handleReserveClick(event) {
+export async function handleReserveClick(event) {
     event.preventDefault();
+    console.log('handleReserveClick called');
 
+    const reserveBtn = document.getElementById('reserve-btn');
+    if (!reserveBtn) {
+        console.error('Reserve button not found');
+        return;
+    }
+
+    const buttonText = reserveBtn.textContent;
+    
     try {
-        if (!selectedCheckIn || !selectedCheckOut) {
-            alert('Please select check-in and check-out dates');
+        // Check if user is logged in first
+        if (!auth.currentUser) {
+            window.location.href = '../Login/index.html';
             return;
         }
 
+        // Show loading state
+        reserveBtn.textContent = 'Processing...';
+        reserveBtn.disabled = true;
+
+        console.log('Validating dates...');
+        // Validate dates
+        if (!selectedCheckIn || !selectedCheckOut) {
+            throw new Error('Please select check-in and check-out dates');
+        }
+
+        console.log('Validating contact number...');
+        // Validate contact number
+        const contactNumber = document.getElementById('guest-contact')?.value;
+        if (!contactNumber) {
+            throw new Error('Please enter your contact number');
+        }
+
+        console.log('Attempting to save booking...');
+        console.log('Selected dates:', { checkIn: selectedCheckIn, checkOut: selectedCheckOut });
+        console.log('Contact number:', contactNumber);
+
         const bookingId = await saveBooking();
+        console.log('Booking saved with ID:', bookingId);
+        
         if (bookingId) {
+            console.log('Redirecting to payment page...');
             window.location.href = `pay.html?bookingId=${encodeURIComponent(bookingId)}`;
         } else {
             throw new Error('Failed to create booking');
         }
+
     } catch (error) {
-        console.error('Error handling reserve click:', error);
-        alert('There was an error processing your booking. Please try again.');
+        console.error('Booking error:', error);
+        if (error.message.includes('permissions') || error.message.includes('log in')) {
+            window.location.href = '../Login/index.html';
+            return;
+        }
+        alert(error.message || 'There was an error processing your booking. Please try again.');
+        
+        // Reset button state
+        reserveBtn.textContent = buttonText;
+        reserveBtn.disabled = false;
     }
 }
 
-// Add event listener to reserve button
+// Update the event listener setup
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('DOM Content Loaded');
+  // Initialize all event listeners
+  initializeEventListeners();
+
+  // Auth state observer
+  auth.onAuthStateChanged((user) => {
+    if (!user) {
+      window.location.href = '../Login/index.html';
+    }
+  });
+});
+
+function initializeEventListeners() {
+  // Initialize calendar
+  renderCalendar(currentDate);
+
+  // Direct event listener for reserve button
   const reserveBtn = document.getElementById('reserve-btn');
   if (reserveBtn) {
-    reserveBtn.addEventListener('click', handleReserveClick);
+    console.log('Found reserve button, adding click listener');
+    reserveBtn.onclick = async (event) => {
+      console.log('Reserve button clicked');
+      try {
+        await handleReserveClick(event);
+      } catch (error) {
+        console.error('Error in reserve button click handler:', error);
+      }
+    };
   } else {
     console.error('Reserve button not found');
   }
-});
+
+  // Auth state observer
+  auth.onAuthStateChanged((user) => {
+    if (!user) {
+      window.location.href = '../Login/index.html';
+    }
+  });
+
+  // Calendar event listeners
+  checkInInput?.addEventListener('click', () => {
+    calendarModal.classList.remove('hidden');
+    calendarModal.classList.add('flex');
+  });
+
+  checkOutInput?.addEventListener('click', () => {
+    if (selectedCheckIn) {
+      calendarModal.classList.remove('hidden');
+      calendarModal.classList.add('flex');
+    }
+  });
+
+  closeCalendarBtn?.addEventListener('click', () => {
+    calendarModal.classList.add('hidden');
+    calendarModal.classList.remove('flex');
+  });
+
+  clearDatesBtn?.addEventListener('click', () => {
+    selectedCheckIn = null;
+    selectedCheckOut = null;
+    checkInInput.value = '';
+    checkOutInput.value = '';
+    nightsSelected.textContent = '';
+    pricingDetails.classList.add('hidden');
+    renderCalendar(currentDate);
+  });
+
+  prevMonthBtn?.addEventListener('click', () => {
+    currentDate.setMonth(currentDate.getMonth() - 1);
+    renderCalendar(currentDate);
+  });
+
+  nextMonthBtn?.addEventListener('click', () => {
+    currentDate.setMonth(currentDate.getMonth() + 1);
+    renderCalendar(currentDate);
+  });
+
+  // Calendar modal outside click
+  calendarModal?.addEventListener('click', (e) => {
+    if (e.target === calendarModal) {
+      calendarModal.classList.add('hidden');
+      calendarModal.classList.remove('flex');
+    }
+  });
+}
+
+// Add error checking function
+function validateBookingData(bookingData) {
+    const required = ['checkIn', 'checkOut', 'guests', 'nightlyRate', 'numberOfNights', 
+                     'subtotal', 'serviceFee', 'totalPrice', 'status', 'createdAt'];
+    
+    for (const field of required) {
+        if (!bookingData[field]) {
+            throw new Error(`Missing required field: ${field}`);
+        }
+    }
+    return true;
+}

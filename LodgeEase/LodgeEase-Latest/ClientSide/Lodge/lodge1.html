@@ -66,11 +66,20 @@
           <option>1 guest</option>
           <option>2 guests</option>
         </select>
-        <a href="pay.html">
-          <button id="reserve-btn" class="w-full bg-blue-500 text-white py-2 rounded-md font-medium hover:bg-blue-600">
-            Reserve
-          </button>
-        </a>        
+        <div class="form-group">
+            <label for="guest-contact">Contact Number:</label>
+            <input type="tel" id="guest-contact" required placeholder="Enter your contact number">
+        </div>
+        <div class="booking-button-container">
+            <button 
+                id="reserve-btn" 
+                type="button"
+                class="w-full bg-blue-500 text-white py-2 rounded-md font-medium hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                onclick="handleReserveClick(event)"
+            >
+                Reserve
+            </button>
+        </div>        
 
         <!-- Pricing Details -->
         <div id="pricing-details" class="mt-4 hidden">
@@ -293,7 +302,10 @@
       </div>
   </div>
 
-  <script type="module" src="lodge1.js"></script>
+  <script type="module">
+    import { handleReserveClick } from '../Lodge/lodge1.js';
+    window.handleReserveClick = handleReserveClick;
+  </script>
   <script type="module">
     import { initializeUserDrawer } from '../components/userDrawer.js';
     document.addEventListener('DOMContentLoaded', initializeUserDrawer);

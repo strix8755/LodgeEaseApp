@@ -1,72 +1,107 @@
 // login.js
-import { signIn } from '../../AdminSide/firebase.js';
+import { signIn, auth } from '../../AdminSide/firebase.js';
+import { sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-auth.js";
 
-document.addEventListener('DOMContentLoaded', function() {
-    const loginForm = document.querySelector('form');
-    const userInput = document.getElementById('username');
-    const passwordInput = document.getElementById('password');
-    
-    // Function to show error state
-    function showError(element, message) {
-        element.classList.add('input-error');
-        const errorDiv = document.querySelector('.error-message');
-        errorDiv.textContent = message;
-        errorDiv.style.display = 'block';
-    }
-
-    // Function to clear error state
-    function clearError(element) {
-        element.classList.remove('input-error');
-        const errorDiv = document.querySelector('.error-message');
-        errorDiv.style.display = 'none';
-    }
-
-    // Input validation
-    userInput.addEventListener('input', () => clearError(userInput));
-    passwordInput.addEventListener('input', () => clearError(passwordInput));
-
-    loginForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const username = document.getElementById('username').value;
-        const password = document.getElementById('password').value;
-        
-        // For demo purposes - in production, this should be a proper authentication
-        if (username && password) {
-            // Store user info in localStorage
-            const userInfo = {
-                name: username,
-                email: username.includes('@') ? username : `${username}@example.com`,
-                isLoggedIn: true
-            };
+new Vue({
+    el: '#app',
+    data() {
+        return {
+            email: '',
+            password: '',
+            remember: false,
+            loading: false,
+            errorMessage: '',
+            successMessage: '',
+        };
+    },
+    methods: {
+        async handleLogin() {
+            this.errorMessage = '';
+            this.successMessage = '';
             
-            localStorage.setItem('userInfo', JSON.stringify(userInfo));
+            if (!this.email) {
+                this.errorMessage = 'Please enter your email or username';
+                return;
+            }
             
-            // Redirect to rooms page
-            window.location.href = '../Homepage/rooms.html';
+            if (!this.password) {
+                this.errorMessage = 'Please enter your password';
+                return;
+            }
+
+            this.loading = true;
+
+            try {
+                const user = await signIn(this.email, this.password);
+                
+                if (this.remember) {
+                    localStorage.setItem('userEmail', this.email);
+                } else {
+                    localStorage.removeItem('userEmail');
+                }
+
+                this.successMessage = 'Login successful! Redirecting...';
+                
+                setTimeout(() => {
+                    window.location.href = '../Homepage/rooms.html';
+                }, 1500);
+
+            } catch (error) {
+                this.handleAuthError(error);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async handleForgotPassword() {
+            if (!this.email) {
+                this.errorMessage = 'Please enter your email address';
+                return;
+            }
+
+            this.loading = true;
+            this.errorMessage = '';
+            this.successMessage = '';
+
+            try {
+                await sendPasswordResetEmail(auth, this.email);
+                this.successMessage = 'Password reset email sent. Please check your inbox.';
+            } catch (error) {
+                this.handleAuthError(error);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        handleAuthError(error) {
+            console.error('Authentication error:', error);
+            
+            switch (error.code) {
+                case 'auth/user-not-found':
+                    this.errorMessage = 'No account found with this email/username';
+                    break;
+                case 'auth/wrong-password':
+                    this.errorMessage = 'Invalid password';
+                    break;
+                case 'auth/invalid-email':
+                    this.errorMessage = 'Please enter a valid email address';
+                    break;
+                case 'auth/network-request-failed':
+                    this.errorMessage = 'Network error. Please check your connection';
+                    break;
+                default:
+                    this.errorMessage = 'Login failed. Please try again.';
+            }
         }
-    });
-
-    const userIcon = document.querySelector('.ri-user-line');
-    const userDrawer = document.getElementById('userDrawer');
-    const closeDrawer = document.getElementById('closeDrawer');
-    const drawerOverlay = document.getElementById('drawerOverlay');
-  
-    // Open drawer
-    userIcon.addEventListener('click', function() {
-      userDrawer.classList.remove('translate-x-full');
-      drawerOverlay.classList.remove('hidden');
-    });
-  
-    // Close drawer
-    closeDrawer.addEventListener('click', closeUserDrawer);
-    drawerOverlay.addEventListener('click', closeUserDrawer);
-  
-    function closeUserDrawer() {
-      userDrawer.classList.add('translate-x-full');
-      drawerOverlay.classList.add('hidden');
+    },
+    created() {
+        const savedEmail = localStorage.getItem('userEmail');
+        if (savedEmail) {
+            this.email = savedEmail;
+            this.remember = true;
+        }
     }
-  });
+});
 
 function handleLogin(event) {
   event.preventDefault();
