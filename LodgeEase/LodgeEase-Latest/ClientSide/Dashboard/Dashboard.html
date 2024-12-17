@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hotel Client Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="app.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../Homepage/styles.css">
@@ -22,13 +21,18 @@
             <li><a href="../Login/index.html" class="hover:text-blue-600 transition-colors">Log In</a></li>
             <li><a href="../Homepage/rooms.html" class="hover:text-blue-600 transition-colors">Home</a></li>
             <li>
-              <a href="#" class="text-gray-600 hover:text-blue-600 transition-colors">
-                  <i class="ri-user-line text-2xl"></i>
-              </a>
-          </li>
+                <a href="#" class="text-gray-600 hover:text-blue-600 transition-colors">
+                    <i class="ri-user-line text-2xl"></i>
+                </a>
+            </li>
         </ul>
     </nav>
     </header>
+    <div id="userDrawer" class="fixed top-0 right-0 w-80 h-full bg-white shadow-xl transform transition-transform duration-300 z-50 translate-x-full">
+        <div class="drawer-content">
+            <!-- Content will be dynamically inserted by JavaScript -->
+        </div>
+    </div>
     <div class="flex min-h-screen">
 
 
@@ -178,9 +182,48 @@
     </div>
 
     <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-app.js";
+        import { getAuth } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-auth.js";
+        import { getFirestore } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore.js";
         import { initializeUserDrawer } from '../components/userDrawer.js';
-        document.addEventListener('DOMContentLoaded', initializeUserDrawer);
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBAJr0JQgWRfGTmSXTK6P7Yn8fkHXG2YeE",
+            authDomain: "lms-app-2b903.firebaseapp.com",
+            projectId: "lms-app-2b903",
+            storageBucket: "lms-app-2b903.appspot.com",
+            messagingSenderId: "1046108373013",
+            appId: "1:1046108373013:web:fc366db1d92b9c4b860e1c",
+            measurementId: "G-WRMW9Z8867"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Initialize user drawer
+        initializeUserDrawer(auth, db);
+
+        // Add click handler to both icon and its parent
+        const userIcon = document.querySelector('.ri-user-line');
+        const iconParent = userIcon?.parentElement;
+
+        if (userIcon && iconParent) {
+            [userIcon, iconParent].forEach(element => {
+                element.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Click event triggered');
+                    const drawer = document.getElementById('userDrawer');
+                    if (drawer) {
+                        console.log('Opening drawer');
+                        drawer.classList.remove('translate-x-full');
+                    }
+                });
+            });
+        }
     </script>
+    <script src="dashboard.js"></script>
 
     <footer class="bg-gray-900 text-white py-12">
       <div class="container mx-auto px-6 text-center">
@@ -202,6 +245,5 @@
         </div>
       </div>
     </footer>
-    <script src="dashboard.js"></script>
 </body>
 </html>

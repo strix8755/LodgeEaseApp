@@ -8,7 +8,6 @@
   <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
   <link rel="stylesheet" href="../Homepage/styles.css">
-  <Script src="rooms.js"></Script>
 </head>
 
 <body class="text-gray-800 bg-gray-100">
@@ -28,6 +27,12 @@
       </ul>
   </nav>
   </header>
+  <!-- Add this right after the header -->
+  <div id="userDrawer" class="fixed top-0 right-0 w-80 h-full bg-white shadow-xl transform transition-transform duration-300 z-50 translate-x-full">
+    <div class="drawer-content">
+        <!-- Content will be dynamically inserted by JavaScript -->
+    </div>
+  </div>
   <div class="pt-20">
     <div class="max-w-2xl mx-auto p-6 bg-white shadow-lg rounded-lg">
       <!-- Header -->
@@ -74,14 +79,14 @@
           <!-- Pay Now Option -->
           <label class="block p-4 border rounded-lg cursor-pointer hover:bg-gray-50">
             <input type="radio" name="payment_type" class="mr-4 text-indigo-600 focus:ring-indigo-500" value="pay_now">
-            <span class="font-medium text-gray-800">Pay ₱37,088.25 now</span>
+            <span class="font-medium text-gray-800">Pay <span id="pay-now-amount"></span> now</span>
           </label>
 
           <!-- Pay Later Option -->
           <label class="block p-4 border rounded-lg cursor-pointer hover:bg-gray-50">
             <input type="radio" name="payment_type" class="mr-4 text-indigo-600 focus:ring-indigo-500" value="pay_later">
             <span class="font-medium text-gray-800">Pay part now, part later</span>
-            <p class="text-gray-500 text-sm">₱20,838.25 due today, ₱16,250.00 on Jan 4, 2025. No extra fees.</p>
+            <p class="text-gray-500 text-sm"><span id="pay-later-first"></span> due today, <span id="pay-later-second"></span> on Jan 4, 2025. No extra fees.</p>
           </label>
         </div>
       </form>
@@ -203,9 +208,33 @@
     </div>
   </div>
   <script type="module">
-      import { initializeUserDrawer } from '../components/userDrawer.js';
-      document.addEventListener('DOMContentLoaded', initializeUserDrawer);
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-app.js";
+    import { getAuth } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-auth.js";
+    import { getFirestore } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore.js";
+    import { initializeUserDrawer } from '../components/userDrawer.js';
+
+    // Firebase configuration
+    const firebaseConfig = {
+        apiKey: "AIzaSyBAJr0JQgWRfGTmSXTK6P7Yn8fkHXG2YeE",
+        authDomain: "lms-app-2b903.firebaseapp.com",
+        projectId: "lms-app-2b903",
+        storageBucket: "lms-app-2b903.appspot.com",
+        messagingSenderId: "1046108373013",
+        appId: "1:1046108373013:web:fc366db1d92b9c4b860e1c",
+        measurementId: "G-WRMW9Z8867"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // Initialize user drawer
+    document.addEventListener('DOMContentLoaded', () => {
+        initializeUserDrawer(auth, db);
+    });
   </script>
-  <script src="../Lodge/pay.js"></script>
+  <script type="module" src="../../AdminSide/firebase.js"></script>
+  <script src="pay.js"></script>
 </body>
 </html>

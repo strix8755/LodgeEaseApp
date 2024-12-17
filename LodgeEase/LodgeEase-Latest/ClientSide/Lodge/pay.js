@@ -87,21 +87,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     if (bookingId && bookingId === storedBookingId) {
         try {
-            // Update payment amount displays
-            const payNowLabel = document.querySelector('input[value="pay_now"]').parentElement.querySelector('span');
-            const payLaterLabel = document.querySelector('input[value="pay_later"]').parentElement.querySelector('span');
-            
-            // Get total price from localStorage or calculate it
-            const totalPrice = localStorage.getItem('totalPrice');
-            if (totalPrice) {
-                payNowLabel.textContent = `Pay ₱${parseFloat(totalPrice).toLocaleString()} now`;
-                payLaterLabel.textContent = `Pay ₱${parseFloat(totalPrice).toLocaleString()} at property`;
-            }
+            const bookingData = JSON.parse(localStorage.getItem('bookingData'));
+            const totalAmount = bookingData.totalPrice;
 
-            // Update success modal amount
-            const successAmount = document.querySelector('#payment-success-modal p');
-            if (successAmount) {
-                successAmount.textContent = `Your payment of ₱${parseFloat(totalPrice).toLocaleString()} has been processed successfully.`;
+            if (totalAmount) {
+                const firstPayment = totalAmount * 0.562; // 56.2% of total
+                const secondPayment = totalAmount * 0.438; // 43.8% of total
+
+                document.getElementById('pay-now-amount').textContent = `₱${totalAmount.toLocaleString()}`;
+                document.getElementById('pay-later-first').textContent = `₱${firstPayment.toLocaleString()}`;
+                document.getElementById('pay-later-second').textContent = `₱${secondPayment.toLocaleString()}`;
+
+                // Update success modal amount
+                const successAmount = document.querySelector('#payment-success-modal p');
+                if (successAmount) {
+                    successAmount.textContent = `Your payment of ₱${totalAmount.toLocaleString()} has been processed successfully.`;
+                }
             }
         } catch (error) {
             console.error('Error loading booking details:', error);

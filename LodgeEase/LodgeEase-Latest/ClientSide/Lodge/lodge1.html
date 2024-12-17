@@ -29,6 +29,11 @@
   </nav>
   </header>
 
+  <div id="userDrawer" class="fixed top-0 right-0 w-80 h-full bg-white shadow-xl transform transition-transform duration-300 z-50 translate-x-full">
+    <div class="drawer-content">
+        <!-- Content will be dynamically inserted by JavaScript -->
+    </div>
+  </div>
 
   <!-- Main Content -->
   <div class="max-w-6xl mx-auto px-4 pt-24">
@@ -303,34 +308,45 @@
   </div>
 
   <script type="module">
+    // Import Firebase modules
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-app.js";
+    import { getAuth } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-auth.js";
+    import { getFirestore } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore.js";
     import { handleReserveClick } from '../Lodge/lodge1.js';
-    window.handleReserveClick = handleReserveClick;
-  </script>
-  <script type="module">
     import { initializeUserDrawer } from '../components/userDrawer.js';
-    document.addEventListener('DOMContentLoaded', initializeUserDrawer);
+
+    // Firebase configuration
+    const firebaseConfig = {
+        apiKey: "AIzaSyBAJr0JQgWRfGTmSXTK6P7Yn8fkHXG2YeE",
+        authDomain: "lms-app-2b903.firebaseapp.com",
+        projectId: "lms-app-2b903",
+        storageBucket: "lms-app-2b903.appspot.com",
+        messagingSenderId: "1046108373013",
+        appId: "1:1046108373013:web:fc366db1d92b9c4b860e1c",
+        measurementId: "G-WRMW9Z8867"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // Make handleReserveClick available globally
+    window.handleReserveClick = handleReserveClick;
+
+    // Initialize user drawer
+    initializeUserDrawer(auth, db);
+
+    // Add direct click handler for testing
+    document.getElementById('userIcon')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        console.log('Direct click on user icon');
+        const drawer = document.getElementById('userDrawer');
+        if (drawer) {
+            drawer.classList.remove('translate-x-full');
+        }
+    });
   </script>
-  <!-- Footer -->
-  <footer class="bg-gray-900 text-white py-12 mt-12">
-    <div class="container mx-auto px-6 text-center">
-      <div class="mb-8">
-        <h3 class="text-3xl font-bold text-blue-500 mb-4">LodgeEase</h3>
-        <p class="text-gray-300">Aspiras palispis highway, Baguio City, Benguet, 2600 Philippines</p>
-        <p class="text-gray-300">Contact: +(63) 9129 912 6584 | lodgeease.baguio@email.com</p>
-      </div>
-      <div class="flex justify-center space-x-6">
-        <a href="#" class="text-2xl text-blue-400 hover:text-white transition-colors">
-          <i class="fab fa-instagram"></i>
-        </a>
-        <a href="#" class="text-2xl text-blue-400 hover:text-white transition-colors">
-          <i class="fab fa-facebook"></i>
-        </a>
-        <a href="#" class="text-2xl text-blue-400 hover:text-white transition-colors">
-          <i class="fab fa-twitter"></i>
-        </a>
-      </div>
-    </div>
-  </footer>
   <script>
     document.getElementById('toggle-reviews').addEventListener('click', function() {
         const reviewsSection = document.getElementById('reviews-section');
