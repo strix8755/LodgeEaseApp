@@ -1,9 +1,37 @@
-        // Initialize chat with welcome message
-        document.addEventListener('DOMContentLoaded', () => {
-            addMessage('Welcome to Lodge Ease AI Assistant! I can help you with:\n- Occupancy predictions\n- Revenue forecasts\n- Seasonal trends\n- Booking patterns\n\nWhat would you like to know?', 'bot');
-        });
+import { auth } from '../firebase.js';
+import { signOut } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-auth.js";
 
-        function addMessage(content, type) {
+new Vue({
+    el: '#app',
+    data: {
+        isAuthenticated: false,
+        loading: true,
+        messages: []
+    },
+    methods: {
+        async handleLogout() {
+            try {
+                await signOut(auth);
+                window.location.href = '../Login/index.html';
+            } catch (error) {
+                console.error('Error signing out:', error);
+                alert('Error signing out. Please try again.');
+            }
+        },
+
+        checkAuthState() {
+            auth.onAuthStateChanged(user => {
+                this.isAuthenticated = !!user;
+                if (!user) {
+                    window.location.href = '../Login/index.html';
+                }
+                this.loading = false;
+                // Initialize chat after auth check
+                this.addMessage('Welcome to Lodge Ease AI Assistant! I can help you with:\n- Occupancy predictions\n- Revenue forecasts\n- Seasonal trends\n- Booking patterns\n\nWhat would you like to know?', 'bot');
+            });
+        },
+
+        addMessage(content, type) {
             const chatContainer = document.getElementById('chatContainer');
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${type}`;
@@ -17,14 +45,14 @@
             
             chatContainer.appendChild(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
-        }
+        },
 
-        function sendMessage() {
+        sendMessage() {
             const input = document.getElementById('chatInput');
             const message = input.value.trim();
             
             if (message) {
-                addMessage(message, 'user');
+                this.addMessage(message, 'user');
                 input.value = '';
                 
                 // Simulate bot response (replace with actual API call in production)
@@ -36,25 +64,29 @@
                         "I can help you analyze those trends. Which specific aspects would you like to explore?"
                     ];
                     const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-                    addMessage(randomResponse, 'bot');
+                    this.addMessage(randomResponse, 'bot');
                 }, 1000);
             }
-        }
+        },
 
-        function submitSuggestion(suggestion) {
+        submitSuggestion(suggestion) {
             document.getElementById('chatInput').value = suggestion;
-            sendMessage();
-        }
+            this.sendMessage();
+        },
 
-        function startNewChat() {
+        startNewChat() {
             const chatContainer = document.getElementById('chatContainer');
             chatContainer.innerHTML = '';
-            addMessage('Welcome to Lodge Ease AI Assistant! How can I help you today?', 'bot');
+            this.addMessage('Welcome to Lodge Ease AI Assistant! How can I help you today?', 'bot');
         }
-
+    },
+    mounted() {
+        this.checkAuthState();
         // Handle enter key in input
         document.getElementById('chatInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
-                sendMessage();
+                this.sendMessage();
             }
         });
+    }
+});

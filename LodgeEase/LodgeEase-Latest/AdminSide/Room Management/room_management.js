@@ -18,6 +18,7 @@ import {
     uploadBytes, 
     getDownloadURL 
 } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-storage.js";
+import { signOut } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-auth.js";
 
 // Initialize Firebase Storage
 const storage = getStorage();
@@ -550,15 +551,31 @@ new Vue({
             } finally {
                 this.loading = false;
             }
+        },
+
+        async handleLogout() {
+            try {
+                await signOut(auth);
+                window.location.href = '../Login/index.html';
+            } catch (error) {
+                console.error('Error signing out:', error);
+                alert('Error signing out. Please try again.');
+            }
+        },
+
+        checkAuthState() {
+            auth.onAuthStateChanged(user => {
+                this.isAuthenticated = !!user;
+                if (!user) {
+                    window.location.href = '../Login/index.html';
+                } else {
+                    this.fetchBookings(); // Fetch bookings when user is authenticated
+                }
+                this.loading = false;
+            });
         }
     },
     async mounted() {
-        try {
-            console.log('Component mounted, fetching bookings...');
-            await this.fetchBookings();
-        } catch (error) {
-            console.error('Error in mounted:', error);
-            alert('Error loading page: ' + error.message);
-        }
+        this.checkAuthState(); // This will handle auth check and fetch bookings
     }
 });

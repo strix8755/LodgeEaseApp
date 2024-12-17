@@ -6,6 +6,7 @@
     <title>Reports - Lodge Ease</title>
     <script type="module" src="../firebase.js"></script>
     <script type="module" src="../js/auth-check.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
     <script type="module" src="reports.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -25,13 +26,22 @@
                 <ul>
                     <li><a href="../Dashboard/Dashboard.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
                     <li><a href="../Room Management/room_management.html"><i class="fas fa-bed"></i> Room Management</a></li>
-                    <li><a href="../Reservation/reservations.html"><i class="fas fa-calendar-alt"></i> Reservations</a></li>
                     <li><a href="../Billing/billing.html"><i class="fas fa-money-bill-wave"></i> Billing</a></li>
                     <li><a href="../Reports/reports.html"><i class="fas fa-chart-line"></i> Reports</a></li>
                     <li><a href="../Settings/settings.html"><i class="fas fa-cog"></i> Settings</a></li>
-                    <li><a href="../AInalysis/AInalysis.html"><i class="fas fa-robot"></i>ChatBot</a></li>
+                    <li><a href="../AInalysis/AInalysis.html"><i class="fas fa-robot"></i> ChatBot</a></li>
                 </ul>
             </nav>
+            <div class="auth-buttons">
+                <button v-if="isAuthenticated" @click="handleLogout" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> 
+                    <span>Logout</span>
+                </button>
+                <a v-else href="../Login/index.html" class="login-btn">
+                    <i class="fas fa-sign-in-alt"></i> 
+                    <span>Login</span>
+                </a>
+            </div>
         </aside>
 
         <main class="main-content">
@@ -107,6 +117,10 @@
                 </div>
             </section>
         </main>
+
+        <div v-if="loading" class="loading">
+            <i class="fas fa-spinner fa-spin"></i>
+        </div>
     </div>
 </body>
 </html>

@@ -1,3 +1,12 @@
+import { auth, db } from '../firebase.js';
+import { 
+    updatePassword, 
+    reauthenticateWithCredential,
+    EmailAuthProvider,
+    signOut 
+} from "https://www.gstatic.com/firebasejs/9.18.0/firebase-auth.js";
+import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore.js";
+
 // Initialize Vue instance
 new Vue({
     el: '#app',
@@ -34,11 +43,65 @@ new Vue({
             loginAlerts: true
         },
 
+        // New data properties for account settings
+        userProfile: {
+            fullname: '',
+            email: '',
+            username: '',
+            role: '',
+            photoURL: null
+        },
+        passwords: {
+            current: '',
+            new: '',
+            confirm: ''
+        },
+        showPassword: {
+            current: false,
+            new: false,
+            confirm: false
+        },
+        loading: false,
+        activeSessions: [],
+
         // Flag to show success message
         showSuccessMessage: false,
 
         // Flag to track if settings have been modified
-        settingsModified: false
+        settingsModified: false,
+
+        isAuthenticated: false,
+    },
+
+    computed: {
+        isPasswordValid() {
+            return this.passwords.new && 
+                   this.passwords.new === this.passwords.confirm && 
+                   this.passwordStrength !== 'weak';
+        },
+        passwordStrength() {
+            if (!this.passwords.new) return '';
+            
+            const password = this.passwords.new;
+            const hasUpperCase = /[A-Z]/.test(password);
+            const hasLowerCase = /[a-z]/.test(password);
+            const hasNumbers = /\d/.test(password);
+            const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+            
+            if (password.length < 8) return 'weak';
+            if (hasUpperCase && hasLowerCase && hasNumbers && hasSpecialChar) return 'strong';
+            if ((hasUpperCase || hasLowerCase) && hasNumbers) return 'medium';
+            return 'weak';
+        },
+        passwordStrengthText() {
+            const strength = this.passwordStrength;
+            if (!strength) return '';
+            return {
+                weak: 'Weak - Use at least 8 characters with numbers and letters',
+                medium: 'Medium - Add special characters for stronger password',
+                strong: 'Strong password'
+            }[strength];
+        }
     },
 
     // Watch for changes in settings
@@ -189,12 +252,113 @@ new Vue({
             }
 
             return await response.json();
+        },
+
+        async loadUserProfile() {
+            try {
+                const user = auth.currentUser;
+                if (!user) return;
+
+                const userDoc = await getDoc(doc(db, "admin_users", user.uid));
+                if (userDoc.exists()) {
+                    const userData = userDoc.data();
+                    this.userProfile = {
+                        fullname: userData.fullname,
+                        email: user.email,
+                        username: userData.username,
+                        role: userData.role,
+                        photoURL: user.photoURL || null
+                    };
+                }
+            } catch (error) {
+                console.error('Error loading user profile:', error);
+            }
+        },
+
+        togglePasswordVisibility(field) {
+            this.showPassword[field] = !this.showPassword[field];
+        },
+
+        async changePassword() {
+            if (!this.isPasswordValid) return;
+            
+            this.loading = true;
+            try {
+                const user = auth.currentUser;
+                const credential = EmailAuthProvider.credential(
+                    user.email,
+                    this.passwords.current
+                );
+
+                // Reauthenticate user
+                await reauthenticateWithCredential(user, credential);
+                
+                // Update password
+                await updatePassword(user, this.passwords.new);
+                
+                // Reset form
+                this.passwords = { current: '', new: '', confirm: '' };
+                alert('Password updated successfully!');
+            } catch (error) {
+                console.error('Error changing password:', error);
+                alert(error.message);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async updateProfilePhoto() {
+            // Implement profile photo update functionality
+            alert('Profile photo update functionality will be implemented soon');
+        },
+
+        async terminateSession(sessionId) {
+            // Implement session termination functionality
+            alert('Session termination functionality will be implemented soon');
+        },
+
+        // Mock function to load active sessions
+        loadActiveSessions() {
+            this.activeSessions = [
+                {
+                    id: 'current',
+                    deviceName: 'Current Browser',
+                    deviceIcon: 'fas fa-laptop',
+                    location: 'Current Location',
+                    lastActive: 'Now',
+                    isCurrent: true
+                }
+                // Add more mock sessions if needed
+            ];
+        },
+
+        async handleLogout() {
+            try {
+                await signOut(auth);
+                window.location.href = '../Login/index.html';
+            } catch (error) {
+                console.error('Error signing out:', error);
+                alert('Error signing out. Please try again.');
+            }
+        },
+
+        checkAuthState() {
+            auth.onAuthStateChanged(user => {
+                this.isAuthenticated = !!user;
+                if (!user) {
+                    window.location.href = '../Login/index.html';
+                } else {
+                    this.loadUserProfile();
+                }
+            });
         }
     },
 
     // Load settings when component is mounted
     mounted() {
+        this.checkAuthState();
         this.loadSettings();
+        this.loadActiveSessions();
 
         // Add warning before leaving page with unsaved changes
         window.addEventListener('beforeunload', (e) => {

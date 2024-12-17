@@ -1,6 +1,7 @@
 // Import Firebase modules
-import { db, auth } from '../../AdminSide/firebase.js';
+import { db, auth } from '../firebase.js';
 import { collection, getDocs, query, orderBy, limit, doc, deleteDoc, updateDoc, Timestamp } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore.js";
+import { signOut } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-auth.js";
 
 // Vue app for the dashboard
 new Vue({
@@ -16,13 +17,25 @@ new Vue({
         loading: true
     },
     methods: {
-        async checkAuth() {
-            return new Promise((resolve) => {
-                auth.onAuthStateChanged((user) => {
-                    this.isAuthenticated = !!user;
-                    this.loading = false;
-                    resolve(!!user);
-                });
+        async handleLogout() {
+            try {
+                await signOut(auth);
+                window.location.href = '../Login/index.html';
+            } catch (error) {
+                console.error('Error signing out:', error);
+                alert('Error signing out. Please try again.');
+            }
+        },
+
+        checkAuthState() {
+            auth.onAuthStateChanged(user => {
+                this.isAuthenticated = !!user;
+                if (!user) {
+                    window.location.href = '../Login/index.html';
+                } else {
+                    this.fetchBookings(); // Fetch bookings when user is authenticated
+                }
+                this.loading = false;
             });
         },
 
@@ -282,17 +295,6 @@ new Vue({
         }
     },
     async mounted() {
-        try {
-            const isAuthenticated = await this.checkAuth();
-            if (isAuthenticated) {
-                await this.fetchBookings();
-            } else {
-                // Redirect to login page
-                window.location.href = '../Login/index.html';
-            }
-        } catch (error) {
-            console.error('Authentication error:', error);
-            alert('Authentication error. Please try again.');
-        }
+        this.checkAuthState(); // This will handle auth check and fetch bookings
     }
 });

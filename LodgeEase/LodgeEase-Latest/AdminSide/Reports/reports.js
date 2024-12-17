@@ -1,3 +1,6 @@
+import { auth } from '../firebase.js';
+import { signOut } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-auth.js";
+
 // Sample data for charts
 const revenueData = {
     labels: ['January', 'February', 'March', 'April'],
@@ -41,20 +44,69 @@ const guestData = {
     }]
 };
 
-const ctxRevenue = document.getElementById('revenueChart').getContext('2d');
-new Chart(ctxRevenue, {
-    type: 'bar',
-    data: revenueData,
-});
+new Vue({
+    el: '.app',
+    data: {
+        isAuthenticated: false,
+        loading: true,
+        charts: {
+            revenue: null,
+            occupancy: null,
+            guest: null
+        }
+    },
+    methods: {
+        async handleLogout() {
+            try {
+                await signOut(auth);
+                window.location.href = '../Login/index.html';
+            } catch (error) {
+                console.error('Error signing out:', error);
+                alert('Error signing out. Please try again.');
+            }
+        },
 
-const ctxOccupancy = document.getElementById('occupancyChart').getContext('2d');
-new Chart(ctxOccupancy, {
-    type: 'line',
-    data: occupancyData,
-});
+        checkAuthState() {
+            auth.onAuthStateChanged(user => {
+                this.isAuthenticated = !!user;
+                if (!user) {
+                    window.location.href = '../Login/index.html';
+                } else {
+                    this.initializeCharts();
+                }
+                this.loading = false;
+            });
+        },
 
-const ctxGuest = document.getElementById('guestChart').getContext('2d');
-new Chart(ctxGuest, {
-    type: 'doughnut',
-    data: guestData,
+        initializeCharts() {
+            // Destroy existing charts if they exist
+            Object.values(this.charts).forEach(chart => {
+                if (chart) chart.destroy();
+            });
+
+            // Initialize Revenue Chart
+            const ctxRevenue = document.getElementById('revenueChart').getContext('2d');
+            this.charts.revenue = new Chart(ctxRevenue, {
+                type: 'bar',
+                data: revenueData,
+            });
+
+            // Initialize Occupancy Chart
+            const ctxOccupancy = document.getElementById('occupancyChart').getContext('2d');
+            this.charts.occupancy = new Chart(ctxOccupancy, {
+                type: 'line',
+                data: occupancyData,
+            });
+
+            // Initialize Guest Chart
+            const ctxGuest = document.getElementById('guestChart').getContext('2d');
+            this.charts.guest = new Chart(ctxGuest, {
+                type: 'doughnut',
+                data: guestData,
+            });
+        }
+    },
+    mounted() {
+        this.checkAuthState();
+    }
 });
