@@ -21,6 +21,30 @@ new Vue({
             return emailRegex.test(email);
         },
 
+        openTermsModal() {
+            document.getElementById('termsModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        },
+        closeTermsModal() {
+            document.getElementById('termsModal').classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+    },
+    mounted() {
+        // Add event listeners when Vue instance is mounted
+        document.getElementById('termsModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('termsModal')) {
+                this.closeTermsModal();
+            }
+        });
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                this.closeTermsModal();
+            }
+        });
+    },
+
         validateUsername(username) {
             return /^[a-zA-Z0-9_]{3,20}$/.test(username);
         },
@@ -43,6 +67,9 @@ new Vue({
 
             return errors;
         },
+
+        
+
 
         async handleRegister() {
             this.errorMessage = '';
@@ -159,4 +186,4 @@ new Vue({
             }
         }
     }
-});
+);
