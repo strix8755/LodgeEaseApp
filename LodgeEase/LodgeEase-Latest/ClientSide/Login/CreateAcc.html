@@ -98,16 +98,113 @@
                                 class="w-full px-3 py-2 bg-white/20 backdrop-blur-md text-white border border-white/30 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
                         </div>
-                        <div class="flex items-center mb-4">
-                            <input 
-                                type="checkbox" 
-                                id="terms" 
-                                v-model="terms"
-                                class="mr-2 text-blue-500"
-                                required
-                            >
-                            <label for="terms" class="text-white text-sm">I agree to the Terms and Conditions</label>
-                        </div>
+<!-- Checkbox and Terms Link -->
+<div class="flex items-center mb-4">
+    <input 
+        type="checkbox" 
+        id="terms" 
+        v-model="terms"
+        class="mr-2 text-blue-500"
+        required
+    >
+    <label for="terms" class="text-white text-sm">
+        I agree to the 
+        <button
+            type="button"
+            @click.prevent="openTermsModal"
+            class="text-blue-500 hover:text-blue-400 underline ml-1"
+        >
+            Terms and Conditions
+        </button>
+    </label>
+</div>
+
+<!-- Modal -->
+<div id="termsModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg max-w-2xl max-h-[80vh] w-full overflow-y-auto relative">
+        <!-- Close button -->
+<!-- Change the close button -->
+<button 
+    @click="closeTermsModal"
+    class="absolute right-4 top-4 text-gray-500 hover:text-gray-700"
+>
+    ✕
+</button>
+
+        <!-- Modal content -->
+        <div class="p-6">
+            <h2 class="text-2xl font-bold mb-4">Terms and Conditions</h2>
+            <p class="text-gray-600 mb-6">Please read these terms carefully before proceeding</p>
+
+            <div class="space-y-6 text-sm">
+                <section>
+                    <h3 class="text-gray-600 font-semibold text-lg mb-2">1. Reservations and Bookings</h3>
+                    <ul class="text-gray-600 list-disc pl-6 space-y-2">
+                        <li>All reservations are subject to availability and confirmation by the hotel/lodge.</li>
+                        <li>A valid credit card is required to secure your booking.</li>
+                        <li>Rates are quoted per room per night unless otherwise specified.</li>
+                        <li>Special requests are subject to availability and cannot be guaranteed.</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3 class="text-gray-600 font-semibold text-lg mb-2">2. Check-in and Check-out</h3>
+                    <ul class="text-gray-600 list-disc pl-6 space-y-2">
+                        <li>Standard check-in time is 3:00 PM and check-out time is 11:00 AM.</li>
+                        <li>Early check-in and late check-out are subject to availability and may incur additional charges.</li>
+                        <li>Valid identification is required at check-in.</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3 class="text-gray-600 font-semibold text-lg mb-2">3. Cancellation Policy</h3>
+                    <ul class="text-gray-600 list-disc pl-6 space-y-2">
+                        <li>Cancellations must be made at least 48 hours prior to arrival to avoid charges.</li>
+                        <li>No-shows will be charged the full amount of the first night's stay.</li>
+                        <li>Early departure may result in a charge for the entire original stay.</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3 class="text-gray-600 font-semibold text-lg mb-2">4. Payment and Charges</h3>
+                    <ul class="text-gray-600 list-disc pl-6 space-y-2">
+                        <li>All rates are subject to applicable taxes and service charges.</li>
+                        <li>Additional charges may apply for extra amenities and services.</li>
+                        <li>Currency conversions are approximate and final billing will be in local currency.</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3 class="text-gray-600 font-semibold text-lg mb-2">5. Property Rules and Policies</h3>
+                    <ul class="text-gray-600 list-disc pl-6 space-y-2">
+                        <li>Guests are responsible for any damage to hotel property during their stay.</li>
+                        <li>Smoking is prohibited in non-smoking rooms and designated areas.</li>
+                        <li>Pets are only allowed in designated pet-friendly rooms with prior approval.</li>
+                        <li>Quiet hours must be observed between 10:00 PM and 7:00 AM.</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3 class="text-gray-600 font-semibold text-lg mb-2">6. Liability</h3>
+                    <ul class="text-gray-600 list-disc pl-6 space-y-2">
+                        <li>The hotel/lodge is not responsible for lost, stolen, or damaged personal belongings.</li>
+                        <li>Guests use facilities at their own risk.</li>
+                        <li>The hotel/lodge reserves the right to refuse service to anyone.</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3 class="text-gray-600 font-semibold text-lg mb-2">7. Privacy Policy</h3>
+                    <ul class="text-gray-600 list-disc pl-6 space-y-2">
+                        <li>Guest information will be handled in accordance with applicable privacy laws.</li>
+                        <li>Personal data may be used for reservation and service purposes only.</li>
+                        <li>Security cameras are in use in public areas for safety purposes.</li>
+                    </ul>
+                </section>
+            </div>
+        </div>
+    </div>
+</div>
                         <button 
                             type="submit" 
                             :disabled="loading"
