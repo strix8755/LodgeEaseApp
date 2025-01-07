@@ -10,7 +10,8 @@ import {
     updateDoc, 
     doc, 
     Timestamp,
-    orderBy
+    orderBy,
+    onSnapshot // Add this import
 } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore.js";
 
 // Initialize Firebase with your config
@@ -27,6 +28,33 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+
+// Set up real-time listeners for both request types
+function setupRequestListeners() {
+    // Listen for cancellation requests
+    const unsubscribeCancellations = onSnapshot(collection(db, 'cancellationRequests'), (snapshot) => {
+        console.log('Cancellation requests updated:', snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        })));
+        loadCancellationRequests(); // Reload the UI when changes occur
+    });
+
+    // Listen for modification requests
+    const unsubscribeModifications = onSnapshot(collection(db, 'modificationRequests'), (snapshot) => {
+        console.log('Modification requests updated:', snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        })));
+        loadModificationRequests(); // Reload the UI when changes occur
+    });
+
+    // Clean up listeners on page unload
+    window.addEventListener('unload', () => {
+        unsubscribeCancellations();
+        unsubscribeModifications();
+    });
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     let unsubscribeAuth = null;
@@ -51,13 +79,19 @@ document.addEventListener('DOMContentLoaded', () => {
         unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
             try {
                 if (user) {
-                    const adminDoc = await getDoc(doc(db, "admin_users", user.uid));
-                    if (adminDoc.exists() && adminDoc.data().role === 'admin') {
+                    // Changed from admin_users to users collection
+                    const userDoc = await getDoc(doc(db, "users", user.uid));
+                    if (userDoc.exists() && userDoc.data().role === 'admin') {
+                        // Add debug logging
+                        console.log('Admin authentication successful:', userDoc.data());
+                        setupRequestListeners(); // Set up real-time listeners
                         await loadRequests();
                     } else {
+                        console.error('User is not admin:', userDoc.data());
                         window.location.href = '../Login/index.html';
                     }
                 } else {
+                    console.error('No user authenticated');
                     window.location.href = '../Login/index.html';
                 }
             } catch (error) {
@@ -153,44 +187,55 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadCancellationRequests() {
         try {
             const requestsRef = collection(db, 'cancellationRequests');
-            const q = query(
-                requestsRef,
-                where('status', '==', 'pending'),
-                orderBy('createdAt', 'desc')
-            );
+            console.log('Starting to load cancellation requests...');
 
-            // Add loading indicator
-            const container = document.getElementById('cancellationRequests');
-            container.innerHTML = '<p class="text-gray-500 text-center py-4">Loading requests...</p>';
-
-            try {
-                const snapshot = await getDocs(q);
-                container.innerHTML = '';
-
-                if (snapshot.empty) {
-                    container.innerHTML = '<p class="text-gray-500 text-center py-4">No pending cancellation requests</p>';
-                    return;
-                }
-
-                snapshot.forEach(doc => {
-                    const request = doc.data();
-                    container.appendChild(createCancellationRequestCard(doc.id, request));
+            // Get all requests and filter in memory for debugging
+            const snapshot = await getDocs(requestsRef);
+            
+            console.log('Total cancellation requests found:', snapshot.size);
+            
+            // Debug log all requests
+            snapshot.forEach(doc => {
+                console.log('Request:', {
+                    id: doc.id,
+                    status: doc.data().status,
+                    booking: doc.data().booking?.id,
+                    createdAt: doc.data().createdAt?.toDate()
                 });
-            } catch (error) {
-                if (error.code === 'failed-precondition' || error.message.includes('requires an index')) {
-                    container.innerHTML = `
-                        <div class="text-red-500 text-center py-4">
-                            <p>Index not ready. Please wait a few moments and refresh the page.</p>
-                            <p class="text-sm">If the problem persists, ask an administrator to check the Firebase indexes.</p>
-                        </div>
-                    `;
-                } else {
-                    throw error;
-                }
+            });
+
+            const container = document.getElementById('cancellationRequests');
+            container.innerHTML = '';
+
+            if (snapshot.empty) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-4">No cancellation requests found</p>';
+                return;
             }
+
+            // Filter pending requests
+            const pendingRequests = snapshot.docs.filter(doc => doc.data().status === 'pending');
+            console.log('Pending cancellation requests:', pendingRequests.length);
+
+            if (pendingRequests.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-4">No pending cancellation requests</p>';
+                return;
+            }
+
+            pendingRequests.forEach(doc => {
+                const request = doc.data();
+                console.log('Creating card for request:', doc.id, request);
+                container.appendChild(createCancellationRequestCard(doc.id, request));
+            });
+
         } catch (error) {
-            console.error('Error loading cancellation requests:', error);
-            alert('Failed to load cancellation requests. Please try again later.');
+            console.error('Detailed error loading cancellation requests:', error);
+            const container = document.getElementById('cancellationRequests');
+            container.innerHTML = `
+                <div class="bg-red-100 text-red-700 p-4 rounded">
+                    <p>Error loading requests: ${error.message}</p>
+                    <p class="text-sm mt-2">Error code: ${error.code || 'unknown'}</p>
+                </div>
+            `;
         }
     }
 
@@ -201,7 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         const card = document.createElement('div');
-        card.className = 'bg-white border rounded-lg p-6 shadow-sm';
+        card.className = 'bg-white border rounded-lg p-6 shadow-sm mb-4';
         
         const booking = request.currentBooking;
         const changes = request.requestedChanges;
@@ -209,38 +254,45 @@ document.addEventListener('DOMContentLoaded', () => {
         card.innerHTML = `
             <div class="flex justify-between items-start mb-4">
                 <div>
-                    <h4 class="font-semibold text-lg">${booking.propertyDetails?.name || booking.propertyName}</h4>
+                    <h4 class="font-semibold text-lg">${booking.propertyDetails?.name || booking.propertyName || 'Unnamed Property'}</h4>
                     <p class="text-sm text-gray-500">Request ID: ${requestId}</p>
+                    <p class="text-sm text-gray-500">Booking ID: ${booking.id || 'N/A'}</p>
+                    <p class="text-sm text-gray-500">Created: ${request.createdAt ? new Date(request.createdAt.toDate()).toLocaleString() : 'N/A'}</p>
                 </div>
                 <span class="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">
                     Pending
                 </span>
             </div>
-            <div class="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                    <p class="text-sm text-gray-500">Current Dates</p>
-                    <p class="font-medium">Check-in: ${formatDate(booking.checkIn.toDate())}</p>
-                    <p class="font-medium">Check-out: ${formatDate(booking.checkOut.toDate())}</p>
-                </div>
-                <div>
-                    <p class="text-sm text-gray-500">Requested Dates</p>
-                    <p class="font-medium">Check-in: ${formatDate(changes.checkIn.toDate())}</p>
-                    <p class="font-medium">Check-out: ${formatDate(changes.checkOut.toDate())}</p>
-                </div>
+            <div class="mb-4">
+                <p class="text-sm text-gray-500">Current Booking Dates</p>
+                <p class="font-medium">Check-in: ${formatDate(booking.checkIn.toDate())}</p>
+                <p class="font-medium">Check-out: ${formatDate(booking.checkOut.toDate())}</p>
+            </div>
+            <div class="mb-4">
+                <p class="text-sm text-gray-500">Requested Booking Dates</p>
+                <p class="font-medium">Check-in: ${formatDate(changes.checkIn.toDate())}</p>
+                <p class="font-medium">Check-out: ${formatDate(changes.checkOut.toDate())}</p>
             </div>
             <div class="mb-4">
                 <p class="text-sm text-gray-500">Reason for Modification</p>
-                <p class="mt-1">${request.reason}</p>
+                <p class="mt-1">${request.reason || 'No reason provided'}</p>
             </div>
             <div class="flex justify-end space-x-3">
-                <button onclick="handleRejectModification('${requestId}')" class="px-4 py-2 border border-red-600 text-red-600 rounded-lg hover:bg-red-50">
+                <button class="px-4 py-2 border border-red-600 text-red-600 rounded-lg hover:bg-red-50 reject-btn">
                     Reject
                 </button>
-                <button onclick="handleApproveModification('${requestId}')" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                <button class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 approve-btn">
                     Approve
                 </button>
             </div>
         `;
+
+        // Add event listeners
+        const approveBtn = card.querySelector('.approve-btn');
+        const rejectBtn = card.querySelector('.reject-btn');
+
+        approveBtn.addEventListener('click', () => handleApproveModification(requestId));
+        rejectBtn.addEventListener('click', () => handleRejectModification(requestId));
 
         return card;
     }
@@ -252,15 +304,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         const card = document.createElement('div');
-        card.className = 'bg-white border rounded-lg p-6 shadow-sm';
+        card.className = 'bg-white border rounded-lg p-6 shadow-sm mb-4';
         
         const booking = request.booking;
 
         card.innerHTML = `
             <div class="flex justify-between items-start mb-4">
                 <div>
-                    <h4 class="font-semibold text-lg">${booking.propertyDetails?.name || booking.propertyName}</h4>
+                    <h4 class="font-semibold text-lg">${booking.propertyDetails?.name || booking.propertyName || 'Unnamed Property'}</h4>
                     <p class="text-sm text-gray-500">Request ID: ${requestId}</p>
+                    <p class="text-sm text-gray-500">Booking ID: ${booking.id || 'N/A'}</p>
+                    <p class="text-sm text-gray-500">Created: ${request.createdAt ? new Date(request.createdAt.toDate()).toLocaleString() : 'N/A'}</p>
                 </div>
                 <span class="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">
                     Pending
@@ -268,23 +322,31 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <div class="mb-4">
                 <p class="text-sm text-gray-500">Booking Details</p>
-                <p class="font-medium">Check-in: ${formatDate(booking.checkIn.toDate())}</p>
-                <p class="font-medium">Check-out: ${formatDate(booking.checkOut.toDate())}</p>
-                <p class="font-medium">Room: ${booking.propertyDetails?.roomType || booking.roomType}</p>
+                <p class="font-medium">Guest: ${booking.guestName || 'N/A'}</p>
+                <p class="font-medium">Check-in: ${booking.checkIn ? formatDate(booking.checkIn.toDate()) : 'N/A'}</p>
+                <p class="font-medium">Check-out: ${booking.checkOut ? formatDate(booking.checkOut.toDate()) : 'N/A'}</p>
+                <p class="font-medium">Room: ${booking.propertyDetails?.roomType || booking.roomType || 'N/A'}</p>
             </div>
             <div class="mb-4">
                 <p class="text-sm text-gray-500">Reason for Cancellation</p>
-                <p class="mt-1">${request.reason}</p>
+                <p class="mt-1">${request.reason || 'No reason provided'}</p>
             </div>
             <div class="flex justify-end space-x-3">
-                <button onclick="handleRejectCancellation('${requestId}')" class="px-4 py-2 border border-red-600 text-red-600 rounded-lg hover:bg-red-50">
+                <button class="px-4 py-2 border border-red-600 text-red-600 rounded-lg hover:bg-red-50 reject-btn">
                     Reject
                 </button>
-                <button onclick="handleApproveCancellation('${requestId}')" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                <button class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 approve-btn">
                     Approve
                 </button>
             </div>
         `;
+
+        // Add event listeners
+        const approveBtn = card.querySelector('.approve-btn');
+        const rejectBtn = card.querySelector('.reject-btn');
+
+        approveBtn.addEventListener('click', () => handleApproveCancellation(requestId));
+        rejectBtn.addEventListener('click', () => handleRejectCancellation(requestId));
 
         return card;
     }

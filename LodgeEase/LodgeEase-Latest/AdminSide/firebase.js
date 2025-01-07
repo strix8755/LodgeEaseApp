@@ -16,7 +16,7 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
+export const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const analytics = getAnalytics(app);
@@ -39,129 +39,138 @@ const registrationAttempts = new Map();
 // Register function
 export async function register(email, password, username, fullname) {
     try {
-        // Input sanitization
-        email = email.toLowerCase().trim();
-        username = username.toLowerCase().trim();
-        fullname = fullname.trim();
-
-        // Additional validation
-        if (!email || !password || !username || !fullname) {
-            throw { code: 'invalid-input', message: 'All fields are required' };
-        }
-
-        // First check if username exists
-        const usersRef = collection(db, "users");
-        const q = query(usersRef, where("username", "==", username));
-        const querySnapshot = await getDocs(q);
-        
-        if (!querySnapshot.empty) {
-            throw { code: 'username-exists', message: 'This username is already taken' };
-        }
-
-        // Create user in Firebase Authentication
-        console.log("Creating user account in Authentication...");
+        // Create the user with email and password
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-
-        // Wait a moment for the auth state to update
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        // Store admin user data in Firestore
-        const adminUserData = {
-            fullname: fullname,
+        
+        // Create user document with admin role
+        await setDoc(doc(db, "users", userCredential.user.uid), {
             email: email,
             username: username,
-            createdAt: Timestamp.fromDate(new Date()),
+            fullname: fullname,
             role: 'admin',
-            uid: user.uid,
-            lastLogin: Timestamp.fromDate(new Date()),
-            isAdminPortal: true // Flag to identify admin portal users
-        };
+            createdAt: Timestamp.fromDate(new Date())
+        });
 
-        // Store client user data in a separate collection
-        const clientUserData = {
-            fullname: fullname,
-            email: email,
-            username: username,
-            createdAt: Timestamp.fromDate(new Date()),
-            role: 'client',
-            uid: user.uid,
-            lastLogin: Timestamp.fromDate(new Date()),
-            isClientPortal: true // Flag to identify client portal users
-        };
-
-        try {
-            // Store admin data
-            const adminDocRef = doc(db, "admin_users", user.uid);
-            await setDoc(adminDocRef, adminUserData);
-            console.log("Admin user data stored successfully");
-
-            // Store client data
-            const clientDocRef = doc(db, "client_users", user.uid);
-            await setDoc(clientDocRef, clientUserData);
-            console.log("Client user data stored successfully");
-            
-            // Also store in main users collection for backward compatibility
-            const userDocRef = doc(db, "users", user.uid);
-            await setDoc(userDocRef, adminUserData);
-            
-            return { user, userData: adminUserData };
-        } catch (firestoreError) {
-            console.error("Firestore error:", firestoreError);
-            // If Firestore save fails, delete the auth user
-            try {
-                await user.delete();
-            } catch (deleteError) {
-                console.error("Error deleting auth user after Firestore failure:", deleteError);
-            }
-            throw { code: 'firestore-error', message: 'Failed to create account. Please try again.' };
-        }
-
+        return userCredential;
     } catch (error) {
-        console.error("Registration error:", error);
+        console.error('Registration error in firebase.js:', error);
         throw error;
     }
 }
 
-// Sign-in function
+// Update logAdminActivity to ensure collection exists
+export async function logAdminActivity(userId, actionType, details, userName = null) {
+    try {
+        // Ensure activityLogs collection exists
+        const logsRef = collection(db, 'activityLogs');
+        
+        const activityData = {
+            userId,
+            userName: userName || 'Unknown User',
+            actionType,
+            details,
+            timestamp: Timestamp.fromDate(new Date())
+        };
+
+        const docRef = await addDoc(logsRef, activityData);
+        
+        // Verify save
+        const savedDoc = await getDoc(docRef);
+        console.log('Activity log saved:', {
+            id: docRef.id,
+            exists: savedDoc.exists(),
+            data: savedDoc.data()
+        });
+
+        return docRef.id;
+    } catch (error) {
+        console.error('Error in logAdminActivity:', error);
+        throw error;
+    }
+}
+
+// Add new function to track page navigation
+export async function logPageNavigation(userId, pageName) {
+    try {
+        if (!userId) return;
+        
+        const userDoc = await getDoc(doc(db, "users", userId));
+        const userData = userDoc.data();
+        
+        await logAdminActivity(
+            userId,
+            'navigation',
+            `Navigated to ${pageName}`,
+            userData.fullname || userData.username
+        );
+    } catch (error) {
+        console.error('Error logging page navigation:', error);
+    }
+}
+
+// Update the signIn function
 export async function signIn(userIdentifier, password) {
     try {
         let email = userIdentifier;
         
         // If userIdentifier doesn't contain @, assume it's a username
         if (!userIdentifier.includes('@')) {
-            try {
-                // Check admin_users first
-                const adminUsersRef = collection(db, "admin_users");
-                let q = query(adminUsersRef, where("username", "==", userIdentifier));
-                let querySnapshot = await getDocs(q);
-                
-                if (querySnapshot.empty) {
-                    throw new Error('auth/user-not-found');
-                }
-                
-                email = querySnapshot.docs[0].data().email;
-            } catch (error) {
-                console.error("Error finding username:", error);
-                throw new Error('auth/invalid-username');
+            const usersRef = collection(db, "users");
+            const q = query(usersRef, where("username", "==", userIdentifier));
+            const querySnapshot = await getDocs(q);
+            
+            if (querySnapshot.empty) {
+                throw new Error('auth/user-not-found');
             }
+            
+            email = querySnapshot.docs[0].data().email;
         }
 
         // Sign in with email and password
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        if (!userCredential || !userCredential.user) {
-            throw new Error('auth/invalid-credential');
-        }
-
-        // Check if user exists in admin_users collection
-        const adminDoc = await getDoc(doc(db, "admin_users", userCredential.user.uid));
-        if (!adminDoc.exists()) {
+        
+        // Get user data for activity log
+        const userDoc = await getDoc(doc(db, "users", userCredential.user.uid));
+        if (!userDoc.exists() || userDoc.data().role !== 'admin') {
             throw new Error('access-denied');
         }
+
+        const userData = userDoc.data();
+        
+        // Create activity log
+        console.log('Creating login activity log...'); // Debug log
+        
+        const activityData = {
+            userId: userCredential.user.uid,
+            userName: userData.fullname || userData.username || userData.email,
+            actionType: 'login',
+            details: `Admin login successful - ${userData.email}`,
+            timestamp: Timestamp.fromDate(new Date())
+        };
+
+        console.log('Activity data:', activityData); // Debug log
+
+        // Add to activityLogs collection
+        const logRef = await addDoc(collection(db, 'activityLogs'), activityData);
+        console.log('Login activity logged with ID:', logRef.id); // Debug log
 
         return userCredential;
     } catch (error) {
         console.error("Sign-in error:", error);
+        throw error;
+    }
+}
+
+// Add this to track logouts
+export async function signOut() {
+    try {
+        const userId = auth.currentUser?.uid;
+        if (userId) {
+            await logAdminActivity(userId, 'logout', 'User logged out');
+        }
+        await auth.signOut();
+    } catch (error) {
+        console.error('Error signing out:', error);
         throw error;
     }
 }
@@ -205,6 +214,7 @@ export async function updateBooking(bookingId, updateData) {
             status: updateData.status,
             updatedAt: Timestamp.fromDate(new Date())
         });
+        await logAdminActivity(auth.currentUser.uid, 'booking', `Updated booking ${bookingId}`);
     } catch (error) {
         console.error("Error updating booking: ", error);
         throw error;
@@ -218,8 +228,8 @@ export async function checkAdminAuth() {
             unsubscribe();
             if (user) {
                 try {
-                    const adminDoc = await getDoc(doc(db, "admin_users", user.uid));
-                    if (adminDoc.exists() && adminDoc.data().role === 'admin') {
+                    const userDoc = await getDoc(doc(db, "users", user.uid));
+                    if (userDoc.exists() && userDoc.data().role === 'admin') {
                         resolve(user);
                     } else {
                         window.location.href = '../Login/index.html';
@@ -288,6 +298,7 @@ export async function addRoom(roomData) {
             ...roomData,
             createdAt: Timestamp.fromDate(new Date())
         });
+        await logAdminActivity(auth.currentUser.uid, 'room', `Added new room ${roomData.roomNumber}`);
         console.log("Room added with ID: ", docRef.id);
         return docRef.id;
     } catch (error) {
@@ -320,7 +331,7 @@ export async function deleteRoom(roomId) {
     }
 }
 
-// Add this function to set admin role
+// Fix the setAdminRole function
 export async function setAdminRole(userId) {
     try {
         const userRef = doc(db, "users", userId);

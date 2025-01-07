@@ -403,6 +403,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const booking = bookingDoc.data();
 
+            // Add debug logging
+            console.log('Creating cancellation request for booking:', booking);
+
             // Show confirmation modal with reason input
             const modalHtml = `
                 <div id="cancelBookingModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
@@ -448,39 +451,45 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     const reason = document.getElementById('cancelReason').value;
 
-                    // Create cancellation request in Firestore
-                    const cancellationRequestsRef = collection(db, 'cancellationRequests');
-                    await addDoc(cancellationRequestsRef, {
+                    // Debug log the request data
+                    const requestData = {
                         bookingId: bookingId,
                         userId: auth.currentUser.uid,
                         booking: booking,
                         reason: reason,
                         status: 'pending',
                         createdAt: Timestamp.fromDate(new Date())
-                    });
+                    };
+                    console.log('Submitting cancellation request:', requestData);
 
-                    // Update booking status to indicate pending cancellation
+                    // Create cancellation request in Firestore
+                    const cancellationRequestsRef = collection(db, 'cancellationRequests');
+                    const docRef = await addDoc(cancellationRequestsRef, requestData);
+                    
+                    console.log('Cancellation request created with ID:', docRef.id);
+
+                    // Update booking status
                     await updateDoc(bookingRef, {
                         cancellationRequested: true,
-                        cancellationRequestedAt: Timestamp.fromDate(new Date())
+                        cancellationRequestedAt: Timestamp.fromDate(new Date()),
+                        cancellationRequestId: docRef.id // Add reference to the request
                     });
 
-                    // Show success message
+                    console.log('Booking updated with cancellation request');
+
                     alert('Cancellation request submitted successfully. Please wait for admin approval.');
-                    
-                    // Remove modal and reload bookings
                     modal.remove();
                     await loadBookings(auth.currentUser.uid);
                     
                 } catch (error) {
-                    console.error('Error submitting cancellation request:', error);
-                    alert('Failed to submit cancellation request');
+                    console.error('Detailed error submitting cancellation request:', error);
+                    alert(`Failed to submit cancellation request: ${error.message}`);
                 }
             });
 
         } catch (error) {
-            console.error('Error creating cancellation request:', error);
-            showError('Failed to create cancellation request. Please try again later.');
+            console.error('Error handling cancellation:', error);
+            alert('Failed to process cancellation request. Please try again later.');
         }
     }
 
@@ -559,4 +568,4 @@ document.addEventListener('DOMContentLoaded', () => {
             modal.remove();
         });
     }
-}); 
+});

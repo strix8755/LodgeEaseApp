@@ -15,6 +15,7 @@
 <body>
     <div id="app">
 
+        <!-- Common sidebar template for all admin pages -->
         <aside class="sidebar">
             <div class="logo-container">
                 <img src="../images/LodgeEaseLogo.png" alt="Lodge Ease Logo" class="logo">
@@ -26,17 +27,18 @@
                 <li><a href="../Requests/booking_requests.html"><i class="fas fa-clock"></i> Booking Requests</a></li>
                 <li><a href="../Billing/billing.html"><i class="fas fa-money-bill-wave"></i> Billing</a></li>
                 <li><a href="../Reports/reports.html"><i class="fas fa-chart-line"></i> Reports</a></li>
-                <li><a href="../Settings/settings.html"><i class="fas fa-cog"></i> Settings</a></li>
+                <li><a href="../ActivityLog/activity_log.html"><i class="fas fa-history"></i> Activity Log</a></li>
+                <li><a href="../Settings/settings.html" class="active"><i class="fas fa-cog"></i> Settings</a></li>
                 <li><a href="../AInalysis/AInalysis.html"><i class="fas fa-robot"></i> ChatBot</a></li>
             </ul>
-            
-            <!-- Add auth buttons at the bottom of sidebar -->
             <div class="auth-buttons">
                 <button v-if="isAuthenticated" @click="handleLogout" class="logout-btn">
-                    <i class="fas fa-sign-out-alt"></i> Logout
+                    <i class="fas fa-sign-out-alt"></i> 
+                    <span>Logout</span>
                 </button>
                 <a v-else href="../Login/index.html" class="login-btn">
-                    <i class="fas fa-sign-in-alt"></i> Login
+                    <i class="fas fa-sign-in-alt"></i> 
+                    <span>Login</span>
                 </a>
             </div>
         </aside>

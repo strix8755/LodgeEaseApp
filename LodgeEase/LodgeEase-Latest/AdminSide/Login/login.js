@@ -1,6 +1,6 @@
 import { signIn, register, auth } from '../firebase.js'; // Import Firebase Authentication functions
 import { sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-auth.js";
-import { doc, getDoc, setDoc, getFirestore } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore.js";
+import { doc, getDoc, setDoc, collection, query, where, getDocs, getFirestore } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore.js";
 
 const db = getFirestore();
 
@@ -77,6 +77,9 @@ new Vue({
 
                 if (this.remember) {
                     localStorage.setItem('userEmail', this.email);
+                    // Store the auth token in localStorage
+                    const token = await auth.currentUser.getIdToken();
+                    localStorage.setItem('authToken', token);
                 } else {
                     localStorage.removeItem('userEmail');
                 }
@@ -163,16 +166,26 @@ new Vue({
             this.loading = true;
 
             try {
-                // Register the user
-                const result = await register(this.email, this.password, this.username, this.fullname);
+                // Normalize username to lowercase before checking
+                const normalizedUsername = this.username.toLowerCase();
+                const isUsernameAvailable = await this.checkUsernameAvailability(normalizedUsername);
+                
+                if (!isUsernameAvailable) {
+                    this.loading = false;
+                    this.errorMessage = 'This username is already taken';
+                    return;
+                }
+
+                // Use normalized username in registration
+                const result = await register(this.email, this.password, normalizedUsername, this.fullname);
                 
                 if (result && result.user) {
-                    // Set admin role in Firestore
+                    // Create user document
                     await setDoc(doc(db, 'users', result.user.uid), {
                         email: this.email,
-                        username: this.username,
+                        username: normalizedUsername,
                         fullname: this.fullname,
-                        role: 'admin', // Set role as admin
+                        role: 'admin',
                         createdAt: new Date()
                     });
 
@@ -243,6 +256,40 @@ new Vue({
                 default:
                     this.errorMessage = 'An error occurred. Please try again.';
                     console.error('Detailed error:', error);
+            }
+        },
+
+        async checkUsernameAvailability(username) {
+            try {
+                const usersRef = collection(db, 'users');
+                const normalizedUsername = username.toLowerCase().trim();
+                
+                // First, log the exact query we're making
+                console.log('Checking username availability for:', normalizedUsername);
+                
+                // Get all users and check manually (temporary debugging solution)
+                const snapshot = await getDocs(usersRef);
+                
+                // Log all usernames in the database
+                console.log('All existing usernames:');
+                snapshot.forEach(doc => {
+                    console.log('User document:', {
+                        username: doc.data().username,
+                        userId: doc.id
+                    });
+                });
+                
+                // Check if username exists
+                const exists = snapshot.docs.some(doc => 
+                    doc.data().username && 
+                    doc.data().username.toLowerCase() === normalizedUsername
+                );
+                
+                console.log('Username exists:', exists);
+                return !exists;
+            } catch (error) {
+                console.error('Error in checkUsernameAvailability:', error);
+                throw error;
             }
         }
     },
