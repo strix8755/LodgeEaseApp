@@ -10,7 +10,8 @@ import {
     Timestamp,
     where,
     getDoc,
-    addDoc
+    addDoc,
+    setDoc  // Add this import
 } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore.js";
 import { 
     getStorage, 
@@ -478,18 +479,48 @@ new Vue({
             if (!this.manualBooking.establishment) return;
 
             try {
-                const roomsRef = collection(db, 'rooms');
-                const q = query(
-                    roomsRef, 
-                    where('establishment', '==', this.manualBooking.establishment),
-                    where('status', '==', 'Available')
+                // Generate 50 rooms for the selected establishment
+                const roomTypes = ['Standard', 'Deluxe', 'Suite', 'Family'];
+                const floorLevels = ['1st Floor', '2nd Floor', '3rd Floor', '4th Floor', '5th Floor'];
+                const prices = {
+                    'Standard': 2500,
+                    'Deluxe': 3500,
+                    'Suite': 5000,
+                    'Family': 4500
+                };
+
+                this.availableRooms = Array.from({ length: 50 }, (_, i) => {
+                    const roomNumber = (i + 1).toString().padStart(2, '0');
+                    const floorLevel = floorLevels[Math.floor(i / 10)]; // 10 rooms per floor
+                    const roomType = roomTypes[i % 4]; // Distribute room types evenly
+                    
+                    return {
+                        id: `room_${this.manualBooking.establishment}_${roomNumber}`,
+                        propertyDetails: {
+                            roomNumber: roomNumber,
+                            roomType: roomType,
+                            floorLevel: floorLevel,
+                            name: this.establishments[this.manualBooking.establishment].name,
+                            location: this.establishments[this.manualBooking.establishment].location
+                        },
+                        price: prices[roomType],
+                        status: 'Available'
+                    };
+                });
+
+                // Check existing bookings to mark rooms as unavailable
+                const bookingsRef = collection(db, 'bookings');
+                const bookingsSnapshot = await getDocs(
+                    query(
+                        bookingsRef,
+                        where('establishment', '==', this.manualBooking.establishment),
+                        where('status', 'in', ['Confirmed', 'Checked In'])
+                    )
                 );
-                
-                const snapshot = await getDocs(q);
-                this.availableRooms = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
+
+                const bookedRoomIds = bookingsSnapshot.docs.map(doc => doc.data().roomId);
+                this.availableRooms = this.availableRooms.filter(room => !bookedRoomIds.includes(room.id));
+
             } catch (error) {
                 console.error('Error fetching available rooms:', error);
                 alert('Failed to fetch available rooms');
@@ -527,16 +558,21 @@ new Vue({
                     updatedAt: new Date()
                 };
 
-                // Add booking to Firestore
+                // First, create or update the room document
+                const roomRef = doc(db, 'rooms', this.manualBooking.roomId);
+                await setDoc(roomRef, {
+                    propertyDetails: selectedRoom.propertyDetails,
+                    price: selectedRoom.price,
+                    status: 'Occupied',
+                    establishment: this.manualBooking.establishment,
+                    currentBooking: bookingData,
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                });
+
+                // Then add the booking
                 const bookingsRef = collection(db, 'bookings');
                 await addDoc(bookingsRef, bookingData);
-
-                // Update room status
-                const roomRef = doc(db, 'rooms', this.manualBooking.roomId);
-                await updateDoc(roomRef, {
-                    status: 'Occupied',
-                    currentBooking: bookingData
-                });
 
                 // Reset form and close modal
                 this.closeManualBookingModal();
@@ -569,6 +605,7 @@ new Vue({
                 if (!user) {
                     window.location.href = '../Login/index.html';
                 } else {
+
                     this.fetchBookings(); // Fetch bookings when user is authenticated
                 }
                 this.loading = false;
