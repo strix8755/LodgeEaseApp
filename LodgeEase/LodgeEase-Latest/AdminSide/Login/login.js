@@ -71,14 +71,9 @@ new Vue({
             try {
                 const result = await signIn(this.email, this.password);
                 
-                if (!result || !result.user) {
-                    throw new Error('Invalid login credentials');
-                }
-
                 if (this.remember) {
                     localStorage.setItem('userEmail', this.email);
-                    // Store the auth token in localStorage
-                    const token = await auth.currentUser.getIdToken();
+                    const token = await result.user.getIdToken();
                     localStorage.setItem('authToken', token);
                 } else {
                     localStorage.removeItem('userEmail');
@@ -90,12 +85,16 @@ new Vue({
                 }, 1500);
             } catch (error) {
                 console.error('Login error:', error);
-                if (error.message === 'access-denied') {
-                    this.errorMessage = 'Access denied. This portal is for administrators only.';
-                } else if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-                    this.errorMessage = 'Invalid email or password';
-                } else {
-                    this.errorMessage = 'Failed to login. Please try again.';
+                switch (error.code) {
+                    case 'auth/user-not-found':
+                    case 'auth/wrong-password':
+                        this.errorMessage = 'Invalid email or password';
+                        break;
+                    case 'auth/insufficient-permissions':
+                        this.errorMessage = 'Access denied. This portal is for administrators only.';
+                        break;
+                    default:
+                        this.errorMessage = 'Failed to login. Please try again.';
                 }
             } finally {
                 this.loading = false;
@@ -229,9 +228,16 @@ new Vue({
         handleAuthError(error) {
             console.error('Authentication error:', error);
             
-            const errorMessage = error.message || error.code;
-            
-            switch (errorMessage) {
+            switch (error.code) {
+                case 'auth/insufficient-permissions':
+                    this.errorMessage = 'Access denied. This portal is for administrators only.';
+                    break;
+                case 'permission-denied':
+                    this.errorMessage = 'You do not have permission to perform this action.';
+                    break;
+                case 'resource-exhausted':
+                    this.errorMessage = 'Too many requests. Please try again later.';
+                    break;
                 case 'This email is already registered':
                     this.errorMessage = 'This email address is already registered. Please use a different email or try logging in.';
                     break;
@@ -254,7 +260,11 @@ new Vue({
                     this.errorMessage = 'Access denied. This portal is for administrators only.';
                     break;
                 default:
-                    this.errorMessage = 'An error occurred. Please try again.';
+                    if (error.message?.includes('Missing or insufficient permissions')) {
+                        this.errorMessage = 'Access denied. Please verify your admin credentials.';
+                    } else {
+                        this.errorMessage = 'An error occurred. Please try again.';
+                    }
                     console.error('Detailed error:', error);
             }
         },
@@ -264,32 +274,19 @@ new Vue({
                 const usersRef = collection(db, 'users');
                 const normalizedUsername = username.toLowerCase().trim();
                 
-                // First, log the exact query we're making
-                console.log('Checking username availability for:', normalizedUsername);
+                // Use a simple query
+                const q = query(usersRef, where("username", "==", normalizedUsername));
+                const querySnapshot = await getDocs(q);
                 
-                // Get all users and check manually (temporary debugging solution)
-                const snapshot = await getDocs(usersRef);
+                // Debug logs
+                console.log('Username check for:', normalizedUsername);
+                console.log('Query snapshot empty:', querySnapshot.empty);
                 
-                // Log all usernames in the database
-                console.log('All existing usernames:');
-                snapshot.forEach(doc => {
-                    console.log('User document:', {
-                        username: doc.data().username,
-                        userId: doc.id
-                    });
-                });
-                
-                // Check if username exists
-                const exists = snapshot.docs.some(doc => 
-                    doc.data().username && 
-                    doc.data().username.toLowerCase() === normalizedUsername
-                );
-                
-                console.log('Username exists:', exists);
-                return !exists;
+                return querySnapshot.empty;
             } catch (error) {
                 console.error('Error in checkUsernameAvailability:', error);
-                throw error;
+                // On error, assume username is available to allow registration attempt
+                return true;
             }
         }
     },

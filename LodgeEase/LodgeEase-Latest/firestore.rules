@@ -8,92 +8,148 @@ service cloud.firestore {
     
     function isAdmin() {
       return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
+    
+    function isValidDate(field) {
+      return field is timestamp && 
+        field <= request.time && 
+        field.toMillis() > 1609459200000; // After 2021-01-01
+    }
+    
+    function hasRequiredFields(data, required) {
+      return data.keys().hasAll(required) && 
+        data.keys().hasOnly(required.concat(['updatedAt', 'createdAt', 'metadata']));
+    }
 
-    // Users collection - for all user types
+    function isValidString(field) {
+      return field is string && field.size() > 0 && field.size() <= 500;
+    }
+
+    function isValidEmail(email) {
+      return email.matches('^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$');
+    }
+
+    function isValidUsername(username) {
+      return username.matches('^[a-zA-Z0-9_]{3,20}$');
+    }
+
+    function isValidAnalyticsData(data) {
+      return isValidDate(data.createdAt) && 
+        (!data.keys().hasAny(['updatedAt']) || isValidDate(data.updatedAt)) &&
+        hasRequiredFields(data, ['type', 'data', 'status']) &&
+        data.type in ['booking', 'revenue', 'occupancy', 'customer', 'system'] &&
+        data.status in ['active', 'archived', 'processing'];
+    }
+
+    function isWithinRateLimit(path) {
+      let recentAttempts = getCountFromPath(path);
+      return recentAttempts <= 100;
+    }
+
+    function getCountFromPath(path) {
+      return get(/databases/$(database)/documents/system/ratelimits).data.counts[path] || 0;
+    }
+
+    // Enhanced security rules for collections
+    match /analytics/{document=**} {
+      allow read: if isAdmin() && isWithinRateLimit('analytics_read');
+      allow create: if isAdmin() && 
+        isValidAnalyticsData(request.resource.data) && 
+        isWithinRateLimit('analytics_write');
+      allow update: if isAdmin() && 
+        request.resource.data.type == resource.data.type &&
+        isValidAnalyticsData(request.resource.data) &&
+        isWithinRateLimit('analytics_write');
+      allow delete: if false;
+    }
+    
+    // Real-time Analytics with enhanced security
+    match /analytics/_realtime/{docId} {
+      allow read: if isAdmin() && isWithinRateLimit('realtime_read');
+      allow write: if isAdmin() && 
+        (!resource.data.exists() || 
+         request.time.toMillis() - resource.data.lastUpdate.toMillis() > 60000) &&
+        isWithinRateLimit('realtime_write');
+    }
+
+    // Modified Users Collection rules
     match /users/{userId} {
-      allow read: if true;
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated() && 
-        (request.auth.uid == userId || isAdmin());
-      allow delete: if isAdmin();
-    }
-
-    // Bookings collection
-    match /bookings/{bookingId} {
-      allow read: if isAuthenticated() && (
-        isAdmin() || 
-        resource.data.userId == request.auth.uid
-      );
+      // Allow username availability check without authentication
+      allow read: if true;  // Temporarily allow all reads for debugging
       
-      allow create: if isAuthenticated() && (
-        isAdmin() || 
-        request.resource.data.userId == request.auth.uid
-      );
+      // Allow initial user creation without admin check
+      allow create: if request.auth != null &&
+                   request.auth.uid == userId &&
+                   request.resource.data.keys().hasAll(['email', 'username', 'role']) &&
+                   request.resource.data.role == 'admin';  // Only allow admin role during creation
       
-      allow update: if isAuthenticated() && (
-        isAdmin() || 
-        (resource.data.userId == request.auth.uid && 
+      allow update: if isAdmin() ||
+        (request.auth.uid == userId && 
          request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['modificationRequested', 'modificationRequestedAt', 
-                   'cancellationRequested', 'cancellationRequestedAt']))
-      );
-      
+          .hasOnly(['username', 'fullname', 'updatedAt']));
       allow delete: if isAdmin();
     }
 
-    // Rooms collection
+    // Modified Activity Logs to allow registration logs
+    match /activityLogs/{logId} {
+      allow read: if request.auth != null;
+      // Allow create during registration
+      allow create: if request.auth != null &&
+                   request.resource.data.userId == request.auth.uid &&
+                   request.resource.data.keys().hasAll(['actionType', 'timestamp']) &&
+                   request.resource.data.actionType in ['login', 'registration', 'logout'];
+      allow update, delete: if false;
+    }
+
+    // Rooms Collection with enhanced validation
     match /rooms/{roomId} {
       allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow write: if isAdmin() && 
+        hasRequiredFields(request.resource.data, ['roomNumber', 'status', 'type', 'price']) &&
+        request.resource.data.status in ['available', 'occupied', 'maintenance', 'cleaning'] &&
+        request.resource.data.price is number &&
+        request.resource.data.price >= 0;
     }
 
-    // Reservations collection
-    match /reservations/{reservationId} {
+    // Bookings Collection with enhanced validation
+    match /bookings/{bookingId} {
       allow read: if isAuthenticated() && (
-        isAdmin() || 
-        resource.data.userId == request.auth.uid
+        isAdmin() || resource.data.userId == request.auth.uid
       );
-      
-      allow create: if isAuthenticated() && 
-        request.resource.data.userId == request.auth.uid;
-      
-      allow update: if isAuthenticated() && (
-        isAdmin() || 
-        resource.data.userId == request.auth.uid
-      );
-      
-      allow delete: if isAuthenticated() && (
-        isAdmin() || 
-        resource.data.userId == request.auth.uid
-      );
+      allow create: if isAuthenticated() &&
+        hasRequiredFields(request.resource.data, 
+          ['userId', 'status', 'checkIn', 'checkOut', 'totalAmount', 'roomId']
+        ) &&
+        request.resource.data.userId == request.auth.uid &&
+        isValidDate(request.resource.data.checkIn) &&
+        isValidDate(request.resource.data.checkOut) &&
+        request.resource.data.checkIn < request.resource.data.checkOut &&
+        request.resource.data.totalAmount is number &&
+        request.resource.data.totalAmount > 0;
+      allow update: if isAdmin() ||
+        (resource.data.userId == request.auth.uid &&
+         request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['status', 'updatedAt']) &&
+         request.resource.data.status in ['confirmed', 'cancelled', 'completed']);
+      allow delete: if isAdmin() && 
+        resource.data.status != 'completed' && 
+        resource.data.status != 'cancelled';
     }
 
-    // Modification requests
-    match /modificationRequests/{requestId} {
-      allow read: if isAuthenticated() && (
-        isAdmin() || 
-        resource.data.userId == request.auth.uid
-      );
-      
-      allow create: if isAuthenticated() && 
-        request.resource.data.userId == request.auth.uid;
-      
-      allow update, delete: if isAdmin();
+    // Rate limiting collection
+    match /ratelimits/{limitId} {
+      allow read: if isAdmin();
+      allow write: if false;  // Only updateable through backend
     }
 
-    // Cancellation requests
-    match /cancellationRequests/{requestId} {
-      allow read: if isAuthenticated() && (
-        isAdmin() || 
-        resource.data.userId == request.auth.uid
-      );
-      
-      allow create: if isAuthenticated() && 
-        request.resource.data.userId == request.auth.uid;
-      
-      allow update, delete: if isAdmin();
+    // System Configuration with versioning
+    match /system/{docId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin() &&
+        hasRequiredFields(request.resource.data, ['lastUpdate', 'version', 'environment']) &&
+        request.resource.data.environment in ['production', 'staging', 'development'];
     }
   }
 }

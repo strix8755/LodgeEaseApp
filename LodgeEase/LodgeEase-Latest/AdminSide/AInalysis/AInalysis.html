@@ -11,6 +11,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600&family=Roboto:wght@400&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
 </head>
 <body>
     <div id="app">
@@ -48,19 +51,52 @@
                 <div class="header-content">
                     <h1>AI Forecasting Assistant</h1>
                     <div class="header-actions">
-                        <button class="primary-button" onclick="startNewChat()">
+                        <button class="primary-button" @click="startNewChat">
                             <i class="fas fa-plus"></i>
                             New Conversation
+                        </button>
+                        <button class="primary-button" @click="exportReport('pdf')">
+                            <i class="fas fa-file-pdf"></i>
+                            Export PDF
+                        </button>
+                        <button class="primary-button" @click="exportReport('csv')">
+                            <i class="fas fa-file-csv"></i>
+                            Export CSV
                         </button>
                     </div>
                 </div>
             </div>
 
             <div class="suggestions">
-                <div class="suggestion-chip" onclick="submitSuggestion('What is the predicted occupancy rate for next month?')">Occupancy Forecast</div>
-                <div class="suggestion-chip" onclick="submitSuggestion('Show me revenue predictions for Q3')">Revenue Prediction</div>
-                <div class="suggestion-chip" onclick="submitSuggestion('What are the peak booking periods?')">Peak Periods</div>
-                <div class="suggestion-chip" onclick="submitSuggestion('Compare seasonal trends')">Seasonal Trends</div>
+                <div class="suggestion-chip" 
+                    v-for="suggestion in suggestions" 
+                    :key="suggestion.text"
+                    @click="submitSuggestion(suggestion.text)">
+                    {{ suggestion.label }}
+                </div>
+            </div>
+
+            <div class="analytics-dashboard">
+                <div class="chart-row">
+                    <div class="chart-container">
+                        <h3>Room Type Distribution</h3>
+                        <canvas id="roomTypesChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h3>Occupancy Trends</h3>
+                        <canvas id="occupancyChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-row">
+                    <div class="chart-container">
+                        <h3>Booking Trends</h3>
+                        <canvas id="bookingTrendsChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h3>Customer Satisfaction</h3>
+                        <canvas id="customerSatisfactionChart"></canvas>
+                    </div>
+                </div>
             </div>
 
             <div class="chat-container" id="chatContainer">
@@ -68,8 +104,15 @@
             </div>
 
             <div class="chat-input-container">
-                <input type="text" class="chat-input" id="chatInput" placeholder="Ask about hotel forecasts...">
-                <button class="primary-button" onclick="sendMessage()">
+                <input 
+                    type="text" 
+                    class="chat-input" 
+                    id="chatInput" 
+                    placeholder="Ask about hotel forecasts..."
+                    @keyup.enter="sendMessage"
+                    v-model="currentMessage"
+                >
+                <button class="primary-button" @click="sendMessage">
                     <i class="fas fa-paper-plane"></i>
                     Send
                 </button>
