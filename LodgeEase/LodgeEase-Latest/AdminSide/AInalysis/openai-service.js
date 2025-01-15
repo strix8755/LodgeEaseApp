@@ -1,14 +1,5 @@
 // openai-service.js
-
-// Import OpenAI using require since you're using require for dotenv
-const { OpenAI } = require('openai');
-require('dotenv').config();
-
-// Initialize OpenAI with your API key
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-    dangerouslyAllowBrowser: true // Only for development
-});
+import OpenAI from 'https://cdn.skypack.dev/openai';
 
 // Default system message for the hotel AI assistant
 const DEFAULT_SYSTEM_MESSAGE = {
@@ -22,8 +13,14 @@ const DEFAULT_SYSTEM_MESSAGE = {
     Please provide clear, concise responses with specific data when available.`
 };
 
+// Initialize OpenAI with your API key
+const openai = new OpenAI({
+    apiKey: import.meta.env.VITE_OPENAI_API_KEY || process.env.OPENAI_API_KEY,
+    dangerouslyAllowBrowser: true // Only for development
+});
+
 // Main function to get chat completions from OpenAI
-async function getChatCompletion(message, context = []) {
+export async function getChatCompletion(message, context = []) {
     try {
         const completion = await openai.chat.completions.create({
             model: "gpt-3.5-turbo",
@@ -47,7 +44,7 @@ async function getChatCompletion(message, context = []) {
 }
 
 // Function to analyze hotel metrics and provide insights
-async function analyzeHotelMetrics(metrics) {
+export async function analyzeHotelMetrics(metrics) {
     try {
         const prompt = `
             Based on the following hotel metrics, provide a brief analysis and recommendations:
@@ -80,7 +77,7 @@ async function analyzeHotelMetrics(metrics) {
 }
 
 // Function to generate forecasts based on historical data
-async function generateForecasts(historicalData) {
+export async function generateForecasts(historicalData) {
     try {
         const prompt = `
             Based on this historical data, provide a forecast for the next month:
@@ -109,10 +106,3 @@ async function generateForecasts(historicalData) {
         throw new Error('Failed to generate forecasts');
     }
 }
-
-// Export all functions
-module.exports = {
-    getChatCompletion,
-    analyzeHotelMetrics,
-    generateForecasts
-};

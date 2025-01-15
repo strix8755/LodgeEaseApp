@@ -10,7 +10,11 @@
             price: 6500,
             amenities: ["Mountain View", "Fireplace", "WiFi"],
             rating: 4.8,
-            propertyType: "hotel"
+            propertyType: "hotel",
+            coordinates: {
+                lat: 16.4096,
+                lng: 120.6010
+            }
         },
         {
             id: 2,
@@ -20,7 +24,11 @@
             price: 3200,
             amenities: ["City View", "Kitchen", "Parking"],
             rating: 4.5,
-            propertyType: "resort"
+            propertyType: "resort",
+            coordinates: {
+                lat: 16.4145,
+                lng: 120.5960
+            }
         },
         {
             id: 3,
@@ -30,7 +38,11 @@
             price: 4800,
             amenities: ["Mountain View", "Kitchen", "WiFi", "Parking"],
             rating: 4.7,
-            propertyType: "vacation-home"
+            propertyType: "vacation-home",
+            coordinates: {
+                lat: 16.4123,
+                lng: 120.5925
+            }
         },
         {
             id: 4,
@@ -40,7 +52,11 @@
             price: 7500,
             amenities: ["Mountain View", "Fireplace", "Room Service", "Spa"],
             rating: 4.9,
-            propertyType: "resort"
+            propertyType: "resort",
+            coordinates: {
+                lat: 16.4086,
+                lng: 120.6021
+            }
         },
         {
             id: 5,
@@ -50,7 +66,11 @@
             price: 2800,
             amenities: ["City View", "WiFi", "Restaurant"],
             rating: 4.3,
-            propertyType: "hotel"
+            propertyType: "hotel",
+            coordinates: {
+                lat: 16.4156,
+                lng: 120.5964
+            }
         },
         {
             id: 6,
@@ -60,7 +80,11 @@
             price: 5200,
             amenities: ["Mountain View", "Kitchen", "Parking", "Pet Friendly"],
             rating: 4.6,
-            propertyType: "bed-breakfast"
+            propertyType: "bed-breakfast",
+            coordinates: {
+                lat: 16.4105,
+                lng: 120.6287
+            }
         },
         {
             id: 7,
@@ -70,7 +94,11 @@
             price: 4100,
             amenities: ["City View", "WiFi", "Fitness Center"],
             rating: 4.4,
-            propertyType: "hotel"
+            propertyType: "hotel",
+            coordinates: {
+                lat: 16.4115,
+                lng: 120.5932
+            }
         },
         {
             id: 8,
@@ -80,7 +108,11 @@
             price: 8900,
             amenities: ["Mountain View", "Pool", "Kitchen", "Fireplace"],
             rating: 4.9,
-            propertyType: "vacation-home"
+            propertyType: "vacation-home",
+            coordinates: {
+                lat: 16.4089,
+                lng: 120.6015
+            }
         },
         {
             id: 9,
@@ -90,7 +122,11 @@
             price: 3500,
             amenities: ["Garden View", "Free Breakfast", "WiFi"],
             rating: 4.5,
-            propertyType: "bed-breakfast"
+            propertyType: "bed-breakfast",
+            coordinates: {
+                lat: 16.4112,
+                lng: 120.6291
+            }
         },
         {
             id: 10,
@@ -100,7 +136,11 @@
             price: 9500,
             amenities: ["Mountain View", "Spa", "Restaurant", "Room Service"],
             rating: 4.8,
-            propertyType: "hotel"
+            propertyType: "hotel",
+            coordinates: {
+                lat: 16.4098,
+                lng: 120.6018
+            }
         },
         {
             id: 11,
@@ -110,7 +150,11 @@
             price: 4700,
             amenities: ["City View", "Kitchen", "WiFi", "Parking"],
             rating: 4.6,
-            propertyType: "hotel"
+            propertyType: "hotel",
+            coordinates: {
+                lat: 16.4152,
+                lng: 120.5957
+            }
         },
         {
             id: 12,
@@ -120,7 +164,11 @@
             price: 5800,
             amenities: ["Lake View", "Kitchen", "Pet Friendly", "Garden"],
             rating: 4.7,
-            propertyType: "vacation-home"
+            propertyType: "vacation-home",
+            coordinates: {
+                lat: 16.4129,
+                lng: 120.5928
+            }
         }
     ];
 
@@ -170,11 +218,15 @@
                                 `<span class="text-xs bg-gray-100 px-2 py-1 rounded">${amenity}</span>`
                             ).join('')}
                         </div>
-                        <div class="flex justify-between items-center">
+                        <div class="flex justify-between items-center mb-2">
                             <span class="text-green-600 font-bold">₱${lodge.price.toLocaleString()}/night</span>
                             <button class="text-gray-500 hover:text-red-500">
                                 <i class="ri-heart-line text-xl"></i>
                             </button>
+                        </div>
+                        <div class="text-xs text-gray-500 flex items-center">
+                            <i class="ri-map-pin-line mr-1"></i>
+                            <span>Coordinates: ${lodge.coordinates.lat.toFixed(4)}, ${lodge.coordinates.lng.toFixed(4)}</span>
                         </div>
                     </div>
                 </a>
@@ -223,14 +275,126 @@
     function initializeMapToggle() {
         const toggleButton = document.getElementById('toggleView');
         const mapView = document.getElementById('mapView');
+        const closeMapButton = document.getElementById('closeMap');
         
         if (toggleButton && mapView) {
             toggleButton.addEventListener('click', () => {
-                mapView.classList.toggle('hidden');
-                if (!mapView.classList.contains('hidden') && window.lodgeMap) {
-                    google.maps.event.trigger(window.lodgeMap, 'resize');
-                }
+                mapView.classList.remove('hidden');
+                console.log('Map view shown');
+                
+                setTimeout(() => {
+                    if (!window.lodgeMap) {
+                        console.log('Creating new map instance');
+                        initMap();
+                    } else {
+                        console.log('Refreshing existing map');
+                        window.lodgeMap.invalidateSize();
+                        window.lodgeMap.setView([16.4023, 120.5960], 13);
+                        addMarkersToMap();
+                    }
+                }, 100);
             });
+        }
+
+        if (closeMapButton) {
+            closeMapButton.addEventListener('click', () => {
+                mapView.classList.add('hidden');
+            });
+        }
+    }
+
+    // Initialize map function
+    function initMap() {
+        try {
+            console.log('Starting map initialization');
+            const mapContainer = document.getElementById('map');
+            
+            if (!mapContainer) {
+                console.error('Map container not found');
+                return;
+            }
+
+            // Clean up existing map and markers
+            if (window.lodgeMap) {
+                window.markers?.forEach(marker => marker?.remove());
+                window.markers = [];
+                window.lodgeMap.remove();
+                window.lodgeMap = null;
+                console.log('Cleaned up existing map');
+            }
+
+            // Create new map instance
+            const map = L.map(mapContainer, {
+                center: [16.4023, 120.5960],
+                zoom: 13
+            });
+
+            console.log('Map object created');
+
+            // Add tile layer
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            // Store map reference
+            window.lodgeMap = map;
+
+            // Get user's current location
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    const userLat = position.coords.latitude;
+                    const userLng = position.coords.longitude;
+
+                    // Create a red marker for user's location
+                    const userIcon = L.icon({
+                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+                        iconSize: [25, 41],
+                        iconAnchor: [12, 41],
+                        popupAnchor: [1, -34],
+                        shadowSize: [41, 41]
+                    });
+
+                    // Add user marker to map
+                    const userMarker = L.marker([userLat, userLng], {
+                        icon: userIcon
+                    }).addTo(map);
+
+                    userMarker.bindPopup('You are here!').openPopup();
+
+                    // Store user marker reference
+                    window.userMarker = userMarker;
+
+                    // Center map on user location
+                    map.setView([userLat, userLng], 14);
+                }, function(error) {
+                    console.error("Error getting location:", error);
+                    // Continue with default map view if location access is denied
+                    addMarkersToMap();
+                });
+            } else {
+                console.log("Geolocation not available");
+                // Continue with default map view if geolocation is not supported
+                addMarkersToMap();
+            }
+
+            // Add lodge markers after a short delay
+            setTimeout(() => {
+                map.invalidateSize();
+                addMarkersToMap();
+            }, 200);
+
+            console.log('Map initialization completed');
+        } catch (error) {
+            console.error('Error in initMap:', error);
+        }
+    }
+
+    // Add this function to fit bounds to all markers
+    function fitBounds() {
+        if (window.lodgeMap && window.markers && window.markers.length > 0) {
+            const bounds = L.latLngBounds(window.markers.map(marker => marker.getLatLng()));
+            window.lodgeMap.fitBounds(bounds, { padding: [50, 50] });
         }
     }
 
@@ -363,5 +527,64 @@
 
             lodges.forEach(lodge => container.appendChild(lodge));
         });
+    }
+
+    // Update addMarkersToMap to preserve user marker
+    function addMarkersToMap() {
+        if (!window.lodgeMap) {
+            console.error('Map not initialized');
+            return;
+        }
+        
+        try {
+            // Clear existing markers except user marker
+            if (window.markers) {
+                window.markers.forEach(marker => marker.remove());
+            }
+            window.markers = [];
+
+            // Add lodge markers
+            lodgeData.forEach((lodge, index) => {
+                if (!lodge.coordinates) {
+                    console.warn(`No coordinates for lodge: ${lodge.name}`);
+                    return;
+                }
+
+                try {
+                    const marker = L.marker([
+                        lodge.coordinates.lat,
+                        lodge.coordinates.lng
+                    ]);
+
+                    marker.addTo(window.lodgeMap)
+                        .bindPopup(`
+                            <div class="p-2">
+                                <h3 class="font-bold">${lodge.name}</h3>
+                                <p class="text-sm">${lodge.location}</p>
+                                <p class="text-sm font-bold">₱${lodge.price}/night</p>
+                            </div>
+                        `);
+
+                    window.markers.push(marker);
+                } catch (markerError) {
+                    console.error(`Error adding marker for ${lodge.name}:`, markerError);
+                }
+            });
+
+            // Fit bounds to include all markers and user location
+            const allMarkers = [...window.markers];
+            if (window.userMarker) {
+                allMarkers.push(window.userMarker);
+            }
+            
+            if (allMarkers.length > 0) {
+                const bounds = L.latLngBounds(allMarkers.map(marker => marker.getLatLng()));
+                window.lodgeMap.fitBounds(bounds, { padding: [50, 50] });
+            }
+
+            console.log(`Successfully added ${window.markers.length} markers`);
+        } catch (error) {
+            console.error('Error adding markers:', error);
+        }
     }
 })();
