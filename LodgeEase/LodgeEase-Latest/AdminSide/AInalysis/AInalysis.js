@@ -1,6 +1,14 @@
+import OpenAI from 'openai';
 import { auth, db, saveAnalyticsData, fetchAnalyticsData, verifyAdminPermissions, initializeAnalytics, fetchIntegratedAnalytics, fetchModuleAnalytics, fetchRoomAnalytics } from '../firebase.js';
 import { signOut } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-auth.js";
 import { collection, query, getDocs, where, orderBy, limit } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore.js";
+
+const { getChatCompletion, analyzeHotelMetrics, generateForecasts } = require('./openai-service.js');
+
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+    dangerouslyAllowBrowser: true // Note: In production, make API calls through your backend
+});
 
 new Vue({
     el: '#app',
@@ -8,6 +16,7 @@ new Vue({
         isAuthenticated: false,
         loading: true,
         messages: [],
+        chatContext: [],
         charts: {
             occupancy: null,
             revenue: null,
@@ -65,9 +74,54 @@ new Vue({
             revenueByRoom: {},
             popularRooms: []
         }
+        
     },
     methods: {
         // Authentication Methods
+
+        async sendMessage() {
+            const message = this.currentMessage.trim();
+                    
+        if (message) {
+            try {
+                // Add user message to UI
+                this.addMessage(message, 'user');
+                this.currentMessage = '';
+
+                // Add user message to context
+                this.chatContext.push({
+                    role: "user",
+                    content: message
+                });
+
+                // Get response from OpenAI
+                const response = await getChatCompletion(message, this.chatContext);
+
+                // Add AI response to context
+                this.chatContext.push({
+                    role: "assistant",
+                    content: response
+                });
+
+                // Add response to UI
+                this.addMessage(response, 'bot');
+
+                // If the message contains analytics-related keywords, update charts
+                if (this.containsAnalyticsKeywords(message)) {
+                    await this.fetchAnalyticsData();
+                    this.updateCharts();
+                }
+            } catch (error) {
+                console.error('Error in chat:', error);
+                this.addMessage('I apologize, but I encountered an error. Please try again.', 'bot');
+            }
+        }
+    },
+
+    containsAnalyticsKeywords(message) {
+        const keywords = ['occupancy', 'revenue', 'bookings', 'trends', 'analysis'];
+        return keywords.some(keyword => message.toLowerCase().includes(keyword));
+    },
         async handleLogout() {
             try {
                 await signOut(auth);
@@ -984,3 +1038,4 @@ new Vue({
         }
     }
 });
+
