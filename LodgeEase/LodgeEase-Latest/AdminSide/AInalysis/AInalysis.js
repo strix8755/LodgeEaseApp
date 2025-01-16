@@ -122,18 +122,24 @@ Promise.all([
                 
                 console.log('Component mounted successfully');
             } catch (error) {
-                console.error('Error in mounted:', error);
-                this.handleError(error, 'mounted');
+                console.error('Error initializing analytics:', error);
+                this.handleError(error, 'analytics');
             }
         },
-        beforeDestroy() {
-            // Cleanup interval and charts
-            if (this.updateInterval) {
-                clearInterval(this.updateInterval);
-            }
-            Object.values(this.charts).forEach(chart => {
-                if (chart && typeof chart.destroy === 'function') {
-                    chart.destroy();
+
+        async initializeCharts() {
+            const charts = {
+                occupancyChart: this.createOccupancyChart(),
+                revenueChart: this.createRevenueChart(),
+                bookingTrendsChart: this.createBookingTrendsChart(),
+                customerSatisfactionChart: this.createSatisfactionChart(),
+                roomTypesChart: this.createRoomTypesChart()
+            };
+
+            Object.entries(charts).forEach(([id, config]) => {
+                const canvas = document.getElementById(id);
+                if (canvas) {
+                    this.charts[id] = new Chart(canvas.getContext('2d'), config);
                 }
             });
         },
