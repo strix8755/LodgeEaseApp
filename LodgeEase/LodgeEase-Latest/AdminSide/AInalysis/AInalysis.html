@@ -14,6 +14,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+    <link rel="stylesheet" href="loading.css">
+    <link rel="stylesheet" href="chat-suggestions.css">
 </head>
 <body>
     <div id="app">
@@ -51,6 +53,14 @@
                 <div class="header-content">
                     <h1>AI Forecasting Assistant</h1>
                     <div class="header-actions">
+                        <button class="primary-button" @click="toggleAllCharts(true)">
+                            <i class="fas fa-chart-line"></i>
+                            Show All Charts
+                        </button>
+                        <button class="primary-button" @click="toggleAllCharts(false)">
+                            <i class="fas fa-eye-slash"></i>
+                            Hide All Charts
+                        </button>
                         <button class="primary-button" @click="startNewChat">
                             <i class="fas fa-plus"></i>
                             New Conversation
@@ -78,29 +88,75 @@
 
             <div class="analytics-dashboard">
                 <div class="chart-row">
-                    <div class="chart-container">
-                        <h3>Room Type Distribution</h3>
-                        <canvas id="roomTypesChart"></canvas>
+                    <!-- Room Types Chart -->
+                    <div class="chart-container" :class="{ 'hidden': !chartVisibility.roomTypes }">
+                        <div class="chart-header">
+                            <h3>Room Type Distribution</h3>
+                            <button @click="toggleChart('roomTypes')" class="toggle-button">
+                                <i :class="['fas', chartVisibility.roomTypes ? 'fa-eye-slash' : 'fa-eye']"></i>
+                            </button>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="roomTypesChart" width="400" height="300"></canvas>
+                        </div>
                     </div>
-                    <div class="chart-container">
-                        <h3>Occupancy Trends</h3>
-                        <canvas id="occupancyChart"></canvas>
+
+                    <!-- Occupancy Chart -->
+                    <div class="chart-container" :class="{ 'hidden': !chartVisibility.occupancy }">
+                        <div class="chart-header">
+                            <h3>Occupancy Trends</h3>
+                            <button @click="toggleChart('occupancy')" class="toggle-button">
+                                <i :class="['fas', chartVisibility.occupancy ? 'fa-eye-slash' : 'fa-eye']"></i>
+                            </button>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="occupancyChart" width="400" height="300"></canvas>
+                        </div>
                     </div>
                 </div>
                 <div class="chart-row">
-                    <div class="chart-container">
-                        <h3>Booking Trends</h3>
-                        <canvas id="bookingTrendsChart"></canvas>
+                    <div class="chart-container" :class="{ 'hidden': !chartVisibility.bookingTrends }">
+                        <div class="chart-header">
+                            <h3>Booking Trends</h3>
+                            <button @click="toggleChart('bookingTrends')" class="toggle-button">
+                                <i :class="['fas', chartVisibility.bookingTrends ? 'fa-eye-slash' : 'fa-eye']"></i>
+                            </button>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="bookingTrendsChart" width="400" height="300"></canvas>
+                        </div>
                     </div>
-                    <div class="chart-container">
-                        <h3>Customer Satisfaction</h3>
-                        <canvas id="customerSatisfactionChart"></canvas>
+                    <div class="chart-container" :class="{ 'hidden': !chartVisibility.satisfaction }">
+                        <div class="chart-header">
+                            <h3>Customer Satisfaction</h3>
+                            <button @click="toggleChart('satisfaction')" class="toggle-button">
+                                <i :class="['fas', chartVisibility.satisfaction ? 'fa-eye-slash' : 'fa-eye']"></i>
+                            </button>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="customerSatisfactionChart" width="400" height="300"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <div class="chat-container" id="chatContainer">
-                <!-- Messages will be inserted here -->
+                <div class="initial-message">
+                    <div class="message bot">
+                        <div class="message-avatar bot">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <div class="message-content">
+                            Welcome! I can help you analyze:
+                            <div class="chat-suggestions">
+                                <div class="suggestion-chip" v-for="suggestion in initialSuggestions" 
+                                     @click="submitSuggestion(suggestion.text)">
+                                    {{ suggestion.text }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="chat-input-container">

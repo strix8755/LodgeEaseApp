@@ -100,12 +100,33 @@
                 <section class="dashboard-panels">
                     <div class="panel">
                         <h2>Analytics</h2>
-                        <canvas ref="analyticsChart" id="analyticsChart"></canvas>
+                        <div class="chart-container" style="position: relative; height:300px; width:100%">
+                            <canvas id="analyticsChart"></canvas>
+                        </div>
                     </div>
 
                     <div class="panel">
                         <h2>Revenue</h2>
-                        <canvas ref="revenueChart" id="revenueChart"></canvas>
+                        <div class="chart-container" style="position: relative; height:300px; width:100%">
+                            <canvas id="revenueChart"></canvas>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Replace the existing AI insights section with this updated version -->
+                <section class="ai-insights">
+                    <h2>AI Insights</h2>
+                    <div class="insights-grid">
+                        <div v-for="insight in aiInsights" 
+                             :key="insight.type" 
+                             class="insight-card">
+                            <h3>{{ insight.type }}</h3>
+                            <p class="message">{{ insight.message }}</p>
+                            <p class="recommendation">
+                                <i class="fas fa-lightbulb"></i> 
+                                {{ insight.recommendation }}
+                            </p>
+                        </div>
                     </div>
                 </section>
 

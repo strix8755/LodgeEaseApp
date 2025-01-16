@@ -220,45 +220,132 @@ export async function signOut() {
     }
 }
 
-// Add a new booking
+// Add validation helper for booking structure
+function validateBookingData(data) {
+    const requiredFields = ['propertyDetails', 'checkIn', 'checkOut', 'createdAt', 'rating', 'status'];
+    const validStatuses = ['pending', 'confirmed', 'cancelled'];
+    const validRoomTypes = ['Standard', 'Deluxe', 'Suite', 'Family'];
+
+    // Check required fields
+    if (!requiredFields.every(field => field in data)) {
+        throw new Error('Missing required fields in booking data');
+    }
+
+    // Validate propertyDetails
+    if (!data.propertyDetails?.roomType || !validRoomTypes.includes(data.propertyDetails.roomType)) {
+        throw new Error('Invalid or missing room type');
+    }
+
+    // Validate timestamps
+    if (!(data.checkIn instanceof Timestamp) || 
+        !(data.checkOut instanceof Timestamp) || 
+        !(data.createdAt instanceof Timestamp)) {
+        throw new Error('Invalid timestamp fields');
+    }
+
+    // Validate rating
+    if (typeof data.rating !== 'number' || data.rating < 0 || data.rating > 5) {
+        throw new Error('Invalid rating value');
+    }
+
+    // Validate status
+    if (!validStatuses.includes(data.status)) {
+        throw new Error('Invalid booking status');
+    }
+
+    return true;
+}
+
+// Update addBooking function with validation
 export async function addBooking(bookingData) {
     try {
-        console.log('Adding booking with data:', bookingData);
-        const bookingsRef = collection(db, 'bookings');
-        
-        // Add user ID to booking data
-        const user = auth.currentUser;
-        if (!user) {
-            throw new Error('User must be logged in to create a booking');
-        }
-        
-        const bookingWithUser = {
-            ...bookingData,
-            userId: user.uid,
-            createdAt: Timestamp.fromDate(new Date())
+        // Ensure proper structure
+        const formattedBooking = {
+            propertyDetails: {
+                roomType: bookingData.propertyDetails?.roomType || 'Standard'
+            },
+            checkIn: bookingData.checkIn instanceof Timestamp ? 
+                    bookingData.checkIn : 
+                    Timestamp.fromDate(new Date(bookingData.checkIn)),
+            checkOut: bookingData.checkOut instanceof Timestamp ? 
+                     bookingData.checkOut : 
+                     Timestamp.fromDate(new Date(bookingData.checkOut)),
+            createdAt: Timestamp.now(),
+            rating: Number(bookingData.rating || 0),
+            status: bookingData.status || 'pending',
+            userId: auth.currentUser?.uid
         };
+
+        // Validate the formatted data
+        validateBookingData(formattedBooking);
+
+        // Add to Firestore
+        const bookingsRef = collection(db, 'bookings');
+        const docRef = await addDoc(bookingsRef, formattedBooking);
         
-        const docRef = await addDoc(bookingsRef, bookingWithUser);
         console.log("Booking added with ID: ", docRef.id);
         return docRef.id;
     } catch (error) {
-        console.error("Error adding booking: ", error.message);
+        console.error("Error adding booking: ", error);
         throw error;
     }
 }
 
-// Update function for editing bookings
+// Add migration helper if needed
+export async function migrateBookingData() {
+    try {
+        const bookingsRef = collection(db, 'bookings');
+        const snapshot = await getDocs(bookingsRef);
+
+        const batch = db.batch();
+        
+        snapshot.docs.forEach(doc => {
+            const data = doc.data();
+            const updatedData = {
+                propertyDetails: {
+                    roomType: data.roomType || data.propertyDetails?.roomType || 'Standard'
+                },
+                checkIn: data.checkIn || Timestamp.now(),
+                checkOut: data.checkOut || Timestamp.now(),
+                createdAt: data.createdAt || Timestamp.now(),
+                rating: Number(data.rating || 0),
+                status: data.status || 'pending',
+                userId: data.userId || auth.currentUser?.uid
+            };
+
+            batch.update(doc.ref, updatedData);
+        });
+
+        await batch.commit();
+        console.log('Booking data migration completed');
+    } catch (error) {
+        console.error('Error migrating booking data:', error);
+        throw error;
+    }
+}
+
+// Update updateBooking function
 export async function updateBooking(bookingId, updateData) {
     try {
         const bookingRef = doc(db, 'bookings', bookingId);
-        await updateDoc(bookingRef, {
-            'propertyDetails.roomNumber': updateData.roomNumber,
-            'propertyDetails.roomType': updateData.roomType,
-            'propertyDetails.floorLevel': updateData.floorLevel,
-            guestName: updateData.guestName,
-            status: updateData.status,
-            updatedAt: Timestamp.fromDate(new Date())
-        });
+        const currentData = (await getDoc(bookingRef)).data();
+
+        // Merge current and update data
+        const updatedBooking = {
+            ...currentData,
+            propertyDetails: {
+                ...currentData.propertyDetails,
+                ...updateData.propertyDetails
+            },
+            ...updateData,
+            updatedAt: Timestamp.now()
+        };
+
+        // Validate the merged data
+        validateBookingData(updatedBooking);
+
+        // Update document
+        await updateDoc(bookingRef, updatedBooking);
         await logAdminActivity(auth.currentUser.uid, 'booking', `Updated booking ${bookingId}`);
     } catch (error) {
         console.error("Error updating booking: ", error);
@@ -335,16 +422,32 @@ export async function fetchRoomById(roomId) {
     }
 }
 
-// Add a new room
+// Update addRoom function to ensure room type is properly set
 export async function addRoom(roomData) {
     try {
+        // Validate and normalize room type
+        if (!roomData.roomType && !roomData.type) {
+            roomData.roomType = 'Standard'; // Default room type
+        } else {
+            const type = (roomData.roomType || roomData.type).trim();
+            roomData.roomType = type.charAt(0).toUpperCase() + type.slice(1).toLowerCase();
+            delete roomData.type; // Remove duplicate field
+        }
+
+        // Ensure room type is one of the valid types
+        const validTypes = ['Standard', 'Deluxe', 'Suite', 'Family'];
+        if (!validTypes.includes(roomData.roomType)) {
+            roomData.roomType = 'Standard';
+        }
+
         const roomsRef = collection(db, "rooms");
         const docRef = await addDoc(roomsRef, {
             ...roomData,
             createdAt: Timestamp.fromDate(new Date())
         });
+        
+        console.log("Room added with data:", roomData); // Debug log
         await logAdminActivity(auth.currentUser.uid, 'room', `Added new room ${roomData.roomNumber}`);
-        console.log("Room added with ID: ", docRef.id);
         return docRef.id;
     } catch (error) {
         console.error("Error adding room: ", error);
@@ -352,9 +455,15 @@ export async function addRoom(roomData) {
     }
 }
 
-// Update an existing room
+// Update updateRoom function
 export async function updateRoom(roomId, roomData) {
     try {
+        // Ensure room type is properly set
+        if (roomData.type || roomData.roomType) {
+            roomData.roomType = roomData.type || roomData.roomType;
+            delete roomData.type; // Remove duplicate field if exists
+        }
+
         const roomRef = doc(db, "rooms", roomId);
         await updateDoc(roomRef, roomData);
         console.log("Room updated with ID: ", roomId);

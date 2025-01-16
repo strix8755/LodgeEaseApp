@@ -1,6 +1,6 @@
 // Import Firebase modules
 import { db, auth } from '../firebase.js';
-import { collection, getDocs, query, orderBy, limit, doc, deleteDoc, updateDoc, Timestamp } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore.js";
+import { collection, getDocs, query, orderBy, limit, doc, deleteDoc, updateDoc, Timestamp, where, addDoc } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore.js";
 import { signOut } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-auth.js";
 
 // Vue app for the dashboard
@@ -14,7 +14,16 @@ new Vue({
         bookings: [],
         analysisFeedback: '',
         isAuthenticated: false,
-        loading: true
+        loading: true,
+        analyticsChart: null,
+        revenueChart: null,
+        forecastData: {
+            occupancyPrediction: [],
+            revenueForecast: [],
+            demandTrends: [],
+            seasonalityPatterns: []
+        },
+        aiInsights: []
     },
     methods: {
         async handleLogout() {
@@ -69,6 +78,27 @@ new Vue({
             }
         },
 
+        formatDateForChart(date) {
+            try {
+                // Handle different date formats
+                const dateObj = date instanceof Date ? date : 
+                               (date?.toDate ? date.toDate() : 
+                               (typeof date === 'string' ? new Date(date) : null));
+
+                if (!dateObj || isNaN(dateObj.getTime())) {
+                    throw new Error('Invalid date input');
+                }
+
+                return dateObj.toLocaleString('default', { 
+                    month: 'short', 
+                    year: '2-digit'
+                });
+            } catch (error) {
+                console.error('Date formatting error:', error, 'Input:', date);
+                return 'Invalid Date';
+            }
+        },
+
         async fetchBookings() {
             try {
                 const bookingsRef = collection(db, 'bookings');
@@ -99,6 +129,14 @@ new Vue({
 
                 console.log('All processed bookings:', this.bookings);
                 this.updateDashboardStats();
+
+                // After fetching bookings, generate forecasts
+                await this.generateAIForecasts();
+                
+                // Set up interval for forecast updates
+                if (!this.forecastInterval) {
+                    this.forecastInterval = setInterval(() => this.generateAIForecasts(), 21600000);
+                }
             } catch (error) {
                 console.error('Error fetching bookings:', error);
                 alert('Error fetching bookings. Please try again.');
@@ -279,6 +317,608 @@ new Vue({
             this.totalRevenue = this.bookings.reduce((total, booking) => {
                 return total + (booking.totalPrice || 0);
             }, 0);
+        },
+
+        async initializeCharts() {
+            try {
+                const analyticsCtx = document.getElementById('analyticsChart');
+                const revenueCtx = document.getElementById('revenueChart');
+
+                if (!analyticsCtx || !revenueCtx) {
+                    console.error('Chart canvas elements not found');
+                    return false;
+                }
+
+                // Clean up existing charts
+                if (this.analyticsChart) {
+                    this.analyticsChart.destroy();
+                    this.analyticsChart = null;
+                }
+                if (this.revenueChart) {
+                    this.revenueChart.destroy();
+                    this.revenueChart = null;
+                }
+
+                // Generate initial labels and data
+                const labels = [];
+                const occupancyData = [];
+                const revenueData = [];
+                const predictedOccupancy = [];
+                const predictedRevenue = [];
+
+                // Generate data for the last 6 months
+                for (let i = 5; i >= 0; i--) {
+                    const date = new Date();
+                    date.setMonth(date.getMonth() - i);
+                    labels.push(this.formatDateForChart(date));
+                    
+                    // Generate sample data (replace with real data later)
+                    const baseOccupancy = 65 + Math.random() * 20;
+                    const baseRevenue = 12000 + Math.random() * 8000;
+                    
+                    occupancyData.push(Math.round(baseOccupancy));
+                    predictedOccupancy.push(Math.round(baseOccupancy * 1.1));
+                    revenueData.push(Math.round(baseRevenue));
+                    predictedRevenue.push(Math.round(baseRevenue * 1.1));
+                }
+
+                const commonOptions = {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            display: true,
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                autoSkip: false,
+                                maxRotation: 45,
+                                color: '#666',
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                borderDash: [2, 4],
+                                color: '#e0e0e0'
+                            },
+                            ticks: {
+                                color: '#666',
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                padding: 20,
+                                boxWidth: 30,
+                                usePointStyle: true
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    }
+                };
+
+                // Create Analytics Chart
+                this.analyticsChart = new Chart(analyticsCtx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Actual Occupancy',
+                                data: occupancyData,
+                                borderColor: 'rgb(75, 192, 192)',
+                                backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                                tension: 0.4,
+                                fill: true
+                            },
+                            {
+                                label: 'Predicted Occupancy',
+                                data: predictedOccupancy,
+                                borderColor: 'rgb(255, 99, 132)',
+                                backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                                borderDash: [5, 5],
+                                tension: 0.4,
+                                fill: true
+                            }
+                        ]
+                    },
+                    options: {
+                        ...commonOptions,
+                        plugins: {
+                            ...commonOptions.plugins,
+                            title: {
+                                display: true,
+                                text: 'Occupancy Forecast',
+                                font: {
+                                    size: 16,
+                                    weight: 'bold'
+                                }
+                            }
+                        },
+                        scales: {
+                            ...commonOptions.scales,
+                            y: {
+                                ...commonOptions.scales.y,
+                                title: {
+                                    display: true,
+                                    text: 'Occupancy Rate (%)'
+                                },
+                                ticks: {
+                                    callback: function(value) {
+                                        return value + '%';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                // Create Revenue Chart
+                this.revenueChart = new Chart(revenueCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Actual Revenue',
+                                data: revenueData,
+                                backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                                borderColor: 'rgb(75, 192, 192)',
+                                borderWidth: 1
+                            },
+                            {
+                                label: 'Predicted Revenue',
+                                data: predictedRevenue,
+                                backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                                borderColor: 'rgb(255, 99, 132)',
+                                borderWidth: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        ...commonOptions,
+                        plugins: {
+                            ...commonOptions.plugins,
+                            title: {
+                                display: true,
+                                text: 'Revenue Forecast',
+                                font: {
+                                    size: 16,
+                                    weight: 'bold'
+                                }
+                            }
+                        },
+                        scales: {
+                            ...commonOptions.scales,
+                            y: {
+                                ...commonOptions.scales.y,
+                                title: {
+                                    display: true,
+                                    text: 'Revenue (PHP)'
+                                },
+                                ticks: {
+                                    callback: function(value) {
+                                        return '₱' + value.toLocaleString();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                return true;
+            } catch (error) {
+                console.error('Error initializing charts:', error);
+                return false;
+            }
+        },
+
+        async generateAIForecasts() {
+            try {
+                const historicalData = await this.fetchHistoricalBookings();
+                
+                if (!historicalData || historicalData.length === 0) {
+                    console.warn('No historical data available');
+                    return;
+                }
+
+                const bookingPatterns = await this.analyzeBookingPatterns(historicalData);
+                const seasonalTrends = await this.analyzeSeasonality(historicalData);
+                const demandIndicators = await this.analyzeDemandFactors(historicalData);
+
+                const predictions = this.generatePredictions(bookingPatterns, seasonalTrends, demandIndicators);
+                
+                if (predictions) {
+                    await this.savePredictionsToFirebase(predictions);
+                    this.updateChartsWithPredictions(predictions);
+                    this.generateInsights(predictions);
+                    console.log('AI forecasts generated successfully');
+                }
+            } catch (error) {
+                console.error('Error generating forecasts:', error);
+            }
+        },
+
+        async fetchHistoricalBookings() {
+            const bookingsRef = collection(db, 'bookings');
+            const sixMonthsAgo = new Date();
+            sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+            const q = query(
+                bookingsRef,
+                where('checkIn', '>=', sixMonthsAgo),
+                orderBy('checkIn', 'desc')
+            );
+
+            const snapshot = await getDocs(q);
+            return snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+        },
+
+        async analyzeBookingPatterns(historicalData) {
+            // Group bookings by date
+            const bookingsByDate = historicalData.reduce((acc, booking) => {
+                const date = this.formatDate(booking.checkIn);
+                if (!acc[date]) acc[date] = [];
+                acc[date].push(booking);
+                return acc;
+            }, {});
+
+            // Calculate daily stats
+            const dailyStats = Object.entries(bookingsByDate).map(([date, bookings]) => ({
+                date,
+                count: bookings.length,
+                revenue: bookings.reduce((sum, b) => sum + (b.totalPrice || 0), 0),
+                occupancyRate: (bookings.length / this.availableRooms) * 100
+            }));
+
+            return {
+                dailyStats,
+                averageOccupancy: this.calculateAverageFromStats(dailyStats, 'occupancyRate'),
+                averageRevenue: this.calculateAverageFromStats(dailyStats, 'revenue'),
+                trendLine: this.calculateTrendLine(dailyStats)
+            };
+        },
+
+        async analyzeSeasonality(historicalData) {
+            const monthlyData = historicalData.reduce((acc, booking) => {
+                const month = new Date(this.formatDate(booking.checkIn)).getMonth();
+                if (!acc[month]) {
+                    acc[month] = {
+                        bookings: 0,
+                        revenue: 0,
+                        occupancyRate: 0
+                    };
+                }
+                acc[month].bookings++;
+                acc[month].revenue += booking.totalPrice || 0;
+                return acc;
+            }, {});
+
+            // Calculate seasonal indices
+            return Object.entries(monthlyData).map(([month, data]) => ({
+                month: parseInt(month),
+                seasonalIndex: data.bookings / (historicalData.length / 12),
+                avgRevenue: data.revenue / data.bookings,
+                occupancyRate: (data.bookings / (this.availableRooms * 30)) * 100
+            }));
+        },
+
+        async savePredictionsToFirebase(predictions) {
+            try {
+                // Add timestamp and metadata
+                const predictionData = {
+                    predictions,
+                    createdAt: Timestamp.now(),
+                    updatedAt: Timestamp.now(),
+                    userId: auth.currentUser?.uid,
+                    status: 'active'
+                };
+
+                const forecastRef = collection(db, 'forecasts');
+                const docRef = await addDoc(forecastRef, predictionData);
+                console.log('Predictions saved with ID:', docRef.id);
+                return docRef.id;
+            } catch (error) {
+                console.error('Error saving predictions:', error);
+                throw error;
+            }
+        },
+
+        calculateTrendLine(data) {
+            // Simple linear regression
+            const n = data.length;
+            const xy = data.reduce((sum, d, i) => sum + (i * d.count), 0);
+            const x = data.reduce((sum, _, i) => sum + i, 0);
+            const y = data.reduce((sum, d) => sum + d.count, 0);
+            const x2 = data.reduce((sum, _, i) => sum + (i * i), 0);
+
+            const slope = (n * xy - x * y) / (n * x2 - x * x);
+            const intercept = (y - slope * x) / n;
+
+            return { slope, intercept };
+        },
+
+        calculateAverageFromStats(stats, key) {
+            return stats.reduce((sum, stat) => sum + stat[key], 0) / stats.length;
+        },
+
+        generatePredictions(bookingPatterns, seasonalTrends, demandIndicators) {
+            try {
+                const predictions = {
+                    occupancy: [],
+                    revenue: []
+                };
+
+                // Generate 6-month forecast instead of 30-day
+                for (let i = 0; i < 6; i++) {
+                    const date = new Date();
+                    date.setMonth(date.getMonth() + i);
+                    const month = date.getMonth();
+
+                    // Get seasonal factor for current month
+                    const seasonalFactor = seasonalTrends.find(s => s.month === month)?.seasonalIndex || 1;
+                    const trendImpact = bookingPatterns.trendLine.slope * i + bookingPatterns.trendLine.intercept;
+
+                    // Predict occupancy
+                    const predictedOccupancy = Math.min(
+                        100,
+                        Math.max(
+                            0,
+                            bookingPatterns.averageOccupancy * seasonalFactor * (1 + trendImpact)
+                        )
+                    );
+
+                    // Predict revenue
+                    const predictedRevenue = predictedOccupancy / 100 * 
+                        this.availableRooms * 
+                        (demandIndicators.averageRoomRate || 5000);
+
+                    predictions.occupancy.push({
+                        date: date,  // Use Date object directly
+                        rate: Math.round(predictedOccupancy)
+                    });
+
+                    predictions.revenue.push({
+                        date: date,  // Use Date object directly
+                        amount: Math.round(predictedRevenue)
+                    });
+                }
+
+                console.log('Generated predictions:', predictions); // Debug log
+                return predictions;
+            } catch (error) {
+                console.error('Error generating predictions:', error);
+                return null;
+            }
+        },
+
+        generateInsights(predictions) {
+            const occupancyTrend = this.calculateTrend(predictions.occupancy.map(p => p.rate));
+            const revenueTrend = this.calculateTrend(predictions.revenue.map(p => p.amount));
+
+            this.aiInsights = [
+                {
+                    type: 'occupancy',
+                    message: `Expected ${occupancyTrend > 0 ? 'increase' : 'decrease'} in occupancy rate`,
+                    recommendation: this.getOccupancyRecommendation(occupancyTrend)
+                },
+                {
+                    type: 'revenue',
+                    message: `Projected ${revenueTrend > 0 ? 'growth' : 'decline'} in revenue`,
+                    recommendation: this.getRevenueRecommendation(revenueTrend)
+                },
+                {
+                    type: 'pricing',
+                    message: this.getPricingInsight(predictions),
+                    recommendation: this.getPricingRecommendation(predictions)
+                }
+            ];
+        },
+
+        // Helper methods for calculations
+        calculateAverageOccupancy() {
+            return this.occupiedRooms / (this.occupiedRooms + this.availableRooms) * 100;
+        },
+
+        identifyPopularRoomTypes() {
+            const roomTypeCounts = this.bookings.reduce((acc, booking) => {
+                const type = booking.propertyDetails.roomType;
+                acc[type] = (acc[type] || 0) + 1;
+                return acc;
+            }, {});
+            return Object.entries(roomTypeCounts)
+                .sort(([,a], [,b]) => b - a)
+                .map(([type]) => type);
+        },
+
+        calculatePredictedOccupancy(date, patterns, seasonal, demand) {
+            // Implement your prediction algorithm here
+            // This is a simplified example
+            const baseOccupancy = demand.averageOccupancy;
+            const seasonalFactor = this.getSeasonalFactor(date, seasonal);
+            const trendFactor = this.getTrendFactor(patterns);
+            
+            return baseOccupancy * seasonalFactor * trendFactor;
+        },
+
+        calculatePredictedRevenue(occupancy, demand) {
+            // Implement your revenue prediction algorithm here
+            const averageRoomRate = 5000; // Example rate
+            return occupancy * averageRoomRate;
+        },
+
+        calculateTrend(values) {
+            const n = values.length;
+            if (n < 2) return 0;
+            return (values[n - 1] - values[0]) / values[0] * 100;
+        },
+
+        getOccupancyRecommendation(trend) {
+            if (trend > 10) return "Consider increasing rates during peak periods";
+            if (trend < -10) return "Consider promotional offers to boost bookings";
+            return "Maintain current pricing strategy";
+        },
+
+        getRevenueRecommendation(trend) {
+            if (trend > 10) return "Focus on maintaining service quality to support premium pricing";
+            if (trend < -10) return "Review pricing strategy and consider package deals";
+            return "Continue current revenue management approach";
+        },
+
+        async analyzeDemandFactors(historicalData) {
+            try {
+                const avgRoomRate = this.calculateAverageRoomRate(historicalData);
+                const peakDays = this.identifyPeakDays(historicalData);
+                const seasonalityPattern = this.analyzeSeasonalityPattern(historicalData);
+
+                return {
+                    averageRoomRate: avgRoomRate,
+                    peakDays,
+                    seasonalityPattern,
+                    averageOccupancy: this.calculateAverageOccupancy(),
+                    popularRoomTypes: this.identifyPopularRoomTypes()
+                };
+            } catch (error) {
+                console.error('Error analyzing demand factors:', error);
+                return {
+                    averageRoomRate: 5000, // fallback value
+                    peakDays: [],
+                    seasonalityPattern: {},
+                    averageOccupancy: 0,
+                    popularRoomTypes: []
+                };
+            }
+        },
+
+        calculateAverageRoomRate(historicalData) {
+            const validBookings = historicalData.filter(booking => booking.totalPrice > 0);
+            if (validBookings.length === 0) return 5000; // default value
+            return validBookings.reduce((sum, booking) => sum + booking.totalPrice, 0) / validBookings.length;
+        },
+
+        identifyPeakDays(historicalData) {
+            const dailyBookings = {};
+            historicalData.forEach(booking => {
+                const date = this.formatDate(booking.checkIn);
+                dailyBookings[date] = (dailyBookings[date] || 0) + 1;
+            });
+
+            const avgBookingsPerDay = Object.values(dailyBookings).reduce((a, b) => a + b, 0) / 
+                Object.keys(dailyBookings).length || 1;
+
+            return Object.entries(dailyBookings)
+                .filter(([_, count]) => count > avgBookingsPerDay * 1.5)
+                .map(([date]) => date);
+        },
+
+        analyzeSeasonalityPattern(historicalData) {
+            const monthlyData = {};
+            historicalData.forEach(booking => {
+                const month = new Date(this.formatDate(booking.checkIn)).getMonth();
+                if (!monthlyData[month]) {
+                    monthlyData[month] = { bookings: 0, revenue: 0 };
+                }
+                monthlyData[month].bookings++;
+                monthlyData[month].revenue += booking.totalPrice || 0;
+            });
+
+            return monthlyData;
+        },
+
+        getPricingInsight(predictions) {
+            const avgOccupancy = predictions.occupancy.reduce((sum, p) => sum + p.rate, 0) / 
+                predictions.occupancy.length;
+            
+            if (avgOccupancy > 80) return "High demand period detected";
+            if (avgOccupancy < 40) return "Low occupancy period ahead";
+            return "Stable demand expected";
+        },
+
+        getPricingRecommendation(predictions) {
+            const avgOccupancy = predictions.occupancy.reduce((sum, p) => sum + p.rate, 0) / 
+                predictions.occupancy.length;
+            
+            if (avgOccupancy > 80) return "Consider implementing dynamic pricing for peak demand";
+            if (avgOccupancy < 40) return "Consider promotional rates or package deals";
+            return "Maintain current pricing levels";
+        },
+
+        getSeasonalFactor(date, seasonal) {
+            const month = date.getMonth();
+            const seasonalData = seasonal.find(s => s.month === month);
+            return seasonalData ? seasonalData.seasonalIndex : 1;
+        },
+
+        getTrendFactor(patterns) {
+            return patterns.trendLine.slope > 0 ? 1 + patterns.trendLine.slope : 1;
+        },
+
+        // Add the updateChartsWithPredictions function
+        updateChartsWithPredictions(predictions) {
+            try {
+                if (!predictions || !predictions.occupancy || !predictions.revenue) {
+                    console.error('Invalid predictions data');
+                    return;
+                }
+
+                // Only update data, not the entire chart configuration
+                if (this.analyticsChart && this.revenueChart) {
+                    console.log('Raw predictions data:', predictions); // Debug log
+
+                    // Format dates for x-axis
+                    const dates = predictions.occupancy.map(p => {
+                        if (!p.date) {
+                            console.warn('Missing date in prediction:', p);
+                            return null;
+                        }
+                        return this.formatDateForChart(p.date);
+                    }).filter(date => date !== 'Invalid Date' && date !== null);
+
+                    console.log('Formatted dates:', dates); // Debug log
+
+                    if (dates.length > 0) {
+                        // Update chart data
+                        const occupancyData = predictions.occupancy.map(p => p.rate || 0);
+                        const revenueData = predictions.revenue.map(p => p.amount || 0);
+
+                        // Update Analytics Chart
+                        this.analyticsChart.data.labels = dates;
+                        this.analyticsChart.data.datasets[0].data = occupancyData;
+                        this.analyticsChart.data.datasets[1].data = occupancyData.map(rate => rate * 1.1);
+
+                        // Update Revenue Chart
+                        this.revenueChart.data.labels = dates;
+                        this.revenueChart.data.datasets[0].data = revenueData;
+                        this.revenueChart.data.datasets[1].data = revenueData.map(amount => amount * 1.1);
+
+                        // Update both charts without animation
+                        this.analyticsChart.update('none');
+                        this.revenueChart.update('none');
+
+                        console.log('Charts updated successfully');
+                    } else {
+                        console.warn('No valid dates found in predictions');
+                    }
+                }
+            } catch (error) {
+                console.error('Error updating charts with predictions:', error);
+            }
         }
     },
     computed: {
@@ -294,7 +934,36 @@ new Vue({
             });
         }
     },
-    async mounted() {
-        this.checkAuthState(); // This will handle auth check and fetch bookings
+    mounted() {
+        this.checkAuthState();
+        // Initialize charts only once after DOM is ready
+        const initCharts = () => {
+            if (document.getElementById('analyticsChart') && document.getElementById('revenueChart')) {
+                // Initialize charts with proper error handling
+                if (this.initializeCharts()) {
+                    console.log('Charts initialized successfully');
+                    // Don't generate forecasts here, will be called after data is loaded
+                } else {
+                    console.error('Failed to initialize charts');
+                }
+            } else {
+                // If elements aren't ready yet, try again in 100ms
+                setTimeout(initCharts, 100);
+            }
+        };
+
+        // Start checking for elements
+        this.$nextTick(initCharts);
+    },
+    beforeDestroy() {
+        if (this.forecastInterval) {
+            clearInterval(this.forecastInterval);
+        }
+        if (this.analyticsChart) {
+            this.analyticsChart.destroy();
+        }
+        if (this.revenueChart) {
+            this.revenueChart.destroy();
+        }
     }
 });

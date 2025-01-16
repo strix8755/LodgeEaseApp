@@ -56,7 +56,10 @@ service cloud.firestore {
     // Enhanced security rules for collections
     // Modified analytics rules to be more permissive during development
     match /analytics/{document=**} {
-      allow read, write: if request.auth != null;  // Allow any authenticated user
+      allow read: if isAuthenticated();  // Allow any authenticated user to read
+      allow write: if isAdmin() && 
+        request.resource.data.keys().hasAll(['type', 'data', 'timestamp']) &&
+        request.resource.data.type in ['roomTypes', 'occupancy', 'bookings', 'satisfaction'];
     }
 
     // Add rules for analytics collections
@@ -123,10 +126,12 @@ service cloud.firestore {
     match /rooms/{roomId} {
       allow read: if isAuthenticated();
       allow write: if isAdmin() && 
-        hasRequiredFields(request.resource.data, ['roomNumber', 'status', 'type', 'price']) &&
-        request.resource.data.status in ['available', 'occupied', 'maintenance', 'cleaning'] &&
-        request.resource.data.price is number &&
-        request.resource.data.price >= 0;
+        request.resource.data.keys().hasAll(['roomNumber', 'type', 'status', 'floor']) &&
+        request.resource.data.type is string &&
+        (request.resource.data.type in ['Standard', 'Deluxe', 'Suite', 'Family']) &&  // Add valid room types
+        request.resource.data.status in ['Available', 'Occupied', 'Maintenance'] &&
+        request.resource.data.floor is string &&
+        request.resource.data.roomNumber is string;
     }
 
     // Bookings Collection with enhanced validation
@@ -135,23 +140,30 @@ service cloud.firestore {
         isAdmin() || resource.data.userId == request.auth.uid
       );
       allow create: if isAuthenticated() &&
-        hasRequiredFields(request.resource.data, 
-          ['userId', 'status', 'checkIn', 'checkOut', 'totalAmount', 'roomId']
-        ) &&
-        request.resource.data.userId == request.auth.uid &&
-        isValidDate(request.resource.data.checkIn) &&
-        isValidDate(request.resource.data.checkOut) &&
-        request.resource.data.checkIn < request.resource.data.checkOut &&
-        request.resource.data.totalAmount is number &&
-        request.resource.data.totalAmount > 0;
+        request.resource.data.keys().hasAll([
+          'checkIn',
+          'checkOut',
+          'guestName',
+          'email',
+          'contactNumber',
+          'status',
+          'propertyDetails',
+          'nightlyRate',
+          'totalPrice',
+          'userId'
+        ]) &&
+        request.resource.data.propertyDetails.keys().hasAll([
+          'roomType',
+          'roomNumber',
+          'floorLevel',
+          'name',
+          'location'
+        ]);
+      
       allow update: if isAdmin() ||
         (resource.data.userId == request.auth.uid &&
          request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['status', 'updatedAt']) &&
-         request.resource.data.status in ['confirmed', 'cancelled', 'completed']);
-      allow delete: if isAdmin() && 
-        resource.data.status != 'completed' && 
-        resource.data.status != 'cancelled';
+          .hasOnly(['status', 'paymentStatus', 'updatedAt']));
     }
 
     // Rate limiting collection
@@ -174,6 +186,30 @@ service cloud.firestore {
     // Allow read/write access to collection metadata
     match /{collection}/_config {
       allow read, write: if request.auth != null;
+    }
+
+    // Add rules for analytics aggregation
+    match /analyticsAggregates/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() && 
+        request.resource.data.keys().hasAll(['lastUpdated', 'data']) &&
+        request.resource.data.data is map;
+    }
+
+    // Add specific rule for room type analytics
+    match /analytics/roomTypes {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() && 
+        request.resource.data.keys().hasAll(['distribution', 'lastUpdated']) &&
+        request.resource.data.distribution is map;
+    }
+
+    // Add specific rule for occupancy analytics
+    match /analytics/occupancy {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() && 
+        request.resource.data.keys().hasAll(['trends', 'lastUpdated']) &&
+        request.resource.data.trends is list;
     }
   }
 }

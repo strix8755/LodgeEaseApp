@@ -29,6 +29,101 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+// Function declarations moved outside DOMContentLoaded
+async function loadModificationRequests() {
+    try {
+        const requestsRef = collection(db, 'modificationRequests');
+        const q = query(
+            requestsRef,
+            where('status', '==', 'pending'),
+            orderBy('createdAt', 'desc')
+        );
+
+        const container = document.getElementById('modificationRequests');
+        container.innerHTML = '<p class="text-gray-500 text-center py-4">Loading requests...</p>';
+
+        try {
+            const snapshot = await getDocs(q);
+            container.innerHTML = '';
+
+            if (snapshot.empty) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-4">No pending modification requests</p>';
+                return;
+            }
+
+            snapshot.forEach(doc => {
+                const request = doc.data();
+                container.appendChild(createModificationRequestCard(doc.id, request));
+            });
+        } catch (error) {
+            if (error.code === 'failed-precondition' || error.message.includes('requires an index')) {
+                container.innerHTML = `
+                    <div class="text-red-500 text-center py-4">
+                        <p>Index not ready. Please wait a few moments and refresh the page.</p>
+                        <p class="text-sm">If the problem persists, ask an administrator to check the Firebase indexes.</p>
+                    </div>
+                `;
+            } else {
+                throw error;
+            }
+        }
+    } catch (error) {
+        console.error('Error loading modification requests:', error);
+        alert('Failed to load modification requests. Please try again later.');
+    }
+}
+
+async function loadCancellationRequests() {
+    try {
+        const requestsRef = collection(db, 'cancellationRequests');
+        console.log('Starting to load cancellation requests...');
+
+        const snapshot = await getDocs(requestsRef);
+        console.log('Total cancellation requests found:', snapshot.size);
+        
+        snapshot.forEach(doc => {
+            console.log('Request:', {
+                id: doc.id,
+                status: doc.data().status,
+                booking: doc.data().booking?.id,
+                createdAt: doc.data().createdAt?.toDate()
+            });
+        });
+
+        const container = document.getElementById('cancellationRequests');
+        container.innerHTML = '';
+
+        if (snapshot.empty) {
+            container.innerHTML = '<p class="text-gray-500 text-center py-4">No cancellation requests found</p>';
+            return;
+        }
+
+        const pendingRequests = snapshot.docs.filter(doc => doc.data().status === 'pending');
+        console.log('Pending cancellation requests:', pendingRequests.length);
+
+        if (pendingRequests.length === 0) {
+            container.innerHTML = '<p class="text-gray-500 text-center py-4">No pending cancellation requests</p>';
+            return;
+        }
+
+        pendingRequests.forEach(doc => {
+            const request = doc.data();
+            console.log('Creating card for request:', doc.id, request);
+            container.appendChild(createCancellationRequestCard(doc.id, request));
+        });
+
+    } catch (error) {
+        console.error('Detailed error loading cancellation requests:', error);
+        const container = document.getElementById('cancellationRequests');
+        container.innerHTML = `
+            <div class="bg-red-100 text-red-700 p-4 rounded">
+                <p>Error loading requests: ${error.message}</p>
+                <p class="text-sm mt-2">Error code: ${error.code || 'unknown'}</p>
+            </div>
+        `;
+    }
+}
+
 // Set up real-time listeners for both request types
 function setupRequestListeners() {
     // Listen for cancellation requests
@@ -37,7 +132,7 @@ function setupRequestListeners() {
             id: doc.id,
             ...doc.data()
         })));
-        loadCancellationRequests(); // Reload the UI when changes occur
+        loadCancellationRequests(); // Now this function is in scope
     });
 
     // Listen for modification requests
@@ -46,7 +141,7 @@ function setupRequestListeners() {
             id: doc.id,
             ...doc.data()
         })));
-        loadModificationRequests(); // Reload the UI when changes occur
+        loadModificationRequests(); // Now this function is in scope
     });
 
     // Clean up listeners on page unload
