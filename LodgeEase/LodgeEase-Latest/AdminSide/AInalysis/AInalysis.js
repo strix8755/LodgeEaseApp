@@ -1,6 +1,7 @@
 import { auth, db, saveAnalyticsData, fetchAnalyticsData, verifyAdminPermissions, initializeAnalytics, fetchIntegratedAnalytics, fetchModuleAnalytics, fetchRoomAnalytics } from '../firebase.js';
 import { signOut } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-auth.js";
 import { collection, query, getDocs, where, orderBy, limit, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore.js";
+import { SuggestionService } from '../js/suggestionService.js'; // Add this import
 
 // Wait for both DOM and Firebase Auth to be ready
 Promise.all([
@@ -122,24 +123,18 @@ Promise.all([
                 
                 console.log('Component mounted successfully');
             } catch (error) {
-                console.error('Error initializing analytics:', error);
-                this.handleError(error, 'analytics');
+                console.error('Error in mounted:', error);
+                this.handleError(error, 'mounted');
             }
         },
-
-        async initializeCharts() {
-            const charts = {
-                occupancyChart: this.createOccupancyChart(),
-                revenueChart: this.createRevenueChart(),
-                bookingTrendsChart: this.createBookingTrendsChart(),
-                customerSatisfactionChart: this.createSatisfactionChart(),
-                roomTypesChart: this.createRoomTypesChart()
-            };
-
-            Object.entries(charts).forEach(([id, config]) => {
-                const canvas = document.getElementById(id);
-                if (canvas) {
-                    this.charts[id] = new Chart(canvas.getContext('2d'), config);
+        beforeDestroy() {
+            // Cleanup interval and charts
+            if (this.updateInterval) {
+                clearInterval(this.updateInterval);
+            }
+            Object.values(this.charts).forEach(chart => {
+                if (chart && typeof chart.destroy === 'function') {
+                    chart.destroy();
                 }
             });
         },
