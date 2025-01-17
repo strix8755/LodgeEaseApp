@@ -616,3 +616,4 @@ new Vue({
         this.checkAuthState(); // This will handle auth check and fetch bookings
     }
 });
+
