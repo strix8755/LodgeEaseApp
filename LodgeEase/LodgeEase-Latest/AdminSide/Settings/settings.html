@@ -7,6 +7,8 @@
     <script type="module" src="../firebase.js"></script>
     <script type="module" src="../js/auth-check.js"></script>
     <script type="module" src="settings.js"></script>
+    <script type="module" src="/LodgeEase/LodgeEase-Latest/AdminSide/Dashboard/transitions.js"></script>
+    <link rel="stylesheet" href="/LodgeEase/LodgeEase-Latest/AdminSide/Dashboard/transitionStyle.css">
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600&family=Roboto:wght@400&display=swap" rel="stylesheet">
@@ -32,15 +34,12 @@
                 <li><a href="../Settings/settings.html" class="active"><i class="fas fa-cog"></i> Settings</a></li>
                 <li><a href="../AInalysis/AInalysis.html"><i class="fas fa-robot"></i> ChatBot</a></li>
             </ul>
+            <!-- Add auth buttons -->
             <div class="auth-buttons">
                 <button v-if="isAuthenticated" @click="handleLogout" class="logout-btn">
                     <i class="fas fa-sign-out-alt"></i> 
                     <span>Logout</span>
                 </button>
-                <a v-else href="../Login/index.html" class="login-btn">
-                    <i class="fas fa-sign-in-alt"></i> 
-                    <span>Login</span>
-                </a>
             </div>
         </aside>
 

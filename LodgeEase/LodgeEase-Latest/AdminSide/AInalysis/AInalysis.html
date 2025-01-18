@@ -8,6 +8,8 @@
     <script type="module" src="../js/auth-check.js"></script>
     <script type="module" src="../js/suggestionService.js"></script>
     <script type="module" src="AInalysis.js"></script>
+    <script type="module" src="/LodgeEase/LodgeEase-Latest/AdminSide/Dashboard/transitions.js"></script>
+    <link rel="stylesheet" href="/LodgeEase/LodgeEase-Latest/AdminSide/Dashboard/transitionStyle.css">
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="chat-suggestions.css">
@@ -53,22 +55,7 @@
 
             <!-- Keep only chat-related elements -->
             <div class="chat-container" id="chatContainer">
-                <div class="initial-message">
-                    <div class="message bot">
-                        <div class="message-avatar bot">
-                            <i class="fas fa-robot"></i>
-                        </div>
-                        <div class="message-content">
-                            Welcome! I can help you analyze:
-                            <div class="chat-suggestions">
-                                <div class="suggestion-chip" v-for="suggestion in initialSuggestions" 
-                                     @click="submitSuggestion(suggestion.text)">
-                                    {{ suggestion.text }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <!-- Messages will be inserted here -->
             </div>
 
             <div class="chat-input-container">

@@ -348,7 +348,7 @@ th {
     padding: 0 20px;
 }
 
-.logout-btn, .login-btn {
+.logout-btn {
     width: 100%;
     padding: 12px;
     border: none;
@@ -368,17 +368,9 @@ th {
     color: white;
 }
 
-.login-btn {
-    background-color: #28a745;
-    color: white;
-}
 
 .logout-btn:hover {
     background-color: #c82333;
-}
-
-.login-btn:hover {
-    background-color: #218838;
 }
 
 .auth-buttons {
@@ -412,17 +404,6 @@ th {
     background-color: #ff6b81;
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(255, 71, 87, 0.2);
-}
-
-.login-btn {
-    background-color: #2196F3;
-    color: white;
-}
-
-.login-btn:hover {
-    background-color: #42a5f5;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(33, 150, 243, 0.2);
 }
 
 .auth-buttons i {
@@ -501,3 +482,4 @@ canvas {
         grid-template-columns: 1fr;
     }
 }
+
