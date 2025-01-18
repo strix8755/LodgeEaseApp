@@ -1,0 +1,335 @@
+/* Base styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Matching AInalysis styles */
+body {
+    font-family: 'Roboto', sans-serif;
+    color: #333;
+    background-color: #f5f6fa;
+}
+
+h1, h2, h3, h4 {
+    font-family: 'Montserrat', sans-serif;
+}
+
+/* Updated sidebar styles to match AInalysis */
+.sidebar {
+    width: 250px;
+    height: 100vh;
+    position: fixed;
+    left: 0;
+    top: 0;
+    background-color: rgba(44, 62, 80, 0.9);
+    color: white;
+    padding: 20px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+    margin-bottom: 30px;
+    padding: 0 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.logo {
+    width: 60px;
+    height: 40px;
+    margin-right: 10px;
+}
+
+.sidebar h2 {
+    font-size: 20px;
+    color: white;
+}
+
+.sidebar ul {
+    list-style: none;
+    margin-top: 20px;
+}
+
+.sidebar ul li {
+    margin-bottom: 15px;
+}
+
+.sidebar ul li a {
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    transition: all 0.3s;
+    gap: 12px;
+}
+
+.sidebar ul li a:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    padding-left: 18px;
+}
+
+.sidebar ul li a.active {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.sidebar ul li a i {
+    width: 20px;
+    text-align: center;
+    font-size: 18px;
+}
+
+/* Updated auth-buttons styles to match AInalysis */
+.auth-buttons {
+    position: absolute;
+    bottom: 20px;
+    left: 0;
+    right: 0;
+    padding: 0 20px;
+}
+
+.logout-btn, .login-btn {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    font-family: 'Roboto', sans-serif;
+}
+
+.logout-btn {
+    background-color: #dc3545;
+    color: white;
+}
+
+.login-btn {
+    background-color: #28a745;
+    color: white;
+}
+
+.logout-btn:hover {
+    background-color: #c82333;
+}
+
+.login-btn:hover {
+    background-color: #218838;
+}
+
+.auth-buttons i {
+    font-size: 16px;
+}
+
+/* Update responsive styles for auth buttons */
+@media (max-width: 768px) {
+    .auth-buttons {
+        padding: 0 10px;
+    }
+
+    .logout-btn, .login-btn {
+        padding: 10px;
+    }
+
+    .auth-buttons span {
+        display: none;
+    }
+
+    .auth-buttons i {
+        margin: 0;
+    }
+}
+
+.main-content {
+    margin-left: 250px;
+    padding: 30px;
+    min-height: 100vh;
+}
+
+.page-header {
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #e1e1e1;
+}
+
+.page-header h1 {
+    color: #1e3c72;
+    font-family: 'Montserrat', sans-serif;
+    margin: 0 0 20px 0;
+    font-size: 2rem;
+}
+
+/* Analytics specific styles */
+.analytics-dashboard {
+    padding: 20px 0;
+}
+
+.chart-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 25px;
+    margin-top: 20px;
+}
+
+.chart-container {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.chart-container:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.chart-container h3 {
+    margin: 0 0 20px 0;
+    color: #1e3c72;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.header-controls {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.date-range-selector {
+    display: flex;
+    gap: 10px;
+}
+
+.btn {
+    padding: 10px 20px;
+    border-radius: 6px;
+    border: 1px solid #1e3c72;
+    background: transparent;
+    color: #1e3c72;
+    cursor: pointer;
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn:hover, .btn.active {
+    background: #1e3c72;
+    color: white;
+}
+
+.establishment-selector select {
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #1e3c72;
+    color: #1e3c72;
+    font-family: 'Montserrat', sans-serif;
+    min-width: 200px;
+    background: white;
+    cursor: pointer;
+}
+
+.export-buttons {
+    margin-left: auto;
+    display: flex;
+    gap: 10px;
+}
+
+.export-buttons .btn {
+    background: #1e3c72;
+    color: white;
+    border: none;
+}
+
+.export-buttons .btn:hover {
+    background: #2a5298;
+}
+
+/* Loading and error states */
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.error-message {
+    background: #fff3f3;
+    border: 1px solid #ffcdd2;
+    color: #d32f2f;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Responsive design */
+@media (max-width: 1200px) {
+    .chart-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .sidebar {
+        width: 70px;
+        padding: 15px 10px;
+    }
+
+    .logo-container h2,
+    .sidebar ul li a span {
+        display: none;
+    }
+
+    .sidebar ul li a {
+        justify-content: center;
+        padding: 12px;
+    }
+
+    .sidebar ul li a i {
+        margin: 0;
+    }
+
+    .main-content {
+        margin-left: 70px;
+        width: calc(100% - 70px);
+    }
+
+    .header-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .export-buttons {
+        margin-left: 0;
+    }
+}
