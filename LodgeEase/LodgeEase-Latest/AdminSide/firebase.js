@@ -1,5 +1,5 @@
 // Import Firebase modules
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, setPersistence, browserLocalPersistence, fetchSignInMethodsForEmail } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, getDoc, setDoc, query, where, Timestamp, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import { getAnalytics } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js';
@@ -15,11 +15,30 @@ const firebaseConfig = {
     measurementId: "G-JZXP7RGQE8"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// Initialize Firebase only if not already initialized
+let app;
+if (getApps().length === 0) {
+    app = initializeApp(firebaseConfig);
+} else {
+    app = getApps()[0];
+}
+
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-const analytics = getAnalytics(app);
+let analytics;
+try {
+    // Wait for gapi to load before initializing analytics
+    if (window.gapi) {
+        analytics = getAnalytics(app);
+    } else {
+        window.addEventListener('load', () => {
+            analytics = getAnalytics(app);
+        });
+    }
+} catch (error) {
+    console.warn('Analytics initialization failed:', error);
+    analytics = null;
+}
 
 // Set persistence to local immediately
 setPersistence(auth, browserLocalPersistence).catch(error => {
@@ -29,12 +48,7 @@ setPersistence(auth, browserLocalPersistence).catch(error => {
 // Initialize Firebase function - only export this once
 export async function initializeFirebase() {
     try {
-        // Check if Firebase is already initialized
-        if (!app) {
-            console.warn('Firebase app not initialized, initializing now...');
-            initializeApp(firebaseConfig);
-        }
-        return true;
+        return app;
     } catch (error) {
         console.error('Error initializing Firebase:', error);
         throw error;
