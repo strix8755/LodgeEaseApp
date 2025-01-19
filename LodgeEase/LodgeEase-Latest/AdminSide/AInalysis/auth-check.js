@@ -1,9 +1,12 @@
-import { auth, logPageNavigation } from '../firebase.js';
+import { auth, db } from '../firebase.js';
+import { collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
 // Check if user is authenticated
 const checkAuth = () => {
     return new Promise((resolve) => {
-        auth.onAuthStateChanged(user => {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            unsubscribe(); // Unsubscribe immediately after first check
             if (!user) {
                 // If not on login page, redirect to login
                 if (!window.location.href.includes('Login/index.html')) {
@@ -11,7 +14,7 @@ const checkAuth = () => {
                 }
                 resolve(false);
             } else {
-                resolve(true);
+                resolve(user);
             }
         });
     });
@@ -21,9 +24,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         const user = await checkAuth();
         if (user) {
-            // Log page navigation
+            // Log page navigation is now handled internally
             const pageName = document.title || window.location.pathname;
-            await logPageNavigation(user.uid, pageName);
+            try {
+                const navigationRef = collection(db, 'pageNavigations');
+                await addDoc(navigationRef, {
+                    userId: user.uid,
+                    pageName: pageName,
+                    timestamp: serverTimestamp()
+                });
+            } catch (error) {
+                console.error('Error logging navigation:', error);
+            }
         }
     } catch (error) {
         console.error('Auth check error:', error);
@@ -31,5 +43,4 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-// Export the checkAuth function
 export { checkAuth };

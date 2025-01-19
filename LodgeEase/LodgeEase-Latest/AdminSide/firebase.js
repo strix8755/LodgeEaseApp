@@ -1,8 +1,8 @@
 // Import Firebase modules
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-app.js";
-import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, getDoc, setDoc, query, where, Timestamp, orderBy, limit } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore.js";
-import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-analytics.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, setPersistence, browserLocalPersistence, fetchSignInMethodsForEmail } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-auth.js";
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, setPersistence, browserLocalPersistence, fetchSignInMethodsForEmail } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, getDoc, setDoc, query, where, Timestamp, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getAnalytics } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js';
 
 // Firebase configuration
 const firebaseConfig = {
@@ -12,25 +12,34 @@ const firebaseConfig = {
     storageBucket: "lms-app-2b903.appspot.com",
     messagingSenderId: "1046108373013",
     appId: "1:1046108373013:web:fc366db1d92b9c4b860e1c",
-    measurementId: "G-WRMW9Z8867"
+    measurementId: "G-JZXP7RGQE8"
 };
 
 // Initialize Firebase
-export const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const db = getFirestore(app);
 const analytics = getAnalytics(app);
 
 // Set persistence to local immediately
-setPersistence(auth, browserLocalPersistence)
-    .then(() => {
-        console.log('Auth persistence set to local');
-        // Emit an event when auth is ready
-        window.dispatchEvent(new Event('auth-ready'));
-    })
-    .catch((error) => {
-        console.error('Error setting auth persistence:', error);
-    });
+setPersistence(auth, browserLocalPersistence).catch(error => {
+    console.error('Error setting auth persistence:', error);
+});
+
+// Initialize Firebase function - only export this once
+export async function initializeFirebase() {
+    try {
+        // Check if Firebase is already initialized
+        if (!app) {
+            console.warn('Firebase app not initialized, initializing now...');
+            initializeApp(firebaseConfig);
+        }
+        return true;
+    } catch (error) {
+        console.error('Error initializing Firebase:', error);
+        throw error;
+    }
+}
 
 // Add a helper function to check auth state
 export function getCurrentUser() {
@@ -569,35 +578,187 @@ export async function initializeAnalytics() {
 }
 
 // Enhanced analytics data fetching with permissions check
-export async function fetchAnalyticsData(type, period) {
+export async function fetchAnalyticsData(establishment, dateRange) {
     try {
-        // Verify user is authenticated and has admin role
-        const user = auth.currentUser;
-        if (!user) {
-            throw new Error('User must be authenticated');
-        }
-
-        const userDoc = await getDoc(doc(db, "users", user.uid));
-        if (!userDoc.exists() || userDoc.data().role !== 'admin') {
-            throw new Error('Insufficient permissions');
-        }
-
-        const analyticsRef = collection(db, 'analytics');
-        const q = query(
-            analyticsRef,
-            where('type', '==', type),
-            where('timestamp', '>=', period),
-            orderBy('timestamp', 'desc'),
-            limit(100)
-        );
+        const bookingsRef = collection(db, 'bookings');
+        const roomsRef = collection(db, 'rooms');
         
-        const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
+        // Calculate date range
+        const now = new Date();
+        let startDate = new Date();
+        
+        switch (dateRange) {
+            case 'week':
+                startDate.setDate(now.getDate() - 7);
+                break;
+            case 'month':
+                startDate.setMonth(now.getMonth() - 1);
+                break;
+            case 'quarter':
+                startDate.setMonth(now.getMonth() - 3);
+                break;
+            case 'year':
+                startDate.setFullYear(now.getFullYear() - 1);
+                break;
+            default:
+                startDate.setMonth(now.getMonth() - 1); // Default to last month
+        }
+
+        // Create Firestore timestamp
+        const startTimestamp = Timestamp.fromDate(startDate);
+        
+        // Build queries with error handling for missing index
+        let bookingsQuery = query(bookingsRef);
+        let roomsQuery = query(roomsRef);
+
+        try {
+            if (establishment) {
+                bookingsQuery = query(bookingsQuery, 
+                    where('propertyDetails.name', '==', establishment),
+                    where('checkIn', '>=', startTimestamp)
+                );
+                roomsQuery = query(roomsQuery, where('propertyDetails.name', '==', establishment));
+            } else {
+                bookingsQuery = query(bookingsQuery, where('checkIn', '>=', startTimestamp));
+            }
+        } catch (error) {
+            console.warn('Index not ready, falling back to client-side filtering:', error);
+            // Fall back to client-side filtering if index is not ready
+            bookingsQuery = query(bookingsRef);
+            roomsQuery = query(roomsRef);
+        }
+
+        // Get data
+        const [bookingsSnapshot, roomsSnapshot] = await Promise.all([
+            getDocs(bookingsQuery),
+            getDocs(roomsQuery)
+        ]);
+
+        // Process bookings with client-side filtering if needed
+        const bookings = [];
+        bookingsSnapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.checkIn && data.checkIn instanceof Timestamp) {
+                const checkInDate = data.checkIn.toDate();
+                
+                // Apply client-side filters if index was not ready
+                if (checkInDate >= startDate && 
+                    (!establishment || data.propertyDetails?.name === establishment)) {
+                    const booking = {
+                        id: doc.id,
+                        checkIn: checkInDate,
+                        checkOut: data.checkOut instanceof Timestamp ? data.checkOut.toDate() : null,
+                        createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : null,
+                        updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : null,
+                        totalPrice: data.totalPrice || 0,
+                        status: data.status || 'unknown',
+                        roomType: data.propertyDetails?.roomType || 'unknown'
+                    };
+                    bookings.push(booking);
+                }
+            }
+        });
+
+        // Process rooms with client-side filtering if needed
+        const rooms = [];
+        roomsSnapshot.forEach(doc => {
+            const data = doc.data();
+            if (!establishment || data.propertyDetails?.name === establishment) {
+                const room = {
+                    id: doc.id,
+                    roomType: data.propertyDetails?.roomType || 'unknown',
+                    status: data.status || 'unknown',
+                    price: data.price || 0
+                };
+                rooms.push(room);
+            }
+        });
+
+        // Calculate monthly data
+        const monthsMap = {};
+        let monthIterator = new Date(startDate);
+        while (monthIterator <= now) {
+            const monthKey = monthIterator.toLocaleString('default', { month: 'short', year: 'numeric' });
+            monthsMap[monthKey] = {
+                month: monthKey,
+                bookingCount: 0,
+                revenue: 0,
+                occupiedRooms: 0
+            };
+            monthIterator.setMonth(monthIterator.getMonth() + 1);
+        }
+
+        // Process bookings for monthly data
+        bookings.forEach(booking => {
+            if (!booking.checkIn || booking.status === 'cancelled') return;
+            
+            const monthKey = booking.checkIn.toLocaleString('default', { month: 'short', year: 'numeric' });
+            if (monthsMap[monthKey]) {
+                monthsMap[monthKey].bookingCount++;
+                monthsMap[monthKey].revenue += booking.totalPrice;
+            }
+        });
+
+        // Calculate room type distribution
+        const roomTypes = rooms.reduce((acc, room) => {
+            const type = room.roomType;
+            acc[type] = (acc[type] || 0) + 1;
+            return acc;
+        }, {});
+
+        // Calculate occupancy rates
+        const totalRooms = rooms.length || 1;
+        Object.keys(monthsMap).forEach(monthKey => {
+            const monthStart = new Date(monthKey);
+            const monthEnd = new Date(monthStart);
+            monthEnd.setMonth(monthEnd.getMonth() + 1);
+
+            const occupiedRooms = bookings.filter(booking => {
+                if (!booking.checkIn || booking.status === 'cancelled') return false;
+                return booking.checkIn >= monthStart && booking.checkIn < monthEnd;
+            }).length;
+
+            monthsMap[monthKey].occupiedRooms = occupiedRooms;
+            monthsMap[monthKey].occupancyRate = (occupiedRooms / totalRooms) * 100;
+        });
+
+        // Calculate revenue per room type
+        const revenuePerRoom = Object.keys(roomTypes).map(type => ({
+            roomType: type,
+            revenue: bookings
+                .filter(b => b.roomType === type && b.status !== 'cancelled')
+                .reduce((sum, b) => sum + b.totalPrice, 0)
         }));
+
+        // Convert to arrays for charts
+        const monthlyData = Object.values(monthsMap).sort((a, b) => {
+            const dateA = new Date(a.month);
+            const dateB = new Date(b.month);
+            return dateA - dateB;
+        });
+
+        return {
+            occupancy: monthlyData.map(m => ({
+                month: m.month,
+                rate: m.occupancyRate
+            })),
+            revenue: monthlyData.map(m => ({
+                month: m.month,
+                amount: m.revenue
+            })),
+            bookings: monthlyData.map(m => ({
+                month: m.month,
+                count: m.bookingCount
+            })),
+            seasonalTrends: monthlyData.map(m => ({
+                month: m.month,
+                value: m.occupancyRate
+            })),
+            roomTypes,
+            revenuePerRoom
+        };
     } catch (error) {
-        console.error(`Error fetching analytics data: ${error.message}`);
+        console.error('Error fetching analytics data:', error);
         throw error;
     }
 }
@@ -775,24 +936,6 @@ function identifyPopularRooms(rooms, bookings) {
 }
 
 // Add error handling for initialization
-export async function initializeFirebase() {
-    try {
-        if (!app) {
-            throw new Error('Firebase app not initialized');
-        }
-        
-        // Test database connection
-        const testDoc = await getDoc(doc(db, 'system', 'status'));
-        console.log('Firebase connection test:', testDoc.exists() ? 'successful' : 'no status document');
-        
-        return true;
-    } catch (error) {
-        console.error('Firebase initialization error:', error);
-        return false;
-    }
-}
-
-// Add this new function
 export async function createRequiredIndexes() {
     try {
         const indexes = [
@@ -823,9 +966,13 @@ export async function createRequiredIndexes() {
 
 // Export other functions and objects
 export { 
-    db, 
-    auth, 
     analytics,
+    // Auth functions
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    sendPasswordResetEmail,
+    fetchSignInMethodsForEmail,
+    // Firestore functions
     collection,
     getDocs,
     addDoc,
@@ -836,7 +983,7 @@ export {
     setDoc,
     query,
     where,
+    Timestamp,
     orderBy,
-    limit,
-    Timestamp
+    limit
 };

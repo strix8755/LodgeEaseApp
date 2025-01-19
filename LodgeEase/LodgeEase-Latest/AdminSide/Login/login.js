@@ -1,6 +1,6 @@
 import { signIn, register, auth } from '../firebase.js'; // Import Firebase Authentication functions
-import { sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-auth.js";
-import { doc, getDoc, setDoc, collection, query, where, getDocs, getFirestore } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore.js";
+import { sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+import { doc, getDoc, setDoc, collection, query, where, getDocs, getFirestore } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 const db = getFirestore();
 
