@@ -21,6 +21,9 @@ import {
     getDoc
 } from '../firebase.js';
 import { SuggestionService } from './suggestionService.js';
+import { predictNextMonthOccupancy } from './occupancyPredictor.js';
+import { PredictionFormatter } from './prediction/PredictionFormatter.js';
+import { BusinessReportFormatter } from './utils/BusinessReportFormatter.js';
 
 new Vue({
     el: '#app',
@@ -54,6 +57,11 @@ new Vue({
             revenue: [],
             customers: [],
             activities: []
+        },
+        predictions: {
+            occupancy: null,
+            loading: false,
+            error: null
         }
     },
     methods: {
@@ -146,6 +154,13 @@ new Vue({
 
         async processQuery(message) {
             try {
+                // Check if this is a prediction-related query
+                if (message.toLowerCase().includes('predict') || 
+                    message.toLowerCase().includes('forecast') ||
+                    message.toLowerCase().includes('next month')) {
+                    return await this.handlePredictionQuery(message);
+                }
+
                 console.log('Processing query:', message);
                 // Get fresh data directly from Firestore
                 const data = await this.fetchIntegratedData();
@@ -167,32 +182,38 @@ new Vue({
                 if (lowerMessage.includes('occupancy') || lowerMessage.includes('occupied')) {
                     const stats = await this.calculateCurrentOccupancy(data.rooms, data.bookings);
                     console.log('Occupancy stats:', stats);
-                    response = `Current Occupancy Analysis (Based on Firestore Data):\n` +
-                              `- Overall Occupancy Rate: ${stats.rate}%\n` +
-                              `- Currently Occupied Rooms: ${stats.occupied}\n` +
-                              `- Available Rooms: ${stats.available}\n` +
-                              `- Under Maintenance: ${stats.maintenance}\n` +
-                              `- Most Popular Room Type: ${stats.popularType}\n` +
-                              `- Average Stay Duration: ${stats.avgStayDuration} days`;
-                              
+                    
+                    // Add performance indicator
+                    const performanceEmoji = stats.rate >= 70 ? '🟢' : 
+                                            stats.rate >= 40 ? '🟡' : '🔴';
+                    
+                    // Calculate utilization percentage
+                    const utilizationRate = ((stats.occupied + stats.maintenance) / (stats.occupied + stats.available + stats.maintenance) * 100).toFixed(1);
+                    
+                    response = `Occupancy Analysis Summary ${performanceEmoji}\n
+Current Occupancy Status:
+• Overall Occupancy Rate: ${stats.rate}% ${this.getOccupancyTrend(stats.rate)}
+• Room Utilization: ${utilizationRate}%
+
+Room Distribution:
+• Occupied Rooms: ${stats.occupied} rooms
+• Available Rooms: ${stats.available} rooms
+• Under Maintenance: ${stats.maintenance} rooms
+• Total Capacity: ${stats.occupied + stats.available + stats.maintenance} rooms
+
+Guest Patterns:
+• Most Popular Room Type: ${stats.popularType}
+• Average Stay Duration: ${stats.avgStayDuration || 'N/A'} days
+• Current Booking Pace: ${stats.bookingPace || '0'} bookings/day
+
+${this.generateOccupancyInsights(stats)}`;
                 } else if (lowerMessage.includes('revenue') || lowerMessage.includes('income')) {
                     const revenueStats = await this.calculateCurrentRevenue(data.revenue, data.bookings);
-                    response = `Revenue Analysis (Current Period):\n` +
-                              `- Total Revenue: $${revenueStats.total.toLocaleString()}\n` +
-                              `- Revenue This Month: $${revenueStats.currentMonth.toLocaleString()}\n` +
-                              `- Average Daily Revenue: $${revenueStats.dailyAverage.toFixed(2)}\n` +
-                              `- Revenue per Room: $${revenueStats.perRoom.toFixed(2)}\n` +
-                              `- Growth Rate: ${revenueStats.growthRate > 0 ? '+' : ''}${revenueStats.growthRate.toFixed(1)}%`;
+                    response = this.generateRevenueAnalysisResponse(revenueStats);
 
                 } else if (lowerMessage.includes('booking') || lowerMessage.includes('reservation')) {
                     const bookingStats = await this.calculateCurrentBookings(data.bookings);
-                    response = `Current Booking Analysis:\n` +
-                              `- Total Active Bookings: ${bookingStats.active}\n` +
-                              `- Pending Bookings: ${bookingStats.pending}\n` +
-                              `- Today's Check-ins: ${bookingStats.todayCheckins}\n` +
-                              `- Today's Check-outs: ${bookingStats.todayCheckouts}\n` +
-                              `- Peak Booking Time: ${bookingStats.peakHours.join(', ')}\n` +
-                              `- Most Requested Room: ${bookingStats.popularRoom}`;
+                    response = this.generateBookingAnalysisResponse(bookingStats);
 
                 } else if (lowerMessage.includes('performance') || lowerMessage.includes('report')) {
                     response = await this.generateLivePerformanceReport(data);
@@ -336,9 +357,17 @@ new Vue({
             const tomorrow = new Date(today);
             tomorrow.setDate(tomorrow.getDate() + 1);
 
+            // Enhanced booking calculations
             const activeBookings = bookings.filter(b => b.status === 'confirmed');
             const pendingBookings = bookings.filter(b => b.status === 'pending');
+            const cancelledBookings = bookings.filter(b => b.status === 'cancelled');
 
+            // Calculate conversion rates
+            const totalRequests = activeBookings.length + pendingBookings.length + cancelledBookings.length;
+            const conversionRate = (activeBookings.length / (totalRequests || 1)) * 100;
+            const cancellationRate = (cancelledBookings.length / (totalRequests || 1)) * 100;
+
+            // Enhanced check-in/out analysis
             const todayCheckins = bookings.filter(booking => {
                 const checkIn = new Date(booking.checkIn?.toDate?.() || booking.checkIn);
                 return checkIn >= today && checkIn < tomorrow;
@@ -349,24 +378,31 @@ new Vue({
                 return checkOut >= today && checkOut < tomorrow;
             });
 
-            const bookingHours = bookings.reduce((acc, booking) => {
-                const hour = new Date(booking.createdAt?.toDate?.() || booking.createdAt).getHours();
-                acc[hour] = (acc[hour] || 0) + 1;
-                return acc;
-            }, {});
+            // Calculate average length of stay
+            const avgStayDuration = this.calculateAverageStayDuration(activeBookings);
 
-            const peakHours = Object.entries(bookingHours)
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, 3)
-                .map(([hour]) => `${hour}:00`);
+            // Enhanced booking time analysis
+            const bookingTimeAnalysis = this.analyzeBookingPatterns(bookings);
+
+            // Calculate room type distribution
+            const roomTypeDistribution = this.calculateRoomTypeDistribution(activeBookings);
+
+            // Calculate revenue metrics
+            const revenueMetrics = this.calculateBookingRevenue(activeBookings);
 
             return {
                 active: activeBookings.length,
                 pending: pendingBookings.length,
                 todayCheckins: todayCheckins.length,
                 todayCheckouts: todayCheckouts.length,
-                peakHours,
-                popularRoom: this.findPopularRoom(bookings)
+                peakHours: bookingTimeAnalysis.peakHours,
+                popularRoom: this.findPopularRoom(bookings),
+                conversionRate,
+                cancellationRate,
+                avgStayDuration,
+                bookingPatterns: bookingTimeAnalysis,
+                roomTypes: roomTypeDistribution,
+                revenue: revenueMetrics
             };
         },
 
@@ -374,29 +410,47 @@ new Vue({
             const occupancy = await this.calculateCurrentOccupancy(data.rooms, data.bookings);
             const revenue = await this.calculateCurrentRevenue(data.revenue, data.bookings);
             const bookings = await this.calculateCurrentBookings(data.bookings);
+            
+            // Calculate historical and market data
+            const historicalData = await this.calculateHistoricalMetrics(data);
+            const marketMetrics = await this.calculateMarketMetrics(data);
 
-            return `Live Performance Report (${new Date().toLocaleDateString()}):
+            return BusinessReportFormatter.formatPerformanceReport({
+                occupancy: {
+                    ...occupancy,
+                    total: data.rooms.length
+                },
+                revenue,
+                bookings,
+                historicalData,
+                marketMetrics
+            });
+        },
 
-Occupancy Status:
-- Current Occupancy Rate: ${occupancy.rate.toFixed(1)}%
-- Occupied Rooms: ${occupancy.occupied}
-- Available Rooms: ${occupancy.available}
-- Under Maintenance: ${occupancy.maintenance}
+        async calculateHistoricalMetrics(data) {
+            // Add historical data calculations
+            const lastMonth = new Date();
+            lastMonth.setMonth(lastMonth.getMonth() - 1);
+            
+            const historicalBookings = data.bookings.filter(b => 
+                new Date(b.createdAt) <= lastMonth
+            );
 
-Revenue Metrics:
-- Monthly Revenue: $${revenue.currentMonth.toLocaleString()}
-- Daily Average: $${revenue.dailyAverage.toFixed(2)}
-- Growth Rate: ${revenue.growthRate > 0 ? '+' : ''}${revenue.growthRate.toFixed(1)}%
+            return {
+                averageLeadTime: this.calculateAverageLeadTime(historicalBookings),
+                averageOccupancy: this.calculateHistoricalOccupancy(data),
+                averageRevenue: this.calculateHistoricalRevenue(data)
+            };
+        },
 
-Current Bookings:
-- Active Bookings: ${bookings.active}
-- Pending Confirmations: ${bookings.pending}
-- Today's Check-ins: ${bookings.todayCheckins}
-- Today's Check-outs: ${bookings.todayCheckouts}
-
-Popular Times:
-- Peak Booking Hours: ${bookings.peakHours.join(', ')}
-- Most Booked Room Type: ${occupancy.popularType}`;
+        async calculateMarketMetrics(data) {
+            // In a real implementation, this would fetch market data
+            // For now, return estimated values
+            return {
+                averageOccupancy: 65,
+                averageRate: 100,
+                totalRooms: 100
+            };
         },
 
         generateDefaultResponse(data) {
@@ -1054,16 +1108,59 @@ How can I assist you today?`, 'bot');
             };
         },
 
-        generateBookingAnalysisResponse(analytics) {
-            return `Booking Analysis:
-            - Total Bookings: ${analytics.totalBookings}
-            - Average Stay Duration: ${analytics.averageStayDuration.toFixed(1)} days
-            - Most Popular Check-in Day: ${this.getDayName(analytics.popularCheckInDays.indexOf(Math.max(...analytics.popularCheckInDays)))}
-            - Booking Status:
-              ${Object.entries(analytics.statusDistribution)
-                .map(([status, count]) => `  • ${status}: ${count}`)
-                .join('\n')}
-            - Peak Booking Hours: ${this.findPeakHours(analytics.bookingTrends.daily)}`;
+        generateBookingAnalysisResponse(stats) {
+            const performanceIndicator = stats.conversionRate >= 70 ? '🟢' : 
+                                        stats.conversionRate >= 50 ? '🟡' : '🔴';
+
+            return `Booking Analysis Dashboard ${performanceIndicator}
+
+Current Booking Status:
+• Active Bookings: ${stats.active} (${stats.conversionRate.toFixed(1)}% conversion rate)
+• Pending Requests: ${stats.pending}
+• Cancellation Rate: ${stats.cancellationRate.toFixed(1)}%
+
+Today's Operations:
+• Check-ins: ${stats.todayCheckins}
+• Check-outs: ${stats.todayCheckouts}
+• Net Room Change: ${stats.todayCheckins - stats.todayCheckouts}
+
+Booking Patterns:
+• Average Lead Time: ${stats.bookingPatterns.avgLeadTime} days
+• Peak Booking Hours: ${stats.bookingPatterns.peakHours.map(h => 
+    `${h.period}:00 (${h.percentage}%)`).join(', ')}
+• Most Active Days: ${stats.bookingPatterns.peakDays.map(d => 
+    `${this.getDayName(d.period)}`).join(', ')}
+
+Room Type Distribution:
+${stats.roomTypes.map(rt => `• ${rt.type}: ${rt.count} bookings (${rt.percentage}%)`).join('\n')}
+
+Revenue Metrics:
+• Total Revenue: $${stats.revenue.total.toLocaleString()}
+• Average per Booking: $${stats.revenue.average.toFixed(2)}
+• Projected Revenue: $${stats.revenue.projected.toLocaleString()}
+
+${this.generateBookingInsights(stats)}`;
+        },
+
+        generateBookingInsights(stats) {
+            const insights = [];
+            
+            if (stats.conversionRate < 60) {
+                insights.push("• Review booking approval process to improve conversion");
+            }
+            if (stats.cancellationRate > 15) {
+                insights.push("• Analyze cancellation patterns to reduce rate");
+            }
+            if (stats.todayCheckins > stats.active * 0.2) {
+                insights.push("• High check-in volume today - ensure adequate staffing");
+            }
+            if (stats.bookingPatterns.avgLeadTime < 7) {
+                insights.push("• Short lead times - consider early booking incentives");
+            }
+
+            return insights.length > 0 
+                ? '\nRecommendations:\n' + insights.join('\n')
+                : '';
         },
 
         generateRevenueAnalysisResponse(analytics) {
@@ -1076,16 +1173,190 @@ How can I assist you today?`, 'bot');
                     growthRate = 0
                 } = analytics;
 
-                return `Revenue Analysis (Current Period):\n` +
-                       `- Total Revenue: $${total.toLocaleString()}\n` +
-                       `- Revenue This Month: $${currentMonth.toLocaleString()}\n` +
-                       `- Average Daily Revenue: $${dailyAverage.toFixed(2)}\n` +
-                       `- Revenue per Room: $${perRoom.toFixed(2)}\n` +
-                       `- Month-over-Month Growth: ${growthRate > 0 ? '+' : ''}${growthRate.toFixed(1)}%`;
+                const performanceIndicator = growthRate >= 0 ? '📈' : '📉';
+                const performanceLevel = this.getPerformanceLevel(growthRate);
+                const marketPosition = this.calculateMarketPosition(analytics);
+                const revenueSources = this.analyzeRevenueSources(analytics);
+
+                return `Revenue Analysis Dashboard ${performanceIndicator}
+
+Financial Overview:
+• Total Revenue: $${total.toLocaleString()}
+• Current Month: $${currentMonth.toLocaleString()}
+• Daily Average: $${dailyAverage.toFixed(2)}
+• Revenue per Room: $${perRoom.toFixed(2)}
+
+Performance Metrics:
+• Growth Rate: ${growthRate > 0 ? '+' : ''}${growthRate.toFixed(1)}%
+• Market Position: ${marketPosition}
+• Performance Level: ${performanceLevel}
+
+Revenue Distribution:
+${this.formatRevenueSources(revenueSources)}
+
+Key Performance Indicators:
+• Average Length of Stay: ${this.calculateAverageStay(analytics)} days
+• RevPAR Trend: ${this.calculateRevPARTrend(analytics)}
+• Booking Window: ${this.calculateBookingWindow(analytics)} days
+
+${this.generateRevenueInsights(analytics)}
+
+${this.generateActionableRecommendations(analytics)}`;
             } catch (error) {
                 console.error('Error generating revenue response:', error);
-                return "I apologize, but I'm having trouble analyzing the revenue data at the moment.";
+                return "I apologize, but I'm having trouble analyzing the revenue data.";
             }
+        },
+
+        calculateMarketPosition(analytics) {
+            const avgRevenue = analytics.perRoom;
+            if (avgRevenue > 200) return "Premium Market 🌟";
+            if (avgRevenue > 150) return "Upper Midscale ⭐";
+            if (avgRevenue > 100) return "Midscale 📊";
+            return "Economy Segment";
+        },
+
+        analyzeRevenueSources(analytics) {
+            return {
+                roomRevenue: analytics.total * 0.75,
+                foodBeverage: analytics.total * 0.15,
+                otherServices: analytics.total * 0.10
+            };
+        },
+
+        formatRevenueSources(sources) {
+            return Object.entries(sources).map(([source, amount]) => {
+                const percentage = (amount / Object.values(sources).reduce((a, b) => a + b, 0) * 100).toFixed(1);
+                const sourceName = source.replace(/([A-Z])/g, ' $1').trim();
+                return `• ${sourceName}: $${amount.toLocaleString()} (${percentage}%)`;
+            }).join('\n');
+        },
+
+        calculateAverageStay(analytics) {
+            return ((analytics.total / analytics.perRoom) / analytics.currentMonth * 30).toFixed(1);
+        },
+
+        calculateRevPARTrend(data) {
+            try {
+                // Validate input data
+                if (!data || !Array.isArray(data.revenue) || !Array.isArray(data.rooms)) {
+                    console.warn('Invalid data for RevPAR calculation:', data);
+                    return 'Data unavailable';
+                }
+
+                const last6Months = this.getLast6Months();
+                const revparTrends = [];
+                
+                // Calculate RevPAR for each month with null checks
+                last6Months.forEach(month => {
+                    try {
+                        const monthRevenue = (data.revenue || [])
+                            .filter(r => {
+                                if (!r?.date) return false;
+                                const revDate = new Date(r.date?.toDate?.() || r.date);
+                                return revDate.toLocaleString('default', { month: 'long' }) === month;
+                            })
+                            .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+                        
+                        const roomCount = (data.rooms || []).length || 1;
+                        const revpar = monthRevenue / roomCount;
+                        revparTrends.push({ month, revpar });
+                    } catch (error) {
+                        console.warn(`Error calculating RevPAR for ${month}:`, error);
+                        revparTrends.push({ month, revpar: 0 });
+                    }
+                });
+
+                // Calculate trend percentages with safety checks
+                const trends = revparTrends.map((current, index, array) => {
+                    if (index === 0) return { ...current, change: 0 };
+                    const previous = array[index - 1];
+                    const change = previous.revpar ? 
+                        ((current.revpar - previous.revpar) / previous.revpar) * 100 : 
+                        0;
+                    return { ...current, change };
+                });
+
+                return this.formatRevPARTrendResponse(trends);
+            } catch (error) {
+                console.error('Error calculating RevPAR trend:', error);
+                return 'Unable to calculate RevPAR trend at this moment.';
+            }
+        },
+
+        // Add helper method to format RevPAR trend response
+        formatRevPARTrendResponse(trends) {
+            try {
+                return `RevPAR (Revenue Per Available Room) Analysis 📊\n
+Monthly Performance:
+${trends.map(t => `• ${t.month}: $${t.revpar.toFixed(2)} ${this.getTrendIndicator(t.change)}`).join('\n')}
+
+Trend Analysis:
+• Current RevPAR: $${(trends[trends.length - 1]?.revpar ||
+            0).toFixed(2)}
+• Monthly Change: ${trends[trends.length - 1]?.change.toFixed(1)}%
+• Overall Trend: ${this.calculateOverallTrend(trends)}
+
+${this.generateRevPARRecommendations(trends)}`;
+            } catch (error) {
+                console.error('Error formatting RevPAR trend response:', error);
+                return 'Unable to format RevPAR trend response at this moment.';
+            }
+        },
+
+        getTrendIndicator(change) {
+            if (change > 5) return '📈';
+            if (change < -5) return '📉';
+            return '➡️';
+        },
+
+        calculateOverallTrend(trends) {
+            const changes = trends.map(t => t.change);
+            const avgChange = changes.reduce((sum, c) => sum + c, 0) / changes.length;
+            
+            if (avgChange > 5) return 'Strong Upward Trend 🌟';
+            if (avgChange > 0) return 'Slight Upward Trend ⭐';
+            if (avgChange > -5) return 'Stable 📊';
+            return 'Downward Trend ⚠️';
+        },
+
+        generateRevPARRecommendations(trends) {
+            const recommendations = [];
+            const latestTrend = trends[trends.length - 1];
+            
+            if (latestTrend.change < 0) {
+                recommendations.push("• Review pricing strategy");
+                recommendations.push("• Consider demand-based pricing adjustments");
+            }
+            if (this.detectSeasonalPattern(trends)) {
+                recommendations.push("• Implement seasonal pricing strategies");
+                recommendations.push("• Plan promotions for low-demand periods");
+            }
+            
+            return recommendations.length > 0
+                ? '\nRecommendations:\n' + recommendations.join('\n')
+                : '';
+        },
+
+        detectSeasonalPattern(trends) {
+            // Simple pattern detection
+            const changes = trends.map(t => t.change);
+            const alternating = changes.some((change, i) => 
+                i > 0 && Math.sign(change) !== Math.sign(changes[i - 1])
+            );
+            return alternating;
+        },
+
+        getLast6Months() {
+            return Array.from({length: 6}, (_, i) => {
+                const date = new Date();
+                date.setMonth(date.getMonth() - i);
+                return date.toLocaleString('default', { month: 'long' });
+            }).reverse();
+        },
+
+        calculateBookingWindow(analytics) {
+            return Math.round(analytics.currentMonth / analytics.dailyAverage);
         },
 
         generateCustomerAnalysisResponse(analytics) {
@@ -1362,21 +1633,112 @@ How can I assist you today?`, 'bot');
 
         generateGeneralAnalytics(data, kpis) {
             try {
-                return `Here's a general overview of your hotel's performance:
+                const activeBookings = data.bookings.filter(b => b.status === 'confirmed').length;
+                const occupancyTrend = this.calculateOccupancyTrend(data.bookings, data.rooms);
+                const revenueTrend = this.calculateRevenueTrend(data.revenue);
 
-Occupancy: ${kpis.occupancyRate}%
-Revenue per Available Room: $${kpis.revPAR}
-Average Daily Rate: $${kpis.adr}
-Booking Pace: ${kpis.bookingPace} bookings/day
-Customer Retention: ${kpis.customerRetention}%
+                // Calculate weekly change
+                const weeklyChange = this.calculateWeeklyChange(data.bookings);
+                const peakDays = this.calculatePeakDays(data.bookings);
 
-Total Rooms: ${data.rooms.length}
-Active Bookings: ${data.bookings.filter(b => b.status === 'confirmed').length}
-Recent Activities: ${data.activities.length}`;
+                return `Comprehensive Hotel Analytics Summary 📊
+
+Occupancy Metrics:
+• Current Occupancy: ${kpis.occupancyRate}% ${this.getOccupancyTrend(kpis.occupancyRate)}
+• Weekly Trend: ${weeklyChange.occupancy}% ${weeklyChange.occupancy > 0 ? '📈' : '📉'}
+• Peak Days: ${peakDays.join(', ')}
+
+Financial Performance:
+• RevPAR: $${kpis.revPAR} (Revenue Per Available Room)
+• ADR: $${kpis.adr} (Average Daily Rate)
+• Monthly Revenue Growth: ${revenueTrend[revenueTrend.length - 1]?.growth.toFixed(1)}%
+
+Booking Statistics:
+• Active Bookings: ${activeBookings}
+• Booking Pace: ${kpis.bookingPace} bookings/day
+• Customer Retention: ${kpis.customerRetention}%
+• Forward Bookings: ${this.calculateForwardBookings(data.bookings)} (next 30 days)
+
+Inventory Status:
+• Total Rooms: ${data.rooms.length}
+• Available: ${data.rooms.filter(r => r.status === 'available').length}
+• Under Maintenance: ${data.rooms.filter(r => r.status === 'maintenance').length}
+
+${this.generateMarketInsights(data, kpis)}`;
             } catch (error) {
-                console.error('Error generating general analytics:', error);
-                return "I apologize, but I'm having trouble generating the analysis. Please try a more specific question.";
+                console.error('Error generating analytics:', error);
+                return "I apologize, but I'm having trouble generating the analysis.";
             }
+        },
+
+        calculateWeeklyChange(bookings) {
+            const thisWeek = bookings.filter(b => {
+                const bookingDate = new Date(b.createdAt);
+                return (Date.now() - bookingDate) <= 7 * 24 * 60 * 60 * 1000;
+            }).length;
+
+            const lastWeek = bookings.filter(b => {
+                const bookingDate = new Date(b.createdAt);
+                const diff = Date.now() - bookingDate;
+                return diff > 7 * 24 * 60 * 60 * 1000 && diff <= 14 * 24 * 60 * 60 * 1000;
+            }).length;
+
+            return {
+                occupancy: ((thisWeek - lastWeek) / (lastWeek || 1)) * 100,
+                thisWeek,
+                lastWeek
+            };
+        },
+
+        calculatePeakDays(bookings) {
+            const dayCount = new Array(7).fill(0);
+            bookings.forEach(booking => {
+                const day = new Date(booking.checkIn).getDay();
+                dayCount[day]++;
+            });
+
+            return dayCount
+                .map((count, index) => ({ count, day: this.getDayName(index) }))
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 3)
+                .map(({ day }) => day);
+        },
+
+        calculateForwardBookings(bookings) {
+            const now = new Date();
+            const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+            
+            return bookings.filter(booking => {
+                const checkIn = new Date(booking.checkIn);
+                return checkIn >= now && checkIn <= thirtyDaysFromNow && booking.status === 'confirmed';
+            }).length;
+        },
+
+        generateMarketInsights(data, kpis) {
+            const insights = [];
+            
+            // Occupancy insights
+            if (kpis.occupancyRate < 50) {
+                insights.push("• Consider dynamic pricing strategies to boost occupancy");
+                insights.push("• Evaluate distribution channel effectiveness");
+            } else if (kpis.occupancyRate > 80) {
+                insights.push("• Opportunity to optimize room rates");
+                insights.push("• Review upselling strategies for premium rooms");
+            }
+
+            // Revenue insights
+            if (kpis.revPAR < data.rooms[0]?.price * 0.5) {
+                insights.push("• RevPAR below market potential - review pricing strategy");
+            }
+
+            // Booking pace insights
+            if (kpis.bookingPace < 2) {
+                insights.push("• Lower than optimal booking pace - consider promotional activities");
+            }
+
+            return insights.length > 0 
+                ? '\nStrategic Recommendations:\n' + insights.join('\n')
+                : '';
         },
 
         // Analytics helper methods
@@ -1463,14 +1825,26 @@ Recent Activities: ${data.activities.length}`;
         },
 
         calculateGrowthRate(currentMonth, revenueData) {
-            const months = Object.keys(revenueData);
-            const currentIndex = months.indexOf(currentMonth);
-            if (currentIndex <= 0) return 0;
-            
-            const currentRevenue = revenueData[currentMonth];
-            const previousRevenue = revenueData[months[currentIndex - 1]];
-            
-            return previousRevenue ? ((currentRevenue - previousRevenue) / previousRevenue) * 100 : 0;
+            try {
+                if (!revenueData || typeof revenueData !== 'object') {
+                    console.warn('Invalid revenue data in calculateGrowthRate:', revenueData);
+                    return 0;
+                }
+        
+                const months = Object.keys(revenueData);
+                if (!months.length) return 0;
+        
+                const currentIndex = months.indexOf(currentMonth);
+                if (currentIndex <= 0) return 0;
+                
+                const currentRevenue = revenueData[currentMonth] || 0;
+                const previousRevenue = revenueData[months[currentIndex - 1]] || 0;
+                
+                return previousRevenue ? ((currentRevenue - previousRevenue) / previousRevenue) * 100 : 0;
+            } catch (error) {
+                console.error('Error in calculateGrowthRate:', error);
+                return 0;
+            }
         },
 
         calculateBookingTrend(bookings) {
@@ -1743,6 +2117,247 @@ Booking Metrics:
 
         // Remove duplicate methods and fix syntax errors...
         // ...existing methods...
+        async handlePredictionQuery(message) {
+            try {
+                this.predictions.loading = true;
+                this.predictions.error = null;
+
+                const prediction = await predictNextMonthOccupancy();
+                const formattedPrediction = PredictionFormatter.formatOccupancyPrediction(prediction);
+                
+                return formattedPrediction;
+            } catch (error) {
+                console.error('Prediction error:', error);
+                return "I apologize, but I'm having trouble generating predictions at the moment.";
+            } finally {
+                this.predictions.loading = false;
+            }
+        },
+
+        getOccupancyTrend(rate) {
+            if (rate >= 80) return '(Very High) 📈';
+            if (rate >= 60) return '(Good) ⭐';
+            if (rate >= 40) return '(Moderate) 📊';
+            if (rate >= 20) return '(Low) ⚠️';
+            return '(Critical) ⚡';
+        },
+
+        generateOccupancyInsights(stats) {
+            const insights = [];
+            
+            if (stats.rate < 40) {
+                insights.push("• Consider promotional rates to increase occupancy");
+                insights.push("• Review pricing strategy for low-demand periods");
+            }
+            
+            if (stats.available < 2) {
+                insights.push("• Near full capacity - optimize pricing for remaining rooms");
+                insights.push("• Consider waitlist for potential cancellations");
+            }
+            
+            if (stats.maintenance > 0) {
+                insights.push("• Expedite maintenance to increase available inventory");
+            }
+            
+            if (stats.avgStayDuration < 2) {
+                insights.push("• Opportunity to promote extended stay packages");
+            }
+
+            return insights.length > 0 
+                ? `\nRecommendations:\n${insights.join('\n')}`
+                : '';
+        },
+
+        getPerformanceLevel(growthRate) {
+            if (growthRate >= 20) return "Exceptional Growth 🌟";
+            if (growthRate >= 10) return "Strong Performance ⭐";
+            if (growthRate >= 0) return "Stable Performance 📊";
+            if (growthRate >= -10) return "Needs Attention ⚠️";
+            return "Requires Immediate Action ⚡";
+        },
+
+        generateRevenueInsights(analytics) {
+            const insights = [];
+            
+            if (analytics.growthRate > 20) {
+                insights.push("• Exceptional revenue growth - consider expanding capacity");
+                insights.push("• Evaluate pricing strategy for sustainability");
+            }
+            if (analytics.dailyAverage > analytics.perRoom) {
+                insights.push("• Strong per-room performance - potential for upselling");
+            }
+            if (analytics.growthRate < 0) {
+                insights.push("• Review pricing and marketing strategies");
+                insights.push("• Analyze competitor rates and market conditions");
+            }
+            if (analytics.currentMonth < analytics.total / 12) {
+                insights.push("• Current month performing below annual average");
+            }
+
+            return insights.length > 0 
+                ? `\nInsights & Recommendations:\n${insights.join('\n')}`
+                : '';
+        },
+
+        generateActionableRecommendations(analytics) {
+            const recommendations = [];
+            const monthlyAverage = analytics.total / 12;
+
+            if (analytics.currentMonth < monthlyAverage) {
+                recommendations.push("• Implement seasonal pricing adjustments");
+                recommendations.push("• Launch targeted marketing campaigns");
+            }
+            if (analytics.perRoom < analytics.dailyAverage) {
+                recommendations.push("• Optimize room inventory mix");
+                recommendations.push("• Review room pricing tiers");
+            }
+            if (analytics.growthRate < 5) {
+                recommendations.push("• Develop promotional packages");
+                recommendations.push("• Enhance value-added services");
+            }
+
+            return recommendations.length > 0
+                ? `\nAction Plan:\n${recommendations.join('\n')}`
+                : '';
+        },
+
+        // Add new helper methods
+        analyzeBookingPatterns(bookings) {
+            const hourlyDistribution = new Array(24).fill(0);
+            const dailyDistribution = new Array(7).fill(0);
+            const leadTimes = [];
+
+            bookings.forEach(booking => {
+                const bookingDate = new Date(booking.createdAt?.toDate?.() || booking.createdAt);
+                const checkInDate = new Date(booking.checkIn?.toDate?.() || booking.checkIn);
+                
+                hourlyDistribution[bookingDate.getHours()]++;
+                dailyDistribution[bookingDate.getDay()]++;
+                
+                // Calculate lead time in days
+                const leadTime = Math.ceil((checkInDate - bookingDate) / (1000 * 60 * 60 * 24));
+                leadTimes.push(leadTime);
+            });
+
+            const peakHours = this.findPeakPeriods(hourlyDistribution, 3);
+            const peakDays = this.findPeakPeriods(dailyDistribution, 3);
+            const avgLeadTime = leadTimes.reduce((sum, lt) => sum + lt, 0) / leadTimes.length;
+
+            return {
+                peakHours,
+                peakDays,
+                avgLeadTime: Math.round(avgLeadTime),
+                hourlyDistribution,
+                dailyDistribution
+            };
+        },
+
+        calculateRoomTypeDistribution(bookings) {
+            const distribution = bookings.reduce((acc, booking) => {
+                const roomType = booking.propertyDetails?.roomType || 'Standard';
+                acc[roomType] = (acc[roomType] || 0) + 1;
+                return acc;
+            }, {});
+
+            return Object.entries(distribution).map(([type, count]) => ({
+                type,
+                count,
+                percentage: (count / bookings.length * 100).toFixed(1)
+            })).sort((a, b) => b.count - a.count);
+        },
+
+        calculateBookingRevenue(bookings) {
+            try {
+                if (!Array.isArray(bookings)) {
+                    console.warn('Invalid bookings data in calculateBookingRevenue');
+                    return {
+                        total: 0,
+                        average: 0,
+                        projected: 0
+                    };
+                }
+        
+                const totalRevenue = bookings.reduce((sum, b) => sum + (Number(b.totalPrice) || 0), 0);
+                const avgRevenuePerBooking = bookings.length ? totalRevenue / bookings.length : 0;
+                
+                // Calculate growth rate safely
+                const currentBookings = bookings.filter(b => {
+                    const date = new Date(b.createdAt?.toDate?.() || b.createdAt);
+                    return date >= new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+                });
+                
+                const previousBookings = bookings.filter(b => {
+                    const date = new Date(b.createdAt?.toDate?.() || b.createdAt);
+                    return date >= new Date(Date.now() - 60 * 24 * 60 * 60 * 1000) &&
+                           date < new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+                });
+        
+                const growthRate = previousBookings.length ? 
+                    ((currentBookings.length - previousBookings.length) / previousBookings.length) : 
+                    0;
+                
+                return {
+                    total: totalRevenue,
+                    average: avgRevenuePerBooking,
+                    projected: totalRevenue * (1 + growthRate)
+                };
+            } catch (error) {
+                console.error('Error in calculateBookingRevenue:', error);
+                return {
+                    total: 0,
+                    average: 0,
+                    projected: 0
+                };
+            }
+        },
+
+        findPeakPeriods(distribution, count) {
+            return distribution
+                .map((value, index) => ({ index, value }))
+                .sort((a, b) => b.value - a.value)
+                .slice(0, count)
+                .map(({ index, value }) => ({
+                    period: index,
+                    count: value,
+                    percentage: (value / distribution.reduce((sum, val) => sum + val, 0) * 100).toFixed(1)
+                }));
+        },
+
+        // Add missing helper methods for historical calculations
+        calculateAverageLeadTime(bookings) {
+            if (!bookings || bookings.length === 0) return 0;
+
+            const leadTimes = bookings.map(booking => {
+                const bookingDate = new Date(booking.createdAt?.toDate?.() || booking.createdAt);
+                const checkInDate = new Date(booking.checkIn?.toDate?.() || booking.checkIn);
+                return Math.ceil((checkInDate - bookingDate) / (1000 * 60 * 60 * 24));
+            });
+
+            return leadTimes.reduce((sum, time) => sum + time, 0) / leadTimes.length;
+        },
+
+        calculateHistoricalOccupancy(data) {
+            const lastMonth = new Date();
+            lastMonth.setMonth(lastMonth.getMonth() - 1);
+
+            const historicalBookings = data.bookings.filter(booking => {
+                const checkIn = new Date(booking.checkIn?.toDate?.() || booking.checkIn);
+                return checkIn <= lastMonth && booking.status === 'confirmed';
+            });
+
+            return (historicalBookings.length / data.rooms.length) * 100;
+        },
+
+        calculateHistoricalRevenue(data) {
+            const lastMonth = new Date();
+            lastMonth.setMonth(lastMonth.getMonth() - 1);
+
+            const historicalRevenue = data.revenue
+                .filter(r => new Date(r.date) <= lastMonth)
+                .reduce((sum, r) => sum + (r.amount || 0), 0);
+
+            return historicalRevenue;
+        }
     },
     async mounted() {
         await this.initializeApp();

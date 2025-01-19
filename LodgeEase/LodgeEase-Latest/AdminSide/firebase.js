@@ -792,6 +792,35 @@ export async function initializeFirebase() {
     }
 }
 
+// Add this new function
+export async function createRequiredIndexes() {
+    try {
+        const indexes = [
+            {
+                collectionGroup: 'bookings',
+                queryScope: 'COLLECTION',
+                fields: [
+                    { fieldPath: 'status', order: 'ASCENDING' },
+                    { fieldPath: 'checkIn', order: 'ASCENDING' }
+                ]
+            }
+        ];
+
+        // Log index creation requirements
+        indexes.forEach(index => {
+            console.log(`Required index for ${index.collectionGroup}:`, {
+                fields: index.fields.map(f => `${f.fieldPath} ${f.order}`).join(', '),
+                url: `https://console.firebase.google.com/project/${firebaseConfig.projectId}/firestore/indexes`
+            });
+        });
+
+        return true;
+    } catch (error) {
+        console.error('Error checking indexes:', error);
+        return false;
+    }
+}
+
 // Export other functions and objects
 export { 
     db, 

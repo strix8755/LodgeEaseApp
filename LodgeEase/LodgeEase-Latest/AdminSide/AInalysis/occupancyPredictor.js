@@ -7,21 +7,45 @@ export async function predictNextMonthOccupancy() {
         const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
         const nextMonthEnd = new Date(today.getFullYear(), today.getMonth() + 2, 0);
 
-        // Fetch confirmed bookings for next month
+        // Modified query to use single field index
         const bookingsRef = collection(db, 'bookings');
-        const bookingsSnapshot = await getDocs(
-            query(bookingsRef, 
-                where('checkIn', '>=', nextMonth),
-                where('checkIn', '<=', nextMonthEnd),
-                where('status', '==', 'Confirmed')
-            )
-        );
-        const confirmedBookings = bookingsSnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        }));
+        let confirmedBookings = [];
 
-        // Fetch all rooms
+        try {
+            // First get bookings by date range
+            const dateQuery = query(bookingsRef, 
+                where('checkIn', '>=', nextMonth),
+                where('checkIn', '<=', nextMonthEnd)
+            );
+            const dateSnapshot = await getDocs(dateQuery);
+            
+            // Then filter for confirmed status in memory
+            confirmedBookings = dateSnapshot.docs
+                .map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }))
+                .filter(booking => booking.status?.toLowerCase() === 'confirmed');
+        } catch (error) {
+            // If composite index fails, try fallback approach
+            console.warn('Using fallback query method:', error);
+            const allBookingsQuery = query(bookingsRef);
+            const allSnapshot = await getDocs(allBookingsQuery);
+            
+            confirmedBookings = allSnapshot.docs
+                .map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }))
+                .filter(booking => {
+                    const checkIn = new Date(booking.checkIn?.toDate?.() || booking.checkIn);
+                    return booking.status?.toLowerCase() === 'confirmed' &&
+                           checkIn >= nextMonth &&
+                           checkIn <= nextMonthEnd;
+                });
+        }
+
+        // Rest of the prediction logic
         const roomsRef = collection(db, 'rooms');
         const roomsSnapshot = await getDocs(roomsRef);
         const totalRooms = roomsSnapshot.docs.length;
@@ -42,45 +66,25 @@ export async function predictNextMonthOccupancy() {
             }
         });
 
-        // Calculate predicted occupancy rate
+        // Calculate average occupancy
         const averageOccupancy = dailyOccupancy.reduce((sum, count) => sum + count, 0) / daysInMonth;
         const predictedRate = (averageOccupancy / totalRooms) * 100;
 
-        // Get historical data for adjustment
-        const lastYear = new Date(today.getFullYear() - 1, today.getMonth() + 1, 1);
-        const historicalSnapshot = await getDocs(
-            query(bookingsRef, 
-                where('checkIn', '>=', lastYear),
-                where('status', '==', 'Confirmed')
-            )
-        );
-        const historicalBookings = historicalSnapshot.docs.map(doc => doc.data());
-
-        // Calculate historical booking pace
-        const historicalPace = calculateBookingPace(historicalBookings);
+        // Calculate current booking pace
         const currentPace = calculateBookingPace(confirmedBookings);
-        const paceAdjustment = currentPace > 0 ? (currentPace / historicalPace) : 1;
-
-        // Final prediction with adjustments
-        const finalPrediction = Math.min(100, predictedRate * paceAdjustment);
-
-        console.log('Occupancy Prediction Details:', {
-            month: nextMonth.toLocaleString('default', { month: 'long' }),
-            confirmedBookings: confirmedBookings.length,
-            totalRooms,
-            baseRate: predictedRate.toFixed(1) + '%',
-            paceAdjustment: paceAdjustment.toFixed(2),
-            finalPrediction: finalPrediction.toFixed(1) + '%'
-        });
+        const historicalOccupancy = await getHistoricalOccupancy(bookingsRef, totalRooms);
 
         return {
-            predictedRate: finalPrediction,
+            month: nextMonth.toLocaleString('default', { month: 'long' }),
+            predictedRate: Math.min(100, predictedRate),
             confidence: calculateConfidenceScore(confirmedBookings.length, totalRooms),
             details: {
                 confirmedBookings: confirmedBookings.length,
                 totalRooms,
-                dailyOccupancy,
-                bookingPace: currentPace
+                currentPace,
+                historicalOccupancy,
+                expectedAdditional: Math.round(currentPace * 30),
+                dailyOccupancy
             }
         };
     } catch (error) {
@@ -89,17 +93,79 @@ export async function predictNextMonthOccupancy() {
     }
 }
 
+// Add helper functions after the main prediction function
 function calculateBookingPace(bookings) {
     const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+    
     const recentBookings = bookings.filter(booking => {
         const bookingDate = new Date(booking.createdAt?.toDate?.() || booking.createdAt);
-        const daysDiff = (now - bookingDate) / (1000 * 60 * 60 * 24);
-        return daysDiff <= 30;
+        return bookingDate >= thirtyDaysAgo && bookingDate <= now;
     });
-    return recentBookings.length / 30;
+
+    return recentBookings.length / 30; // Average bookings per day
+}
+
+async function getHistoricalOccupancy(bookingsRef, totalRooms) {
+    try {
+        // Get last year's same month
+        const lastYear = new Date();
+        lastYear.setFullYear(lastYear.getFullYear() - 1);
+        const startOfMonth = new Date(lastYear.getFullYear(), lastYear.getMonth(), 1);
+        const endOfMonth = new Date(lastYear.getFullYear(), lastYear.getMonth() + 1, 0);
+
+        const historicalQuery = query(bookingsRef,
+            where('checkIn', '>=', startOfMonth),
+            where('checkIn', '<=', endOfMonth)
+        );
+
+        const snapshot = await getDocs(historicalQuery);
+        const historicalBookings = snapshot.docs.map(doc => doc.data())
+            .filter(booking => booking.status?.toLowerCase() === 'confirmed');
+
+        const daysInMonth = endOfMonth.getDate();
+        const dailyOccupancy = new Array(daysInMonth).fill(0);
+
+        historicalBookings.forEach(booking => {
+            const checkIn = new Date(booking.checkIn?.toDate?.() || booking.checkIn);
+            const checkOut = new Date(booking.checkOut?.toDate?.() || booking.checkOut);
+            
+            for (let d = new Date(checkIn); d <= checkOut; d.setDate(d.getDate() + 1)) {
+                if (d.getMonth() === startOfMonth.getMonth()) {
+                    dailyOccupancy[d.getDate() - 1]++;
+                }
+            }
+        });
+
+        const averageOccupancy = dailyOccupancy.reduce((sum, count) => sum + count, 0) / daysInMonth;
+        return (averageOccupancy / totalRooms) * 100;
+    } catch (error) {
+        console.warn('Error getting historical occupancy:', error);
+        return 0;
+    }
 }
 
 function calculateConfidenceScore(confirmedBookings, totalRooms) {
-    const baseConfidence = (confirmedBookings / totalRooms) * 100;
-    return Math.min(100, baseConfidence);
+    // Base confidence on how many rooms are already booked
+    const baseConfidence = (confirmedBookings / totalRooms) * 50; // Max 50% from bookings
+
+    // Add time-based confidence
+    const daysUntilNextMonth = getDaysUntilNextMonth();
+    const timeConfidence = Math.min(50, (30 - daysUntilNextMonth) * 1.67); // Max 50% from time
+
+    return Math.min(100, baseConfidence + timeConfidence);
 }
+
+function getDaysUntilNextMonth() {
+    const now = new Date();
+    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    return Math.ceil((nextMonth - now) / (1000 * 60 * 60 * 24));
+}
+
+// Export helper functions for testing
+export {
+    calculateBookingPace,
+    getHistoricalOccupancy,
+    calculateConfidenceScore,
+    getDaysUntilNextMonth
+};
