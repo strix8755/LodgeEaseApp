@@ -1,6 +1,6 @@
 import { auth, db } from '../firebase.js';
 import { collection, getDocs, query, where, orderBy } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore.js";
-import { chartDataService } from '../js/chartDataService.js';
+import { chartDataService } from './chartDataService.js';
 
 new Vue({
     el: '#app',

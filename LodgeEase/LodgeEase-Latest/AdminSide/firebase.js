@@ -797,4 +797,17 @@ export {
     db, 
     auth, 
     analytics,
+    collection,
+    getDocs,
+    addDoc,
+    updateDoc,
+    deleteDoc,
+    doc,
+    getDoc,
+    setDoc,
+    query,
+    where,
+    orderBy,
+    limit,
+    Timestamp
 };

@@ -420,16 +420,21 @@ body {
         border-radius: 10px;
         font-size: 14px;
         white-space: pre-line;
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
     .message.bot .message-content {
         background-color: #f0f2f5;
         color: #333;
+        background: linear-gradient(145deg, #f0f2f5 0%, #e3e6ec 100%);
     }
 
     .message.user .message-content {
         background-color: #1e3c72;
         color: white;
+        background: linear-gradient(145deg, #1e3c72 0%, #2a5298 100%);
     }
 
     .chat-input-container {
@@ -721,4 +726,103 @@ canvas {
 
 .chart-container.hidden .chart-header {
     margin-bottom: 0;
+}
+
+/* Modern Design Updates */
+.message-content {
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.message.bot .message-content {
+    background: linear-gradient(145deg, #f0f2f5 0%, #e3e6ec 100%);
+}
+
+.message.user .message-content {
+    background: linear-gradient(145deg, #1e3c72 0%, #2a5298 100%);
+}
+
+/* Improved Responsiveness */
+@media (max-width: 768px) {
+    .main-content {
+        margin-left: 0;
+        width: 100%;
+        padding: 10px;
+    }
+
+    .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+    }
+
+    .sidebar.active {
+        transform: translateX(0);
+    }
+
+    .chat-container {
+        height: calc(100vh - 200px);
+    }
+}
+
+/* Firebase Connection UI */
+.error-banner {
+    background-color: #ff4757;
+    color: white;
+    padding: 12px 20px;
+    text-align: center;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 2000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+}
+
+.retry-button {
+    background-color: rgba(255, 255, 255, 0.2);
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background-color 0.3s;
+}
+
+.retry-button:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1999;
+}
+
+.loading-spinner {
+    text-align: center;
+}
+
+.loading-spinner i {
+    font-size: 40px;
+    color: #1e3c72;
+    margin-bottom: 15px;
+}
+
+.loading-spinner p {
+    color: #1e3c72;
+    font-size: 16px;
 }
