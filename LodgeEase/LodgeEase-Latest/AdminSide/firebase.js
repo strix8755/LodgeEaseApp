@@ -79,12 +79,7 @@ setPersistence(auth, browserLocalPersistence).catch(error => {
 // Initialize Firebase function - only export this once
 export async function initializeFirebase() {
     try {
-        // Check if Firebase is already initialized
-        if (!app) {
-            console.warn('Firebase app not initialized, initializing now...');
-            initializeApp(firebaseConfig);
-        }
-        return true;
+        return app;
     } catch (error) {
         console.error('Error initializing Firebase:', error);
         throw error;
