@@ -158,16 +158,44 @@
         },
         {
             id: 12,
-            name: "Burnham Lake House",
-            location: "Burnham Park, Baguio City",
-            image: "../components/13.jpg",
-            price: 5800,
-            amenities: ["Lake View", "Kitchen", "Pet Friendly", "Garden"],
-            rating: 4.7,
-            propertyType: "vacation-home",
+            name: "City Lights Inn",
+            location: "Session Road, Baguio City",
+            image: "../components/5.jpg",
+            price: 2800,
+            amenities: ["City View", "WiFi", "Restaurant"],
+            rating: 4.3,
+            propertyType: "hotel",
             coordinates: {
-                lat: 16.4129,
-                lng: 120.5928
+                lat: 16.4156,
+                lng: 120.5964
+            }
+        },
+        {
+            id: 13,
+            name: "Wright Park Manor",
+            location: "Wright Park, Baguio City",
+            image: "../components/7.jpg",
+            price: 5200,
+            amenities: ["Mountain View", "Kitchen", "Parking", "Pet Friendly"],
+            rating: 4.6,
+            propertyType: "bed-breakfast",
+            coordinates: {
+                lat: 16.4105,
+                lng: 120.6287
+            }
+        },
+        {
+            id: 14,
+            name: "Super Apartment - Room 6",
+            location: "City Center, Baguio City",
+            image: "../components/SuperApartmentRoom6.jpg",
+            price: 3200,
+            amenities: ["City View", "WiFi", "Kitchen"],
+            rating: 4.4,
+            propertyType: "apartment",
+            coordinates: {
+                lat: 16.4123,
+                lng: 120.5960
             }
         }
     ];
@@ -180,6 +208,7 @@
 
     function initializeAllFunctionality() {
         try {
+            addLodgeModalToDOM(); 
             createLodgeCards();
             initializeSearch();
             initializeSort();
@@ -190,54 +219,139 @@
         }
     }
 
-    // Create lodge cards
-    function createLodgeCards() {
-        console.log('Creating lodge cards...');
-        const container = document.querySelector('.lodge-container');
-        if (!container) {
-            console.error('Lodge container not found');
-            return;
-        }
-
-        // Clear existing cards
-        container.innerHTML = '';
-
-        lodgeData.forEach(lodge => {
-            const card = document.createElement('div');
-            card.className = 'lodge-card bg-white rounded-lg shadow-lg overflow-hidden';
-            card.dataset.propertyType = lodge.propertyType || 'hotel';
-            
-            card.innerHTML = `
-                <a href="../Lodge/lodge${lodge.id}.html" class="block">
-                    <img src="${lodge.image}" alt="${lodge.name}" class="w-full h-48 object-cover">
-                    <div class="p-4">
-                        <h2 class="text-xl font-semibold mb-2">${lodge.name}</h2>
-                        <p class="text-gray-500 mb-2">${lodge.location}</p>
-                        <div class="flex flex-wrap gap-2 mb-3">
-                            ${lodge.amenities.map(amenity => 
-                                `<span class="text-xs bg-gray-100 px-2 py-1 rounded">${amenity}</span>`
-                            ).join('')}
-                        </div>
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-green-600 font-bold">₱${lodge.price.toLocaleString()}/night</span>
-                            <button class="text-gray-500 hover:text-red-500">
-                                <i class="ri-heart-line text-xl"></i>
-                            </button>
-                        </div>
-                        <div class="text-xs text-gray-500 flex items-center">
-                            <i class="ri-map-pin-line mr-1"></i>
-                            <span>Coordinates: ${lodge.coordinates.lat.toFixed(4)}, ${lodge.coordinates.lng.toFixed(4)}</span>
+        // Add the new modal function here
+        function addLodgeModalToDOM() {
+            const modalHTML = `
+                <div id="lodgeDetailsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+                    <div class="fixed inset-0 flex items-center justify-center p-4">
+                        <div class="bg-white rounded-lg max-w-4xl w-full max-h-90vh overflow-y-auto">
+                            <div class="p-6" id="lodgeDetailsContent">
+                                <!-- Content will be dynamically inserted here -->
+                            </div>
                         </div>
                     </div>
-                </a>
+                </div>
             `;
             
-            container.appendChild(card);
-        });
-
-        updateResultsCount();
-    }
-
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+            // Add global click handler to close modal when clicking outside
+            document.getElementById('lodgeDetailsModal')?.addEventListener('click', (e) => {
+                if (e.target.id === 'lodgeDetailsModal') {
+                    e.target.classList.add('hidden');
+                }
+            });
+        }
+    
+        // Add the show details function here
+        function showLodgeDetails(lodge) {
+            const modal = document.getElementById('lodgeDetailsModal');
+            const content = document.getElementById('lodgeDetailsContent');
+            
+            if (!modal || !content) {
+                console.error('Modal elements not found');
+                return;
+            }
+            
+            // Generate the correct file path with the Lodge folder
+            const bookingUrl = `../Lodge/lodge${lodge.id}.html`;
+            
+            content.innerHTML = `
+                <div class="flex justify-between items-start mb-6">
+                    <h2 class="text-2xl font-bold">${lodge.name}</h2>
+                    <button class="text-gray-500 hover:text-gray-700" onclick="document.getElementById('lodgeDetailsModal').classList.add('hidden')">
+                        <i class="ri-close-line text-2xl"></i>
+                    </button>
+                </div>
+                <img src="${lodge.image}" alt="${lodge.name}" class="w-full h-64 object-cover rounded-lg mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <h3 class="font-semibold mb-2">Location</h3>
+                        <p class="text-gray-600">${lodge.location}</p>
+                        
+                        <h3 class="font-semibold mt-4 mb-2">Price</h3>
+                        <p class="text-green-600 font-bold text-xl">₱${lodge.price.toLocaleString()}/night</p>
+                        
+                        <h3 class="font-semibold mt-4 mb-2">Rating</h3>
+                        <div class="flex items-center">
+                            <span class="text-yellow-500 mr-1">${'★'.repeat(Math.floor(lodge.rating))}</span>
+                            <span class="text-gray-600">${lodge.rating}/5</span>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold mb-2">Amenities</h3>
+                        <div class="flex flex-wrap gap-2">
+                            ${lodge.amenities.map(amenity => 
+                                `<span class="bg-gray-100 px-3 py-1 rounded-full text-sm">${amenity}</span>`
+                            ).join('')}
+                        </div>
+                        
+                        <a href="${bookingUrl}">
+                            <button class="w-full bg-blue-600 text-white py-3 rounded-lg mt-6 hover:bg-blue-700 transition-colors">
+                                Book Now
+                            </button>
+                        </a>
+                    </div>
+                </div>
+            `;
+            
+            modal.classList.remove('hidden');
+        }
+    
+        // Update your existing createLodgeCards function
+        function createLodgeCards() {
+            console.log('Creating lodge cards...');
+            const container = document.querySelector('.lodge-container');
+            if (!container) {
+                console.error('Lodge container not found');
+                return;
+            }
+    
+            // Clear existing cards
+            container.innerHTML = '';
+    
+            lodgeData.forEach(lodge => {
+                const card = document.createElement('div');
+                card.className = 'lodge-card bg-white rounded-lg shadow-lg overflow-hidden cursor-pointer';
+                card.dataset.propertyType = lodge.propertyType || 'hotel';
+                
+                card.innerHTML = `
+                    <div class="block">
+                        <img src="${lodge.image}" alt="${lodge.name}" class="w-full h-48 object-cover">
+                        <div class="p-4">
+                            <h2 class="text-xl font-semibold mb-2">${lodge.name}</h2>
+                            <p class="text-gray-500 mb-2">${lodge.location}</p>
+                            <div class="flex flex-wrap gap-2 mb-3">
+                                ${lodge.amenities.map(amenity => 
+                                    `<span class="text-xs bg-gray-100 px-2 py-1 rounded">${amenity}</span>`
+                                ).join('')}
+                            </div>
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-green-600 font-bold">₱${lodge.price.toLocaleString()}/night</span>
+                                <button class="text-gray-500 hover:text-red-500">
+                                    <i class="ri-heart-line text-xl"></i>
+                                </button>
+                            </div>
+                            <div class="text-xs text-gray-500 flex items-center">
+                                <i class="ri-map-pin-line mr-1"></i>
+                                <span>Coordinates: ${lodge.coordinates.lat.toFixed(4)}, ${lodge.coordinates.lng.toFixed(4)}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Add click event listener to open lodge details
+                card.addEventListener('click', (e) => {
+                    if (!e.target.closest('.ri-heart-line')) {  // Ignore clicks on the heart icon
+                        showLodgeDetails(lodge);
+                    }
+                });
+                
+                container.appendChild(card);
+            });
+    
+            updateResultsCount();
+        }
     // Search functionality
     function initializeSearch() {
         const searchInput = document.querySelector('input[placeholder*="Search"]');
