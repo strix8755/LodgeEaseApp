@@ -1,7 +1,7 @@
 // Import Firebase modules
 import { db, auth } from '../firebase.js';
-import { collection, getDocs, query, orderBy, limit, doc, deleteDoc, updateDoc, Timestamp, where, addDoc } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore.js";
-import { signOut } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-auth.js";
+import { collection, getDocs, query, orderBy, limit, doc, deleteDoc, updateDoc, Timestamp, where, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 // Vue app for the dashboard
 new Vue({
@@ -101,7 +101,15 @@ new Vue({
 
         async fetchBookings() {
             try {
+                if (!db) {
+                    throw new Error('Firestore instance not initialized');
+                }
+                
                 const bookingsRef = collection(db, 'bookings');
+                if (!bookingsRef) {
+                    throw new Error('Failed to create bookings collection reference');
+                }
+                
                 const q = query(bookingsRef, orderBy('createdAt', 'desc'), limit(5));
                 const querySnapshot = await getDocs(q);
                 
@@ -967,5 +975,3 @@ new Vue({
         }
     }
 });
-
-

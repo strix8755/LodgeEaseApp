@@ -1,8 +1,8 @@
 // Import Firebase modules
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { initializeApp, getApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, setPersistence, browserLocalPersistence, fetchSignInMethodsForEmail } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, getDoc, setDoc, query, where, Timestamp, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { getAnalytics } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js';
+import { getAnalytics, isSupported } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js';
 
 // Firebase configuration
 const firebaseConfig = {
@@ -12,14 +12,64 @@ const firebaseConfig = {
     storageBucket: "lms-app-2b903.appspot.com",
     messagingSenderId: "1046108373013",
     appId: "1:1046108373013:web:fc366db1d92b9c4b860e1c",
-    measurementId: "G-JZXP7RGQE8"
+    measurementId: "G-WRMW9Z8867" // Updated to match server measurement ID
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+let app;
+let analytics;
+
+// Initialize Firebase with proper error handling
+try {
+    app = initializeApp(firebaseConfig);
+    console.log('Firebase app initialized successfully');
+} catch (error) {
+    if (error.code === 'app/duplicate-app') {
+        app = getApp(); // Get the already initialized app
+        console.log('Retrieved existing Firebase app');
+    } else {
+        console.error('Firebase initialization error:', error);
+        throw error;
+    }
+}
+
+// Initialize Firebase services
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-const analytics = getAnalytics(app);
+export { app }; // Export the app instance
+
+// Initialize Analytics with feature detection and setup
+export async function initializeAnalytics() {
+    try {
+        // Check authentication if needed
+        if (!auth.currentUser) {
+            console.warn('No user authenticated');
+        }
+
+        // Initialize analytics if supported
+        if (await isSupported()) {
+            analytics = getAnalytics(app);
+            console.log('Firebase Analytics initialized successfully');
+        } else {
+            console.log('Firebase Analytics not supported in this environment');
+        }
+
+        // Create analytics collection if it doesn't exist
+        const analyticsRef = collection(db, 'analytics');
+        await setDoc(doc(analyticsRef, '_config'), {
+            lastUpdated: Timestamp.now(),
+            version: '1.0',
+            initialized: true
+        }, { merge: true });
+
+        return true;
+    } catch (error) {
+        console.warn('Analytics initialization error:', error);
+        return false;
+    }
+}
+
+// Initialize analytics
+initializeAnalytics().catch(console.error);
 
 // Set persistence to local immediately
 setPersistence(auth, browserLocalPersistence).catch(error => {
@@ -555,27 +605,7 @@ export async function saveAnalyticsData(type, data) {
 }
 
 // Update initializeAnalytics function
-export async function initializeAnalytics() {
-    try {
-        if (!auth.currentUser) {
-            console.warn('No user authenticated');
-            return false;
-        }
-
-        // Create analytics collection if it doesn't exist
-        const analyticsRef = collection(db, 'analytics');
-        await setDoc(doc(analyticsRef, '_config'), {
-            lastUpdated: Timestamp.now(),
-            version: '1.0',
-            initialized: true
-        }, { merge: true });
-
-        return true;
-    } catch (error) {
-        console.warn('Error initializing analytics:', error);
-        return false;
-    }
-}
+// Removed, as it's now combined with the other initializeAnalytics function
 
 // Enhanced analytics data fetching with permissions check
 export async function fetchAnalyticsData(establishment, dateRange) {

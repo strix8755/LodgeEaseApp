@@ -1,4 +1,4 @@
-import { db, auth } from '../firebase.js';
+import { db, auth, app } from '../firebase.js';
 import { 
     collection, 
     getDocs, 
@@ -11,18 +11,18 @@ import {
     where,
     getDoc,
     addDoc,
-    setDoc  // Add this import
-} from "https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore.js";
+    setDoc
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { 
     getStorage, 
     ref, 
     uploadBytes, 
     getDownloadURL 
-} from "https://www.gstatic.com/firebasejs/9.18.0/firebase-storage.js";
-import { signOut } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-auth.js";
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+import { signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-// Initialize Firebase Storage
-const storage = getStorage();
+// Initialize Firebase Storage with existing app instance
+const storage = getStorage(app);
 
 new Vue({
     el: '#app',
@@ -616,4 +616,3 @@ new Vue({
         this.checkAuthState(); // This will handle auth check and fetch bookings
     }
 });
-
