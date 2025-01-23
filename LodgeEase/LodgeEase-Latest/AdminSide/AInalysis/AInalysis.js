@@ -9,6 +9,7 @@ import {
     initializeFirebase,
     fetchAnalyticsData,
     logPageNavigation,
+    signOut,
     // Add Firestore method imports
     collection,
     getDocs,
@@ -2043,6 +2044,7 @@ Average Rate: ${this.formatComparison(prevMetrics.avgRate, currentMetrics.avgRat
                 acc[type] = (acc[type] || 0) + 1;
                 return acc;
             }, {});
+
             return Object.entries(typeCounts)
                 .sort((a, b) => b[1] - a[1])[0][0];
         },

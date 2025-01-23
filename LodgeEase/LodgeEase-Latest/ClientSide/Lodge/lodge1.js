@@ -1,5 +1,5 @@
 import { db, auth, addBooking } from '../../AdminSide/firebase.js';
-import { doc, getDoc, Timestamp } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore.js";
+import { doc, getDoc, collection, addDoc, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 // Constants for pricing
 const NIGHTLY_RATE = 6500; // ₱6,500 per night as shown in the HTML
@@ -182,17 +182,19 @@ calendarModal.addEventListener('click', (e) => {
 async function getCurrentUserData() {
     try {
         const user = auth.currentUser;
-        
         if (!user) {
-            window.location.href = '../Login/index.html';
-            throw new Error('User not logged in');
+            console.log('No user is signed in');
+            return null;
         }
 
-        const userDoc = await getDoc(doc(db, "users", user.uid));
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userDocRef);
+        
         if (userDoc.exists()) {
             return userDoc.data();
         } else {
-            throw new Error('User data not found');
+            console.log('No user data found');
+            return null;
         }
     } catch (error) {
         console.error('Error getting user data:', error);
@@ -200,43 +202,199 @@ async function getCurrentUserData() {
     }
 }
 
-async function saveBooking() {
+async function saveBooking(bookingData) {
     try {
-        // Get current user data
+        if (!db) {
+            throw new Error('Firestore is not initialized');
+        }
+
+        // Validate booking data
+        const validationResult = validateBookingData(bookingData);
+        if (!validationResult.isValid) {
+            throw new Error(`Booking validation failed: ${validationResult.error}`);
+        }
+
+        // Add to Firestore
+        const bookingsRef = collection(db, 'bookings');
+        const docRef = await addDoc(bookingsRef, bookingData);
+        
+        console.log('Booking saved successfully with ID:', docRef.id);
+        return docRef.id;
+    } catch (error) {
+        console.error('Error in saveBooking:', error);
+        throw error;
+    }
+}
+
+// Add error checking function
+function validateBookingData(data) {
+    try {
+        const requiredFields = [
+            'guestName',
+            'email',
+            'contactNumber',
+            'userId',
+            'checkIn',
+            'checkOut',
+            'createdAt',
+            'propertyDetails',
+            'guests',
+            'numberOfNights',
+            'nightlyRate',
+            'subtotal',
+            'serviceFee',
+            'totalPrice',
+            'paymentStatus',
+            'status'
+        ];
+
+        for (const field of requiredFields) {
+            if (!data[field]) {
+                return {
+                    isValid: false,
+                    error: `Missing required field: ${field}`
+                };
+            }
+        }
+
+        // Validate property details
+        const requiredPropertyFields = ['name', 'location', 'roomNumber', 'roomType', 'floorLevel'];
+        for (const field of requiredPropertyFields) {
+            if (!data.propertyDetails[field]) {
+                return {
+                    isValid: false,
+                    error: `Missing required property field: ${field}`
+                };
+            }
+        }
+
+        // Validate dates
+        if (!(data.checkIn instanceof Timestamp)) {
+            return {
+                isValid: false,
+                error: 'Invalid checkIn date format'
+            };
+        }
+        if (!(data.checkOut instanceof Timestamp)) {
+            return {
+                isValid: false,
+                error: 'Invalid checkOut date format'
+            };
+        }
+        if (!(data.createdAt instanceof Timestamp)) {
+            return {
+                isValid: false,
+                error: 'Invalid createdAt date format'
+            };
+        }
+
+        // Validate numeric fields
+        if (typeof data.numberOfNights !== 'number' || data.numberOfNights <= 0) {
+            return {
+                isValid: false,
+                error: 'Invalid number of nights'
+            };
+        }
+        if (typeof data.nightlyRate !== 'number' || data.nightlyRate <= 0) {
+            return {
+                isValid: false,
+                error: 'Invalid nightly rate'
+            };
+        }
+        if (typeof data.subtotal !== 'number' || data.subtotal <= 0) {
+            return {
+                isValid: false,
+                error: 'Invalid subtotal'
+            };
+        }
+        if (typeof data.serviceFee !== 'number' || data.serviceFee < 0) {
+            return {
+                isValid: false,
+                error: 'Invalid service fee'
+            };
+        }
+        if (typeof data.totalPrice !== 'number' || data.totalPrice <= 0) {
+            return {
+                isValid: false,
+                error: 'Invalid total price'
+            };
+        }
+
+        // All validations passed
+        return {
+            isValid: true,
+            error: null
+        };
+    } catch (error) {
+        console.error('Error in validateBookingData:', error);
+        return {
+            isValid: false,
+            error: 'Validation error: ' + error.message
+        };
+    }
+}
+
+export async function handleReserveClick(event) {
+    try {
+        event.preventDefault();
+
+        // Check if user is logged in
+        const user = auth.currentUser;
+        if (!user) {
+            // Save booking details to localStorage before redirecting
+            const bookingDetails = {
+                checkIn: selectedCheckIn,
+                checkOut: selectedCheckOut,
+                guests: document.querySelector('select').value,
+                contactNumber: document.getElementById('guest-contact').value
+            };
+            localStorage.setItem('pendingBooking', JSON.stringify(bookingDetails));
+            
+            // Redirect to login page with return URL
+            const returnUrl = encodeURIComponent(window.location.href);
+            window.location.href = `../Login/index.html?redirect=${returnUrl}`;
+            return;
+        }
+
+        // Get form data
+        const contactNumber = document.getElementById('guest-contact').value;
+        if (!contactNumber) {
+            alert('Please enter your contact number');
+            return;
+        }
+
+        if (!selectedCheckIn || !selectedCheckOut) {
+            alert('Please select check-in and check-out dates');
+            return;
+        }
+
+        // Get user data
         const userData = await getCurrentUserData();
         if (!userData) {
             throw new Error('Unable to get user data');
         }
 
-        // Verify user is logged in
-        if (!auth.currentUser) {
-            window.location.href = '../Login/index.html';
-            throw new Error('Please log in to make a booking');
-        }
-
-        // Get contact number
-        const contactNumber = document.getElementById('guest-contact')?.value;
-        if (!contactNumber) {
-            throw new Error('Please enter your contact number');
-        }
-
-        // Calculate booking details
         const nights = Math.round((selectedCheckOut - selectedCheckIn) / (1000 * 60 * 60 * 24));
+        if (nights <= 0) {
+            alert('Please select valid check-in and check-out dates');
+            return;
+        }
+
         const subtotal = NIGHTLY_RATE * nights;
         const serviceFeeAmount = Math.round(subtotal * SERVICE_FEE_PERCENTAGE);
         const total = subtotal + serviceFeeAmount;
 
-        // Create booking data
         const bookingData = {
             // Guest Information
-            guestName: userData.fullname,
-            email: userData.email,
+            guestName: userData.fullname || '',
+            email: userData.email || '',
             contactNumber: contactNumber,
+            userId: user.uid,
             
             // Dates
             checkIn: Timestamp.fromDate(selectedCheckIn),
             checkOut: Timestamp.fromDate(selectedCheckOut),
-            createdAt: Timestamp.fromDate(new Date()),
+            createdAt: Timestamp.now(),
             
             // Property Details
             propertyDetails: {
@@ -262,93 +420,58 @@ async function saveBooking() {
             status: 'pending'
         };
 
-        // Save booking using firebase.js addBooking function
-        const bookingId = await addBooking(bookingData);
-        if (!bookingId) {
-            throw new Error('Failed to save booking');
+        // Validate booking data before saving
+        const validationResult = validateBookingData(bookingData);
+        if (!validationResult.isValid) {
+            throw new Error(`Invalid booking data: ${validationResult.error}`);
         }
 
-        // Store booking data for payment page
-        localStorage.setItem('bookingData', JSON.stringify(bookingData));
-        localStorage.setItem('currentBookingId', bookingId);
-
-        return bookingId;
-
-    } catch (error) {
-        console.error('Error in saveBooking:', error);
-        if (error.message.includes('permissions')) {
-            window.location.href = '../Login/index.html';
-            throw new Error('Please log in to make a booking');
-        }
-        throw error;
-    }
-}
-
-export async function handleReserveClick(event) {
-    event.preventDefault();
-    console.log('handleReserveClick called');
-
-    const reserveBtn = document.getElementById('reserve-btn');
-    if (!reserveBtn) {
-        console.error('Reserve button not found');
-        return;
-    }
-
-    const buttonText = reserveBtn.textContent;
-    
-    try {
-        // Check if user is logged in first
-        if (!auth.currentUser) {
-            window.location.href = '../Login/index.html';
-            return;
-        }
-
-        // Show loading state
-        reserveBtn.textContent = 'Processing...';
-        reserveBtn.disabled = true;
-
-        console.log('Validating dates...');
-        // Validate dates
-        if (!selectedCheckIn || !selectedCheckOut) {
-            throw new Error('Please select check-in and check-out dates');
-        }
-
-        console.log('Validating contact number...');
-        // Validate contact number
-        const contactNumber = document.getElementById('guest-contact')?.value;
-        if (!contactNumber) {
-            throw new Error('Please enter your contact number');
-        }
-
-        console.log('Attempting to save booking...');
-        console.log('Selected dates:', { checkIn: selectedCheckIn, checkOut: selectedCheckOut });
-        console.log('Contact number:', contactNumber);
-
-        const bookingId = await saveBooking();
+        const bookingId = await saveBooking(bookingData);
         console.log('Booking saved with ID:', bookingId);
         
         if (bookingId) {
-            console.log('Redirecting to payment page...');
-            window.location.href = `pay.html?bookingId=${encodeURIComponent(bookingId)}`;
-        } else {
-            throw new Error('Failed to create booking');
+            // Store booking data for payment page
+            localStorage.setItem('currentBookingId', bookingId);
+            localStorage.setItem('bookingData', JSON.stringify(bookingData));
+            
+            // Clear any pending booking
+            localStorage.removeItem('pendingBooking');
+            
+            // Show success message
+            alert('Booking successful! Redirecting to payment page...');
+            // Redirect to payment page
+            window.location.href = './pay.html';
         }
-
     } catch (error) {
         console.error('Booking error:', error);
-        if (error.message.includes('permissions') || error.message.includes('log in')) {
-            window.location.href = '../Login/index.html';
-            return;
-        }
-        alert(error.message || 'There was an error processing your booking. Please try again.');
-        
-        // Reset button state
-        reserveBtn.textContent = buttonText;
-        reserveBtn.disabled = false;
+        alert(`An error occurred while making the booking: ${error.message}`);
     }
 }
 
 // Update the event listener setup
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        // Check if there's a pending booking after login
+        const pendingBooking = localStorage.getItem('pendingBooking');
+        if (pendingBooking && auth.currentUser) {
+            const bookingDetails = JSON.parse(pendingBooking);
+            
+            // Restore the booking details
+            selectedCheckIn = new Date(bookingDetails.checkIn);
+            selectedCheckOut = new Date(bookingDetails.checkOut);
+            document.querySelector('select').value = bookingDetails.guests;
+            document.getElementById('guest-contact').value = bookingDetails.contactNumber;
+            
+            // Update the display
+            updateDateInputs();
+            updatePricingDetails();
+        }
+    } catch (error) {
+        console.error('Error restoring pending booking:', error);
+    }
+});
+
+// Add event listener for page load to check for pending bookings
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOM Content Loaded');
   // Initialize all event listeners
@@ -436,15 +559,24 @@ function initializeEventListeners() {
   });
 }
 
-// Add error checking function
-function validateBookingData(bookingData) {
-    const required = ['checkIn', 'checkOut', 'guests', 'nightlyRate', 'numberOfNights', 
-                     'subtotal', 'serviceFee', 'totalPrice', 'status', 'createdAt'];
-    
-    for (const field of required) {
-        if (!bookingData[field]) {
-            throw new Error(`Missing required field: ${field}`);
-        }
-    }
-    return true;
+function updateDateInputs() {
+  checkInInput.value = formatDate(selectedCheckIn);
+  checkOutInput.value = formatDate(selectedCheckOut);
+}
+
+function updatePricingDetails() {
+  const nights = Math.round((selectedCheckOut - selectedCheckIn) / (1000 * 60 * 60 * 24));
+  nightsSelected.textContent = `${nights} nights selected`;
+  
+  // Update pricing
+  const nightlyRate = 6500;
+  const totalNights = nights;
+  const subtotal = nightlyRate * totalNights;
+  const serviceFeeCalculation = Math.round(subtotal * 0.14);
+  
+  nightsCalculation.textContent = `₱${nightlyRate} x ${totalNights} nights`;
+  totalNightsPrice.textContent = `₱${subtotal.toLocaleString()}`;
+  serviceFee.textContent = `₱${(serviceFeeCalculation).toLocaleString()}`;
+  pricingDetails.classList.remove('hidden');
+  totalPrice.textContent = `₱${(subtotal + serviceFeeCalculation).toLocaleString()}`;
 }

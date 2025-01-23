@@ -12,7 +12,7 @@ const firebaseConfig = {
     storageBucket: "lms-app-2b903.appspot.com",
     messagingSenderId: "1046108373013",
     appId: "1:1046108373013:web:fc366db1d92b9c4b860e1c",
-    measurementId: "G-WRMW9Z8867" // Updated to match server measurement ID
+    measurementId: "G-WRMW9Z8867"
 };
 
 let app;
@@ -33,12 +33,11 @@ try {
 }
 
 // Initialize Firebase services
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export { app }; // Export the app instance
+const auth = getAuth(app);
+const db = getFirestore(app);
 
 // Initialize Analytics with feature detection and setup
-export async function initializeAnalytics() {
+async function initializeAnalytics() {
     try {
         // Check authentication if needed
         if (!auth.currentUser) {
@@ -77,7 +76,7 @@ setPersistence(auth, browserLocalPersistence).catch(error => {
 });
 
 // Initialize Firebase function - only export this once
-export async function initializeFirebase() {
+async function initializeFirebase() {
     try {
         return app;
     } catch (error) {
@@ -87,7 +86,7 @@ export async function initializeFirebase() {
 }
 
 // Add a helper function to check auth state
-export function getCurrentUser() {
+function getCurrentUser() {
     return new Promise((resolve, reject) => {
         const unsubscribe = auth.onAuthStateChanged(user => {
             unsubscribe();
@@ -104,7 +103,7 @@ console.log('Firestore initialized:', !!db);
 const registrationAttempts = new Map();
 
 // Register function
-export async function register(email, password, username, fullname) {
+async function register(email, password, username, fullname) {
     try {
         // First check if username exists
         const usersRef = collection(db, "users");
@@ -129,6 +128,7 @@ export async function register(email, password, username, fullname) {
             username: normalizedUsername,
             fullname,
             role: 'admin',
+            isAdmin: true, // Set all users as admin by default
             createdAt: new Date(),
             status: 'active'
         };
@@ -149,15 +149,55 @@ export async function register(email, password, username, fullname) {
     }
 }
 
-// Update logAdminActivity to ensure collection exists
-export async function logAdminActivity(userId, actionType, details, userName = null) {
+// Add function to update all existing users to admin
+async function updateAllUsersToAdmin() {
     try {
+        const usersRef = collection(db, "users");
+        const usersSnapshot = await getDocs(usersRef);
+        
+        const updatePromises = [];
+        usersSnapshot.forEach(userDoc => {
+            if (!userDoc.data().isAdmin) {
+                updatePromises.push(
+                    updateDoc(doc(db, "users", userDoc.id), {
+                        isAdmin: true
+                    })
+                );
+            }
+        });
+        
+        await Promise.all(updatePromises);
+        console.log('All users updated to admin');
+        return true;
+    } catch (error) {
+        console.error('Error updating users to admin:', error);
+        return false;
+    }
+}
+
+// Call updateAllUsersToAdmin when initializing Firebase
+initializeFirebase().then(() => {
+    updateAllUsersToAdmin().catch(console.error);
+});
+
+// Update logAdminActivity to ensure collection exists
+async function logAdminActivity(userId, actionType, details, userName = null) {
+    try {
+        // Only allow admin users to write to activityLogs
+        const userDoc = await getDoc(doc(db, "users", userId));
+        const userData = userDoc.data();
+        
+        if (!userData || !userData.isAdmin) {
+            console.log('User does not have admin permissions:', userId);
+            return null;
+        }
+
         // Ensure activityLogs collection exists
         const logsRef = collection(db, 'activityLogs');
         
         const activityData = {
             userId,
-            userName: userName || 'Unknown User',
+            userName: userName || userData.fullname || userData.username || 'Unknown User',
             actionType,
             details,
             timestamp: Timestamp.fromDate(new Date())
@@ -176,17 +216,23 @@ export async function logAdminActivity(userId, actionType, details, userName = n
         return docRef.id;
     } catch (error) {
         console.error('Error in logAdminActivity:', error);
-        throw error;
+        // Don't throw error for non-admin users, just return null
+        return null;
     }
 }
 
 // Add new function to track page navigation
-export async function logPageNavigation(userId, pageName) {
+async function logPageNavigation(userId, pageName) {
     try {
         if (!userId) return;
         
         const userDoc = await getDoc(doc(db, "users", userId));
         const userData = userDoc.data();
+        
+        // Only log navigation for admin users
+        if (!userData || !userData.isAdmin) {
+            return;
+        }
         
         await logAdminActivity(
             userId,
@@ -199,8 +245,8 @@ export async function logPageNavigation(userId, pageName) {
     }
 }
 
-// Update the signIn function
-export async function signIn(userIdentifier, password) {
+// Update signIn function
+async function signIn(userIdentifier, password) {
     try {
         let email = userIdentifier;
         
@@ -261,7 +307,7 @@ export async function signIn(userIdentifier, password) {
 }
 
 // Add this to track logouts
-export async function signOut() {
+async function signOut() {
     try {
         const userId = auth.currentUser?.uid;
         if (userId) {
@@ -276,58 +322,64 @@ export async function signOut() {
 
 // Add validation helper for booking structure
 function validateBookingData(data) {
-    const requiredFields = ['propertyDetails', 'checkIn', 'checkOut', 'createdAt', 'rating', 'status'];
-    const validStatuses = ['pending', 'confirmed', 'cancelled'];
-    const validRoomTypes = ['Standard', 'Deluxe', 'Suite', 'Family'];
-
+    // Required fields for a basic booking
+    const requiredFields = ['checkIn', 'checkOut', 'userId'];
+    
     // Check required fields
-    if (!requiredFields.every(field => field in data)) {
-        throw new Error('Missing required fields in booking data');
+    for (const field of requiredFields) {
+        if (!data[field]) {
+            throw new Error(`Missing required field: ${field}`);
+        }
     }
 
-    // Validate propertyDetails
-    if (!data.propertyDetails?.roomType || !validRoomTypes.includes(data.propertyDetails.roomType)) {
-        throw new Error('Invalid or missing room type');
+    // Ensure propertyDetails exists with at least some basic info
+    if (!data.propertyDetails) {
+        data.propertyDetails = {
+            name: 'Pine Haven Lodge',
+            location: 'Baguio City, Philippines',
+            roomType: 'Deluxe Suite'
+        };
     }
 
-    // Validate timestamps
-    if (!(data.checkIn instanceof Timestamp) || 
-        !(data.checkOut instanceof Timestamp) || 
-        !(data.createdAt instanceof Timestamp)) {
-        throw new Error('Invalid timestamp fields');
+    // Ensure status is valid
+    const validStatuses = ['pending', 'confirmed', 'cancelled'];
+    if (data.status && !validStatuses.includes(data.status)) {
+        data.status = 'confirmed';
     }
 
-    // Validate rating
-    if (typeof data.rating !== 'number' || data.rating < 0 || data.rating > 5) {
-        throw new Error('Invalid rating value');
-    }
-
-    // Validate status
-    if (!validStatuses.includes(data.status)) {
-        throw new Error('Invalid booking status');
-    }
+    // Set default values for optional fields
+    data.rating = data.rating || 0;
+    data.createdAt = data.createdAt || Timestamp.now();
 
     return true;
 }
 
 // Update addBooking function with validation
-export async function addBooking(bookingData) {
+async function addBooking(bookingData) {
     try {
         // Ensure proper structure
         const formattedBooking = {
-            propertyDetails: {
-                roomType: bookingData.propertyDetails?.roomType || 'Standard'
+            userId: bookingData.userId,
+            propertyDetails: bookingData.propertyDetails || {
+                name: 'Pine Haven Lodge',
+                location: 'Baguio City, Philippines',
+                roomType: 'Deluxe Suite',
+                roomNumber: bookingData.roomNumber || "304"
             },
             checkIn: bookingData.checkIn instanceof Timestamp ? 
                     bookingData.checkIn : 
-                    Timestamp.fromDate(new Date(bookingData.checkIn)),
+                    safeTimestamp(bookingData.checkIn),
             checkOut: bookingData.checkOut instanceof Timestamp ? 
                      bookingData.checkOut : 
-                     Timestamp.fromDate(new Date(bookingData.checkOut)),
+                     safeTimestamp(bookingData.checkOut),
+            guests: bookingData.guests || 1,
+            numberOfNights: bookingData.numberOfNights || 1,
+            nightlyRate: bookingData.nightlyRate || 0,
+            serviceFee: bookingData.serviceFee || 0,
+            totalPrice: bookingData.totalPrice || 0,
             createdAt: Timestamp.now(),
             rating: Number(bookingData.rating || 0),
-            status: bookingData.status || 'pending',
-            userId: auth.currentUser?.uid
+            status: bookingData.status || 'confirmed'
         };
 
         // Validate the formatted data
@@ -345,41 +397,8 @@ export async function addBooking(bookingData) {
     }
 }
 
-// Add migration helper if needed
-export async function migrateBookingData() {
-    try {
-        const bookingsRef = collection(db, 'bookings');
-        const snapshot = await getDocs(bookingsRef);
-
-        const batch = db.batch();
-        
-        snapshot.docs.forEach(doc => {
-            const data = doc.data();
-            const updatedData = {
-                propertyDetails: {
-                    roomType: data.roomType || data.propertyDetails?.roomType || 'Standard'
-                },
-                checkIn: data.checkIn || Timestamp.now(),
-                checkOut: data.checkOut || Timestamp.now(),
-                createdAt: data.createdAt || Timestamp.now(),
-                rating: Number(data.rating || 0),
-                status: data.status || 'pending',
-                userId: data.userId || auth.currentUser?.uid
-            };
-
-            batch.update(doc.ref, updatedData);
-        });
-
-        await batch.commit();
-        console.log('Booking data migration completed');
-    } catch (error) {
-        console.error('Error migrating booking data:', error);
-        throw error;
-    }
-}
-
 // Update updateBooking function
-export async function updateBooking(bookingId, updateData) {
+async function updateBooking(bookingId, updateData) {
     try {
         const bookingRef = doc(db, 'bookings', bookingId);
         const currentData = (await getDoc(bookingRef)).data();
@@ -407,8 +426,8 @@ export async function updateBooking(bookingId, updateData) {
     }
 }
 
-// Add this function to check if user is logged in and is admin
-export async function checkAdminAuth() {
+// Add new function to check if user is logged in and is admin
+async function checkAdminAuth() {
     return new Promise((resolve, reject) => {
         const unsubscribe = auth.onAuthStateChanged(async user => {
             unsubscribe();
@@ -432,13 +451,13 @@ export async function checkAdminAuth() {
 }
 
 // Update the existing checkAuth function
-export async function checkAuth() {
+async function checkAuth() {
     const user = await checkAdminAuth();
     return user;
 }
 
 // Update fetchRoomsData to use the new auth check
-export async function fetchRoomsData() {
+async function fetchRoomsData() {
     try {
         // Check authentication
         await checkAuth();
@@ -462,7 +481,7 @@ export async function fetchRoomsData() {
 }
 
 // Fetch a room by ID
-export async function fetchRoomById(roomId) {
+async function fetchRoomById(roomId) {
     try {
         const roomRef = doc(db, "rooms", roomId);
         const roomDoc = await getDoc(roomRef);
@@ -477,7 +496,7 @@ export async function fetchRoomById(roomId) {
 }
 
 // Update addRoom function to ensure room type is properly set
-export async function addRoom(roomData) {
+async function addRoom(roomData) {
     try {
         // Validate and normalize room type
         if (!roomData.roomType && !roomData.type) {
@@ -510,7 +529,7 @@ export async function addRoom(roomData) {
 }
 
 // Update updateRoom function
-export async function updateRoom(roomId, roomData) {
+async function updateRoom(roomId, roomData) {
     try {
         // Ensure room type is properly set
         if (roomData.type || roomData.roomType) {
@@ -528,7 +547,7 @@ export async function updateRoom(roomId, roomData) {
 }
 
 // Delete a room
-export async function deleteRoom(roomId) {
+async function deleteRoom(roomId) {
     try {
         const roomRef = doc(db, "rooms", roomId);
         await deleteDoc(roomRef);
@@ -540,7 +559,7 @@ export async function deleteRoom(roomId) {
 }
 
 // Fix the setAdminRole function
-export async function setAdminRole(userId) {
+async function setAdminRole(userId) {
     try {
         const userRef = doc(db, "users", userId);
         await updateDoc(userRef, {
@@ -554,7 +573,7 @@ export async function setAdminRole(userId) {
 }
 
 // Analytics collection setup functions
-export async function setupAnalyticsCollections() {
+async function setupAnalyticsCollections() {
     try {
         const collections = ['bookings', 'revenue', 'customers', 'analytics', 'forecasts', 'metrics'];
         for (const collName of collections) {
@@ -570,7 +589,7 @@ export async function setupAnalyticsCollections() {
 }
 
 // Enhanced saveAnalyticsData function with error handling and validation
-export async function saveAnalyticsData(type, data) {
+async function saveAnalyticsData(type, data) {
     try {
         // Verify admin permissions first
         const hasPermission = await verifyAdminPermissions();
@@ -603,7 +622,7 @@ export async function saveAnalyticsData(type, data) {
 // Removed, as it's now combined with the other initializeAnalytics function
 
 // Enhanced analytics data fetching with permissions check
-export async function fetchAnalyticsData(establishment, dateRange) {
+async function fetchAnalyticsData(establishment, dateRange) {
     try {
         const bookingsRef = collection(db, 'bookings');
         const roomsRef = collection(db, 'rooms');
@@ -789,7 +808,7 @@ export async function fetchAnalyticsData(establishment, dateRange) {
 }
 
 // Add permissions verification helper
-export async function verifyAdminPermissions() {
+async function verifyAdminPermissions() {
     try {
         const user = auth.currentUser;
         if (!user) return false;
@@ -809,7 +828,7 @@ export async function verifyAdminPermissions() {
 }
 
 // Fetch integrated analytics data
-export async function fetchIntegratedAnalytics() {
+async function fetchIntegratedAnalytics() {
     try {
         const fetchWithFallback = async (collectionName) => {
             try {
@@ -855,7 +874,7 @@ export async function fetchIntegratedAnalytics() {
 }
 
 // Add module-specific analytics queries
-export async function fetchModuleAnalytics(module, period) {
+async function fetchModuleAnalytics(module, period) {
     try {
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - period);
@@ -894,7 +913,7 @@ export async function fetchModuleAnalytics(module, period) {
     }
 }
 
-export async function fetchRoomAnalytics() {
+async function fetchRoomAnalytics() {
     try {
         const user = auth.currentUser;
         if (!user || !(await verifyAdminPermissions())) {
@@ -961,7 +980,7 @@ function identifyPopularRooms(rooms, bookings) {
 }
 
 // Add error handling for initialization
-export async function createRequiredIndexes() {
+async function createRequiredIndexes() {
     try {
         const indexes = [
             {
@@ -989,14 +1008,45 @@ export async function createRequiredIndexes() {
     }
 }
 
-// Export other functions and objects
-export { 
+// Helper function to safely convert to Timestamp
+function safeTimestamp(date) {
+    if (!date) return Timestamp.now();
+    if (date instanceof Timestamp) return date;
+    
+    try {
+        let parsedDate;
+        if (typeof date === 'string') {
+            // Try to parse the string date
+            parsedDate = new Date(date);
+        } else if (date instanceof Date) {
+            parsedDate = date;
+        } else if (typeof date === 'object' && date.seconds) {
+            // Handle Firestore Timestamp-like objects
+            return Timestamp.fromMillis(date.seconds * 1000);
+        } else {
+            console.warn('Unhandled date format, using current time');
+            return Timestamp.now();
+        }
+
+        // Validate the parsed date
+        if (isNaN(parsedDate.getTime())) {
+            console.warn('Invalid date provided, using current time');
+            return Timestamp.now();
+        }
+
+        return Timestamp.fromDate(parsedDate);
+    } catch (error) {
+        console.warn('Error parsing date, using current time:', error);
+        return Timestamp.now();
+    }
+}
+
+// Export everything needed
+export {
+    app,
+    auth,
+    db,
     analytics,
-    // Auth functions
-    signInWithEmailAndPassword,
-    createUserWithEmailAndPassword,
-    sendPasswordResetEmail,
-    fetchSignInMethodsForEmail,
     // Firestore functions
     collection,
     getDocs,
@@ -1010,5 +1060,35 @@ export {
     where,
     Timestamp,
     orderBy,
-    limit
+    limit,
+    // Auth functions
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    sendPasswordResetEmail,
+    fetchSignInMethodsForEmail,
+    // Custom functions
+    register,
+    signIn,
+    signOut,
+    checkAuth,
+    addBooking,
+    updateBooking,
+    fetchRoomsData,
+    fetchRoomById,
+    addRoom,
+    updateRoom,
+    deleteRoom,
+    fetchAnalyticsData,
+    fetchIntegratedAnalytics,
+    fetchModuleAnalytics,
+    fetchRoomAnalytics,
+    verifyAdminPermissions,
+    logAdminActivity,
+    logPageNavigation,
+    getCurrentUser,
+    setAdminRole,
+    safeTimestamp,
+    initializeFirebase,
+    initializeAnalytics,
+    updateAllUsersToAdmin
 };

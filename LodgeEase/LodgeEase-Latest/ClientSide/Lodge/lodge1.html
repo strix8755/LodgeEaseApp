@@ -80,7 +80,6 @@
                 id="reserve-btn" 
                 type="button"
                 class="w-full bg-blue-500 text-white py-2 rounded-md font-medium hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                onclick="handleReserveClick(event)"
             >
                 Reserve
             </button>
@@ -309,10 +308,10 @@
 
   <script type="module">
     // Import Firebase modules
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-app.js";
-    import { getAuth } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-auth.js";
-    import { getFirestore } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore.js";
-    import { handleReserveClick } from '../Lodge/lodge1.js';
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getFirestore } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { handleReserveClick } from './lodge1.js';
     import { initializeUserDrawer } from '../components/userDrawer.js';
 
     // Firebase configuration
@@ -331,19 +330,16 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // Make handleReserveClick available globally
-    window.handleReserveClick = handleReserveClick;
-
     // Initialize user drawer
     initializeUserDrawer(auth, db);
 
-    // Add direct click handler for testing
-    document.getElementById('userIcon')?.addEventListener('click', (e) => {
-        e.preventDefault();
-        console.log('Direct click on user icon');
-        const drawer = document.getElementById('userDrawer');
-        if (drawer) {
-            drawer.classList.remove('translate-x-full');
+    // Add event listener to reserve button
+    document.addEventListener('DOMContentLoaded', () => {
+        const reserveBtn = document.getElementById('reserve-btn');
+        if (reserveBtn) {
+            reserveBtn.addEventListener('click', handleReserveClick);
+        } else {
+            console.error('Reserve button not found');
         }
     });
   </script>

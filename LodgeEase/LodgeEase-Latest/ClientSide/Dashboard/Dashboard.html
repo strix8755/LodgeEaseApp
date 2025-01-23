@@ -37,7 +37,7 @@
 
 
         <!-- Main Content -->
-        <main class="flex-1 p-8">
+        <main class="flex-1 p-8 pt-24">
             <header class="mb-8">
                 <h1 class="text-3xl font-bold text-gray-800">Welcome, <span id="guest-name">Guest</span></h1>
                 <p class="text-gray-600" id="booking-status"></p>
@@ -181,49 +181,9 @@
         </main>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-app.js";
-        import { getAuth } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-auth.js";
-        import { getFirestore } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore.js";
-        import { initializeUserDrawer } from '../components/userDrawer.js';
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyBAJr0JQgWRfGTmSXTK6P7Yn8fkHXG2YeE",
-            authDomain: "lms-app-2b903.firebaseapp.com",
-            projectId: "lms-app-2b903",
-            storageBucket: "lms-app-2b903.appspot.com",
-            messagingSenderId: "1046108373013",
-            appId: "1:1046108373013:web:fc366db1d92b9c4b860e1c",
-            measurementId: "G-WRMW9Z8867"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
-        // Initialize user drawer
-        initializeUserDrawer(auth, db);
-
-        // Add click handler to both icon and its parent
-        const userIcon = document.querySelector('.ri-user-line');
-        const iconParent = userIcon?.parentElement;
-
-        if (userIcon && iconParent) {
-            [userIcon, iconParent].forEach(element => {
-                element.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log('Click event triggered');
-                    const drawer = document.getElementById('userDrawer');
-                    if (drawer) {
-                        console.log('Opening drawer');
-                        drawer.classList.remove('translate-x-full');
-                    }
-                });
-            });
-        }
-    </script>
-    <script src="dashboard.js"></script>
+    <script type="module" src="../../AdminSide/firebase.js"></script>
+    <script type="module" src="../components/userDrawer.js"></script>
+    <script type="module" src="./dashboard.js"></script>
 
     <footer class="bg-gray-900 text-white py-12">
       <div class="container mx-auto px-6 text-center">

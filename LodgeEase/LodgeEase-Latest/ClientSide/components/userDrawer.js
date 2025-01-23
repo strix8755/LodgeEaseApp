@@ -1,7 +1,12 @@
-import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-auth.js";
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore.js";
+import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { doc, getDoc, getFirestore } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 export function initializeUserDrawer(auth, db) {
+    if (!auth || !db) {
+        console.error('Auth or Firestore not initialized');
+        return;
+    }
+
     console.log('Initializing user drawer...');
     
     // Get elements
@@ -38,9 +43,20 @@ export function initializeUserDrawer(auth, db) {
 
         if (user) {
             try {
-                const userDoc = await getDoc(doc(db, 'users', user.uid));
+                console.log('Fetching user data for:', user.uid);
+                const userDocRef = doc(db, 'users', user.uid);
+                const userDoc = await getDoc(userDocRef);
+                
+                if (!userDoc.exists()) {
+                    console.log('No user document found');
+                    drawerContent.innerHTML = generateLoginContent();
+                    return;
+                }
+                
                 const userData = userDoc.data();
-                drawerContent.innerHTML = generateDrawerContent(user);
+                console.log('User data fetched:', userData);
+                
+                drawerContent.innerHTML = generateDrawerContent(userData);
 
                 // Add logout functionality
                 document.getElementById('logoutBtn')?.addEventListener('click', async () => {
@@ -58,26 +74,11 @@ export function initializeUserDrawer(auth, db) {
                 });
             } catch (error) {
                 console.error('Error fetching user data:', error);
+                drawerContent.innerHTML = generateErrorContent();
             }
         } else {
-            drawerContent.innerHTML = `
-                <div class="p-6">
-                    <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-xl font-bold text-gray-800">Welcome</h2>
-                        <button id="closeDrawer" class="text-gray-500 hover:text-gray-700">
-                            <i class="ri-close-line text-2xl"></i>
-                        </button>
-                    </div>
-                    <div class="space-y-4">
-                        <p class="text-gray-600">Please log in to access your account</p>
-                        <a href="../Login/index.html" 
-                           class="block w-full py-2 px-4 bg-blue-600 text-white rounded-lg text-center hover:bg-blue-700 transition">
-                            Log In
-                        </a>
-                    </div>
-                </div>
-            `;
-
+            drawerContent.innerHTML = generateLoginContent();
+            
             // Add close drawer functionality
             document.getElementById('closeDrawer')?.addEventListener('click', () => {
                 drawer.classList.add('translate-x-full');
@@ -86,7 +87,7 @@ export function initializeUserDrawer(auth, db) {
     });
 }
 
-function generateDrawerContent(user) {
+function generateDrawerContent(userData) {
     return `
         <div class="p-6">
             <div class="flex justify-between items-center mb-6">
@@ -99,39 +100,70 @@ function generateDrawerContent(user) {
             <div class="space-y-6">
                 <!-- User Info -->
                 <div class="flex items-center space-x-4">
-                    <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <div class="bg-blue-100 rounded-full p-3">
                         <i class="ri-user-line text-2xl text-blue-600"></i>
                     </div>
                     <div>
-                        <p class="font-medium">${user.email}</p>
-                        <p class="text-sm text-gray-500">Member since ${new Date(user.metadata.creationTime).getFullYear()}</p>
+                        <h3 class="font-medium">${userData.fullname || 'Guest'}</h3>
+                        <p class="text-sm text-gray-500">${userData.email}</p>
                     </div>
                 </div>
-
-                <!-- Navigation Menu -->
+                
+                <!-- Navigation -->
                 <nav class="space-y-2">
-                    <a href="../Dashboard/Dashboard.html" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-100 transition-colors">
-                        <i class="ri-dashboard-line text-gray-600"></i>
+                    <a href="../Dashboard/dashboard.html" class="flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition-colors">
+                        <i class="ri-dashboard-line"></i>
                         <span>Dashboard</span>
                     </a>
-                    <a href="../Bookings/mybookings.html" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-100 transition-colors">
-                        <i class="ri-calendar-line text-gray-600"></i>
-                        <span>My Bookings</span>
-                    </a>
-                    <a href="../Extend/Extend.html" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-100 transition-colors">
-                        <i class="ri-building-3-line text-gray-600"></i>
-                        <span>Extend Stay</span>
-                    </a>
-                    <a href="#" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-100 transition-colors">
-                        <i class="ri-user-settings-line text-gray-600"></i>
+                    <a href="../Profile/profile.html" class="flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition-colors">
+                        <i class="ri-user-settings-line"></i>
                         <span>Profile Settings</span>
                     </a>
-                    <button id="logoutBtn" class="w-full flex items-center space-x-3 p-3 rounded-lg hover:bg-red-50 text-red-600 transition-colors">
-                        <i class="ri-logout-box-line"></i>
-                        <span>Log Out</span>
-                    </button>
+                    <a href="../Bookings/bookings.html" class="flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition-colors">
+                        <i class="ri-hotel-line"></i>
+                        <span>My Bookings</span>
+                    </a>
                 </nav>
+                
+                <!-- Logout Button -->
+                <button id="logoutBtn" class="w-full bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 transition-colors">
+                    Sign Out
+                </button>
             </div>
         </div>
     `;
-} 
+}
+
+function generateLoginContent() {
+    return `
+        <div class="p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-semibold">Welcome</h2>
+                <button id="closeDrawer" class="text-gray-500 hover:text-gray-700">
+                    <i class="ri-close-line text-2xl"></i>
+                </button>
+            </div>
+            <p class="text-gray-600 mb-6">Please log in to access your account.</p>
+            <a href="../Login/index.html" class="block w-full bg-blue-500 text-white text-center py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                Log In
+            </a>
+        </div>
+    `;
+}
+
+function generateErrorContent() {
+    return `
+        <div class="p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-semibold">Error</h2>
+                <button id="closeDrawer" class="text-gray-500 hover:text-gray-700">
+                    <i class="ri-close-line text-2xl"></i>
+                </button>
+            </div>
+            <p class="text-red-500">There was an error loading your account information. Please try again later.</p>
+            <button id="logoutBtn" class="w-full mt-6 bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 transition-colors">
+                Log Out
+            </button>
+        </div>
+    `;
+}
