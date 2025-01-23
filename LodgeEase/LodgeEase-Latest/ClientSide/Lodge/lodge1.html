@@ -7,7 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="../Homepage/styles.css">
 </head>
 
 <body class="text-gray-800">
@@ -180,14 +180,11 @@
     </div>
   </div>
 
-  <div class="bg-gray-50">
-      <div class="container mx-auto px-4 py-12">
-          <!-- Reviews Toggle Button -->
-          <div class="flex justify-center mb-8">
-              <button id="toggle-reviews" class="bg-blue-500 text-white py-2 px-6 rounded-md hover:bg-blue-600 transition-colors text-lg">
-                  Show Reviews
-              </button>
-          </div>
+  <div class="flex justify-center mt-8">
+    <button id="toggle-reviews" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-md transition-colors">
+      Show Reviews
+    </button>
+  </div>
   
           <!-- Reviews Container -->
           <div id="reviews-section" class="hidden">
@@ -306,6 +303,28 @@
       </div>
   </div>
 
+  <!-- Footer -->
+  <footer class="bg-gray-900 text-white py-12 mt-12">
+    <div class="container mx-auto px-6 text-center">
+      <div class="mb-8">
+        <h3 class="text-3xl font-bold text-blue-500 mb-4">LodgeEase</h3>
+        <p class="text-gray-300">Aspiras palispis highway, Baguio City, Benguet, 2600 Philippines</p>
+        <p class="text-gray-300">Contact: +(63) 9129 912 6584 | lodgeease.baguio@email.com</p>
+      </div>
+      <div class="flex justify-center space-x-6">
+        <a href="#" class="text-2xl text-blue-400 hover:text-white transition-colors">
+          <i class="fab fa-instagram"></i>
+        </a>
+        <a href="#" class="text-2xl text-blue-400 hover:text-white transition-colors">
+          <i class="fab fa-facebook"></i>
+        </a>
+        <a href="#" class="text-2xl text-blue-400 hover:text-white transition-colors">
+          <i class="fab fa-twitter"></i>
+        </a>
+      </div>
+    </div>
+  </footer>
+
   <script type="module">
     // Import Firebase modules
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -342,8 +361,29 @@
             console.error('Reserve button not found');
         }
     });
-  </script>
-  <script>
+
+    document.addEventListener('DOMContentLoaded', function() {
+      const userIcon = document.querySelector('.ri-user-line');
+      const userDrawer = document.getElementById('userDrawer');
+      const closeDrawer = document.getElementById('closeDrawer');
+      const drawerOverlay = document.getElementById('drawerOverlay');
+    
+      // Open drawer
+      userIcon.addEventListener('click', function() {
+        userDrawer.classList.remove('translate-x-full');
+        drawerOverlay.classList.remove('hidden');
+      });
+    
+      // Close drawer
+      closeDrawer.addEventListener('click', closeUserDrawer);
+      drawerOverlay.addEventListener('click', closeUserDrawer);
+    
+      function closeUserDrawer() {
+        userDrawer.classList.add('translate-x-full');
+        drawerOverlay.classList.add('hidden');
+      }
+    });
+
     document.getElementById('toggle-reviews').addEventListener('click', function() {
         const reviewsSection = document.getElementById('reviews-section');
         const toggleButton = document.getElementById('toggle-reviews');

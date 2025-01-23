@@ -45,24 +45,25 @@
             }
         },
         {
-            id: 4,
-            name: "The Forest Lodge",
-            location: "Camp John Hay, Baguio City",
-            image: "../components/4.jpg",
-            price: 7500,
-            amenities: ["Mountain View", "Fireplace", "Room Service", "Spa"],
-            rating: 4.9,
-            propertyType: "resort",
+            id: 5,
+            name: "Super Apartment - Room 6",
+            location: "City Center, Baguio City",
+            image: "../components/SuperApartmentRoom6.jpg",
+            price: 3200,
+            amenities: ["City View", "WiFi", "Kitchen"],
+            rating: 4.4,
+            propertyType: "apartment",
             coordinates: {
-                lat: 16.4086,
-                lng: 120.6021
+                lat: 16.4123,
+                lng: 120.5960
             }
         },
+
         {
-            id: 5,
-            name: "City Lights Inn",
+            id: 4,
+            name: "The Forest Lodge",
             location: "Session Road, Baguio City",
-            image: "../components/5.jpg",
+            image: "../components/4.jpg",
             price: 2800,
             amenities: ["City View", "WiFi", "Restaurant"],
             rating: 4.3,
@@ -142,62 +143,7 @@
                 lng: 120.6018
             }
         },
-        {
-            id: 11,
-            name: "Session Suites",
-            location: "Session Road, Baguio City",
-            image: "../components/12.jpg",
-            price: 4700,
-            amenities: ["City View", "Kitchen", "WiFi", "Parking"],
-            rating: 4.6,
-            propertyType: "hotel",
-            coordinates: {
-                lat: 16.4152,
-                lng: 120.5957
-            }
-        },
-        {
-            id: 12,
-            name: "City Lights Inn",
-            location: "Session Road, Baguio City",
-            image: "../components/5.jpg",
-            price: 2800,
-            amenities: ["City View", "WiFi", "Restaurant"],
-            rating: 4.3,
-            propertyType: "hotel",
-            coordinates: {
-                lat: 16.4156,
-                lng: 120.5964
-            }
-        },
-        {
-            id: 13,
-            name: "Wright Park Manor",
-            location: "Wright Park, Baguio City",
-            image: "../components/7.jpg",
-            price: 5200,
-            amenities: ["Mountain View", "Kitchen", "Parking", "Pet Friendly"],
-            rating: 4.6,
-            propertyType: "bed-breakfast",
-            coordinates: {
-                lat: 16.4105,
-                lng: 120.6287
-            }
-        },
-        {
-            id: 14,
-            name: "Super Apartment - Room 6",
-            location: "City Center, Baguio City",
-            image: "../components/SuperApartmentRoom6.jpg",
-            price: 3200,
-            amenities: ["City View", "WiFi", "Kitchen"],
-            rating: 4.4,
-            propertyType: "apartment",
-            coordinates: {
-                lat: 16.4123,
-                lng: 120.5960
-            }
-        }
+
     ];
 
     // Initialize everything when DOM is loaded
