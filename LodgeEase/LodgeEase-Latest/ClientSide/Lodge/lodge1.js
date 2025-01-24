@@ -440,7 +440,7 @@ export async function handleReserveClick(event) {
             // Show success message
             alert('Booking successful! Redirecting to payment page...');
             // Redirect to payment page
-            window.location.href = './pay.html';
+            window.location.href = '../paymentProcess/pay.html';
         }
     } catch (error) {
         console.error('Booking error:', error);

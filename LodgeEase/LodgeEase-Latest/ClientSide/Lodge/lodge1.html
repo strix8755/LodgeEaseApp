@@ -21,16 +21,21 @@
           <li><a href="../Login/index.html" class="hover:text-blue-600 transition-colors">Log In</a></li>
           <li><a href="../Homepage/rooms.html" class="hover:text-blue-600 transition-colors">Home</a></li>
           <li>
-            <a href="#" class="text-gray-600 hover:text-blue-600 transition-colors">
+            <a href="#" id="userIcon" class="text-gray-600 hover:text-blue-600 transition-colors">
                 <i class="ri-user-line text-2xl"></i>
             </a>
-        </li>
+          </li>
       </ul>
   </nav>
   </header>
 
+  <div id="drawerOverlay" class="fixed inset-0 bg-black opacity-50 hidden z-40"></div>
+  
   <div id="userDrawer" class="fixed top-0 right-0 w-80 h-full bg-white shadow-xl transform transition-transform duration-300 z-50 translate-x-full">
-    <div class="drawer-content">
+    <button id="closeDrawer" class="absolute top-4 right-4 text-gray-600 hover:text-gray-900">
+      <i class="ri-close-line text-2xl"></i>
+    </button>
+    <div class="drawer-content p-6">
         <!-- Content will be dynamically inserted by JavaScript -->
     </div>
   </div>
@@ -363,20 +368,22 @@
     });
 
     document.addEventListener('DOMContentLoaded', function() {
-      const userIcon = document.querySelector('.ri-user-line');
+      const userIcon = document.getElementById('userIcon');
       const userDrawer = document.getElementById('userDrawer');
       const closeDrawer = document.getElementById('closeDrawer');
       const drawerOverlay = document.getElementById('drawerOverlay');
-    
-      // Open drawer
-      userIcon.addEventListener('click', function() {
-        userDrawer.classList.remove('translate-x-full');
-        drawerOverlay.classList.remove('hidden');
-      });
-    
-      // Close drawer
-      closeDrawer.addEventListener('click', closeUserDrawer);
-      drawerOverlay.addEventListener('click', closeUserDrawer);
+
+      if (userIcon && userDrawer && closeDrawer && drawerOverlay) {
+        // Open drawer
+        userIcon.addEventListener('click', function() {
+          userDrawer.classList.remove('translate-x-full');
+          drawerOverlay.classList.remove('hidden');
+        });
+      
+        // Close drawer
+        closeDrawer.addEventListener('click', closeUserDrawer);
+        drawerOverlay.addEventListener('click', closeUserDrawer);
+      }
     
       function closeUserDrawer() {
         userDrawer.classList.add('translate-x-full');
