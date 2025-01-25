@@ -90,11 +90,8 @@ export function initializeUserDrawer(auth, db) {
 function generateDrawerContent(userData) {
     return `
         <div class="p-6">
-            <div class="flex justify-between items-center mb-6">
+            <div class="mb-6">
                 <h2 class="text-xl font-semibold">Account</h2>
-                <button id="closeDrawer" class="text-gray-500 hover:text-gray-700">
-                    <i class="ri-close-line text-2xl"></i>
-                </button>
             </div>
             
             <div class="space-y-6">
@@ -137,11 +134,8 @@ function generateDrawerContent(userData) {
 function generateLoginContent() {
     return `
         <div class="p-6">
-            <div class="flex justify-between items-center mb-6">
+            <div class="mb-6">
                 <h2 class="text-xl font-semibold">Welcome</h2>
-                <button id="closeDrawer" class="text-gray-500 hover:text-gray-700">
-                    <i class="ri-close-line text-2xl"></i>
-                </button>
             </div>
             <p class="text-gray-600 mb-6">Please log in to access your account.</p>
             <a href="../Login/index.html" class="block w-full bg-blue-500 text-white text-center py-2 rounded-lg hover:bg-blue-600 transition-colors">

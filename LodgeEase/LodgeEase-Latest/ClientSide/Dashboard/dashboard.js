@@ -3,8 +3,29 @@ import { doc, getDoc, collection, query, where, getDocs } from "https://www.gsta
 import { initializeUserDrawer } from '../components/userDrawer.js';
 
 document.addEventListener('DOMContentLoaded', async function() {
+    console.log('DOM Content Loaded - Initializing dashboard...');
+    
+    // Verify elements exist
+    const userIconBtn = document.getElementById('userIconBtn');
+    const userDrawer = document.getElementById('userDrawer');
+    
+    if (!userIconBtn || !userDrawer) {
+        console.error('Critical UI elements missing:', {
+            userIconBtn: !!userIconBtn,
+            userDrawer: !!userDrawer
+        });
+    } else {
+        console.log('UI elements found successfully');
+    }
+
     // Initialize user drawer
-    initializeUserDrawer(auth, db);
+    try {
+        console.log('Initializing user drawer with auth:', !!auth, 'db:', !!db);
+        initializeUserDrawer(auth, db);
+        console.log('User drawer initialized successfully');
+    } catch (error) {
+        console.error('Error initializing user drawer:', error);
+    }
 
     auth.onAuthStateChanged(async (user) => {
         if (user) {

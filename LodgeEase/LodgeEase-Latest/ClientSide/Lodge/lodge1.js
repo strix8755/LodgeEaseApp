@@ -340,31 +340,49 @@ export async function handleReserveClick(event) {
 
         // Check if user is logged in
         const user = auth.currentUser;
-        if (!user) {
-            // Save booking details to localStorage before redirecting
-            const bookingDetails = {
-                checkIn: selectedCheckIn,
-                checkOut: selectedCheckOut,
-                guests: document.querySelector('select').value,
-                contactNumber: document.getElementById('guest-contact').value
-            };
-            localStorage.setItem('pendingBooking', JSON.stringify(bookingDetails));
-            
-            // Redirect to login page with return URL
-            const returnUrl = encodeURIComponent(window.location.href);
-            window.location.href = `../Login/index.html?redirect=${returnUrl}`;
-            return;
-        }
-
-        // Get form data
-        const contactNumber = document.getElementById('guest-contact').value;
+        
+        // Validate contact number
+        const contactNumber = document.getElementById('guest-contact').value.trim();
         if (!contactNumber) {
             alert('Please enter your contact number');
             return;
         }
+        if (!/^[0-9]{11}$/.test(contactNumber)) {
+            alert('Please enter a valid 11-digit contact number');
+            return;
+        }
 
+        // Validate guests
+        const guests = document.getElementById('guests').value;
+        if (!guests || !['1', '2'].includes(guests)) {
+            alert('Please select a valid number of guests');
+            return;
+        }
+
+        // Validate dates
         if (!selectedCheckIn || !selectedCheckOut) {
-            alert('Please select check-in and check-out dates');
+            alert('Please select both check-in and check-out dates');
+            return;
+        }
+
+        const nights = Math.round((selectedCheckOut - selectedCheckIn) / (1000 * 60 * 60 * 24));
+        if (nights <= 0) {
+            alert('Check-out date must be after check-in date');
+            return;
+        }
+
+        // If not logged in, save details and redirect
+        if (!user) {
+            const bookingDetails = {
+                checkIn: selectedCheckIn,
+                checkOut: selectedCheckOut,
+                guests: guests,
+                contactNumber: contactNumber
+            };
+            localStorage.setItem('pendingBooking', JSON.stringify(bookingDetails));
+            
+            const returnUrl = encodeURIComponent(window.location.href);
+            window.location.href = `../Login/index.html?redirect=${returnUrl}`;
             return;
         }
 
@@ -374,12 +392,7 @@ export async function handleReserveClick(event) {
             throw new Error('Unable to get user data');
         }
 
-        const nights = Math.round((selectedCheckOut - selectedCheckIn) / (1000 * 60 * 60 * 24));
-        if (nights <= 0) {
-            alert('Please select valid check-in and check-out dates');
-            return;
-        }
-
+        // Calculate pricing
         const subtotal = NIGHTLY_RATE * nights;
         const serviceFeeAmount = Math.round(subtotal * SERVICE_FEE_PERCENTAGE);
         const total = subtotal + serviceFeeAmount;
@@ -390,6 +403,7 @@ export async function handleReserveClick(event) {
             email: userData.email || '',
             contactNumber: contactNumber,
             userId: user.uid,
+            guests: parseInt(guests),
             
             // Dates
             checkIn: Timestamp.fromDate(selectedCheckIn),
@@ -399,52 +413,33 @@ export async function handleReserveClick(event) {
             // Property Details
             propertyDetails: {
                 name: 'Pine Haven Lodge',
-                location: 'Baguio City, Philippines',
-                roomNumber: 'A101',
-                roomType: 'Deluxe Suite',
-                floorLevel: '1st Floor'
+                type: 'Lodge',
+                location: 'Baguio City'
             },
             
-            // Booking Details
-            guests: document.querySelector('select').value,
-            numberOfNights: nights,
-            nightlyRate: NIGHTLY_RATE,
-            
-            // Payment Information
-            subtotal: subtotal,
-            serviceFee: serviceFeeAmount,
-            totalPrice: total,
-            paymentStatus: 'pending',
+            // Pricing
+            pricing: {
+                nightlyRate: NIGHTLY_RATE,
+                numberOfNights: nights,
+                subtotal: subtotal,
+                serviceFee: serviceFeeAmount,
+                total: total
+            },
             
             // Status
-            status: 'pending'
+            status: 'pending',
+            paymentStatus: 'pending'
         };
 
-        // Validate booking data before saving
-        const validationResult = validateBookingData(bookingData);
-        if (!validationResult.isValid) {
-            throw new Error(`Invalid booking data: ${validationResult.error}`);
-        }
+        // Store booking data in localStorage for payment page
+        localStorage.setItem('currentBooking', JSON.stringify(bookingData));
 
-        const bookingId = await saveBooking(bookingData);
-        console.log('Booking saved with ID:', bookingId);
-        
-        if (bookingId) {
-            // Store booking data for payment page
-            localStorage.setItem('currentBookingId', bookingId);
-            localStorage.setItem('bookingData', JSON.stringify(bookingData));
-            
-            // Clear any pending booking
-            localStorage.removeItem('pendingBooking');
-            
-            // Show success message
-            alert('Booking successful! Redirecting to payment page...');
-            // Redirect to payment page
-            window.location.href = '../paymentProcess/pay.html';
-        }
+        // Redirect to payment page
+        window.location.href = '../paymentProcess/pay.html';
+
     } catch (error) {
-        console.error('Booking error:', error);
-        alert(`An error occurred while making the booking: ${error.message}`);
+        console.error('Error in handleReserveClick:', error);
+        alert('An error occurred while processing your reservation. Please try again.');
     }
 }
 
