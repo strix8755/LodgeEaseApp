@@ -156,3 +156,21 @@ function initializeGallery() {
 document.addEventListener('DOMContentLoaded', () => {
     initializeGallery();
 });
+
+function initializeUserDrawer() {
+    const userButton = document.getElementById('userButton');
+    const userDrawer = document.getElementById('userDrawer');
+    
+    userButton.addEventListener('click', () => {
+        userDrawer.classList.toggle('translate-x-full');
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!userDrawer.contains(e.target) && !userButton.contains(e.target)) {
+            userDrawer.classList.add('translate-x-full');
+        }
+    });
+}
+
+import { initializeUserDrawer } from '../components/userDrawer.js';
+document.addEventListener('DOMContentLoaded', () => initializeUserDrawer(auth, db));
