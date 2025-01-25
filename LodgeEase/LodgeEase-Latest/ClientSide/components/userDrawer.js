@@ -10,27 +10,27 @@ export function initializeUserDrawer(auth, db) {
     console.log('Initializing user drawer...');
     
     // Get elements
-    const userIcon = document.querySelector('.ri-user-line')?.parentElement;
+    const userIconBtn = document.getElementById('userIconBtn');
     const drawer = document.getElementById('userDrawer');
     
-    console.log('Elements found:', { userIcon, drawer });
+    console.log('Elements found:', { userIconBtn, drawer });
 
-    if (!userIcon || !drawer) {
+    if (!userIconBtn || !drawer) {
         console.error('Required elements not found');
         return;
     }
 
     // Add click handler to user icon
-    userIcon.addEventListener('click', (e) => {
+    userIconBtn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
         console.log('User icon clicked');
-        drawer.classList.remove('translate-x-full');
+        drawer.classList.toggle('translate-x-full');
     });
 
     // Close drawer when clicking outside
     document.addEventListener('click', (e) => {
-        if (!drawer.contains(e.target) && !userIcon.contains(e.target)) {
+        if (!drawer.contains(e.target) && !userIconBtn.contains(e.target)) {
             drawer.classList.add('translate-x-full');
         }
     });

@@ -4,18 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Lodge Ease</title>
+    <link rel="icon" type="image/x-icon" href="../images/LodgeEaseLogo.png">
     <!-- Firebase and Auth Check must be first -->
     <script type="module" src="../firebase.js"></script>
     <script type="module" src="../AInalysis/auth-check.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+    <script type="module" src="chartData.js"></script>
     <script type="module" src="app.js"></script>
     <script type="module" src="transitions.js"></script>
-        <!-- Other resources -->
+    <!-- Other resources -->
     <link rel="stylesheet" href="styles.css">   
     <link rel="stylesheet" href="transitionStyle.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600&family=Roboto:wght@400&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
 </head>
 <body>
     <div id="app">
@@ -65,128 +67,126 @@
             </div>
 
             <div v-else>
-                <header>
+                <header class="dashboard-header">
                     <h1>Dashboard</h1>
+                    <div class="header-actions">
+                        <button @click="updateDashboardStats" class="refresh-btn">
+                            <i class="fas fa-sync-alt"></i> Refresh Data
+                        </button>
+                    </div>
                 </header>
 
-                <!-- Overview Section -->
-                <section class="overview">
-                    <div class="overview-header">
-                        <h2>Overview Data</h2>
-                        <button @click="analyzeData" class="analyze-button">AI Analyze Data</button>
+                <!-- Charts Section -->
+                <section class="charts-section">
+                    <div class="chart-container revenue-chart">
+                        <h3>Revenue Trend</h3>
+                        <canvas id="revenueChart"></canvas>
                     </div>
-                    <div class="dashboard-panels">
-                        <div class="panel overview-item">
-                            <h3>Check-ins Today</h3>
-                            <p>{{ todayCheckIns }}</p>
-                        </div>
-                        <div class="panel overview-item">
-                            <h3>Available Rooms</h3>
-                            <p>{{ availableRooms }}</p>
-                        </div>
-                        <div class="panel overview-item">
-                            <h3>Occupied Rooms</h3>
-                            <p>{{ occupiedRooms }}</p>
-                        </div>
+                    <div class="chart-container occupancy-chart">
+                        <h3>Occupancy Rate</h3>
+                        <canvas id="occupancyChart"></canvas>
                     </div>
-                    <div v-if="analysisFeedback" class="analysis-feedback">
-                        <h4>Analysis Feedback:</h4>
-                        <p>{{ analysisFeedback }}</p>
+                    <div class="chart-container room-chart">
+                        <h3>Room Distribution</h3>
+                        <canvas id="roomTypeChart"></canvas>
                     </div>
                 </section>
 
-                <!-- Dashboard Panels -->
-                <section class="dashboard-panels">
-                    <div class="panel">
-                        <h2>Analytics</h2>
-                        <div class="chart-container" style="position: relative; height:300px; width:100%">
-                            <canvas id="analyticsChart"></canvas>
+                <!-- Key Metrics -->
+                <section class="key-metrics">
+                    <div class="metric-card">
+                        <div class="metric-icon">
+                            <i class="fas fa-book"></i>
+                        </div>
+                        <div class="metric-content">
+                            <h3>Total Bookings</h3>
+                            <p class="metric-value">{{ stats.totalBookings }}</p>
+                            <span class="metric-period">This Month</span>
                         </div>
                     </div>
-
-                    <div class="panel">
-                        <h2>Revenue</h2>
-                        <div class="chart-container" style="position: relative; height:300px; width:100%">
-                            <canvas id="revenueChart"></canvas>
+                    <div class="metric-card">
+                        <div class="metric-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="metric-content">
+                            <h3>Occupancy Rate</h3>
+                            <p class="metric-value">{{ stats.occupancyRate }}%</p>
+                            <span class="metric-period">Current</span>
                         </div>
                     </div>
-                </section>
-
-                <!-- Replace the existing AI insights section with this updated version -->
-                <section class="ai-insights">
-                    <h2>AI Insights</h2>
-                    <div class="insights-grid">
-                        <div v-for="insight in aiInsights" 
-                             :key="insight.type" 
-                             class="insight-card">
-                            <h3>{{ insight.type }}</h3>
-                            <p class="message">{{ insight.message }}</p>
-                            <p class="recommendation">
-                                <i class="fas fa-lightbulb"></i> 
-                                {{ insight.recommendation }}
-                            </p>
+                    <div class="metric-card">
+                        <div class="metric-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="metric-content">
+                            <h3>Average Stay</h3>
+                            <p class="metric-value">{{ stats.averageStayDuration }} days</p>
+                            <span class="metric-period">This Month</span>
                         </div>
                     </div>
                 </section>
 
-                <!-- Search bar and bookings table -->
+                <!-- Recent Bookings -->
                 <section class="recent-bookings">
-                    <h2>Recent Bookings</h2>
-                    <input 
-                        v-model="searchQuery" 
-                        id="search-bar" 
-                        placeholder="Search by Guest Name or Room Number" 
-                        class="search-input mb-4"
-                    >
-                    <table class="min-w-full bg-white shadow-md rounded-lg overflow-hidden">
-                        <thead class="bg-gray-800 text-white">
-                            <tr>
-                                <th class="px-4 py-3 text-left">Room Number</th>
-                                <th class="px-4 py-3 text-left">Room Type</th>
-                                <th class="px-4 py-3 text-left">Floor Level</th>
-                                <th class="px-4 py-3 text-left">Guest Name</th>
-                                <th class="px-4 py-3 text-left">Check-in</th>
-                                <th class="px-4 py-3 text-left">Check-out</th>
-                                <th class="px-4 py-3 text-left">Status</th>
-                                <th class="px-4 py-3 text-left">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-if="bookings.length === 0">
-                                <td colspan="8" class="px-4 py-3 text-center text-gray-500">No bookings found</td>
-                            </tr>
-                            <tr v-else v-for="booking in filteredBookings" :key="booking.id" class="border-b hover:bg-gray-50">
-                                <td class="px-4 py-3">{{ booking.propertyDetails.roomNumber }}</td>
-                                <td class="px-4 py-3">{{ booking.propertyDetails.roomType }}</td>
-                                <td class="px-4 py-3">{{ booking.floorLevel }}</td>
-                                <td class="px-4 py-3">{{ booking.guestName }}</td>
-                                <td class="px-4 py-3">{{ formatDate(booking.checkIn) }}</td>
-                                <td class="px-4 py-3">{{ formatDate(booking.checkOut) }}</td>
-                                <td class="px-4 py-3">
-                                    <span :class="{
-                                        'status-pending': booking.status === 'pending',
-                                        'status-occupied': booking.status === 'occupied'
-                                    }">
-                                        {{ booking.status }}
-                                    </span>
-                                </td>
-                                <td class="px-4 py-3">
-                                    <div class="flex space-x-2">
-                                        <button 
-                                            @click="editBooking(booking)"
-                                            class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm transition-colors">
-                                            Edit
-                                        </button>
-                                        <button 
-                                            @click="deleteBooking(booking.id)"
-                                            class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm transition-colors">
-                                            Delete
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <div class="section-header">
+                        <h2><i class="fas fa-list"></i> Recent Bookings</h2>
+                        <div class="search-container">
+                            <i class="fas fa-search"></i>
+                            <input 
+                                v-model="searchQuery" 
+                                type="text" 
+                                placeholder="Search bookings..."
+                                class="search-input"
+                            >
+                        </div>
+                    </div>
+                    <div class="bookings-table-container">
+                        <table class="bookings-table">
+                            <thead>
+                                <tr>
+                                    <th>Guest Name</th>
+                                    <th>Room</th>
+                                    <th>Check In</th>
+                                    <th>Check Out</th>
+                                    <th>Status</th>
+                                    <th>Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="booking in filteredBookings" :key="booking.id">
+                                    <td>{{ booking.guestName }}</td>
+                                    <td>{{ booking.propertyDetails.roomNumber }} ({{ booking.propertyDetails.roomType }})</td>
+                                    <td>{{ formatDate(booking.checkIn) }}</td>
+                                    <td>{{ formatDate(booking.checkOut) }}</td>
+                                    <td>
+                                        <span :class="'status-' + booking.status.toLowerCase()">
+                                            {{ booking.status }}
+                                        </span>
+                                    </td>
+                                    <td>₱{{ booking.totalAmount.toLocaleString('en-PH') }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Statistics Overview -->
+                <section class="statistics-overview">
+                    <div class="stat-card">
+                        <i class="fas fa-calendar-check"></i>
+                        <h3>Today's Check-ins</h3>
+                        <p>{{ todayCheckIns }}</p>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-door-open"></i>
+                        <h3>Available Rooms</h3>
+                        <p>{{ availableRooms }}</p>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-bed"></i>
+                        <h3>Occupied Rooms</h3>
+                        <p>{{ occupiedRooms }}</p>
+                    </div>
                 </section>
             </div>
         </main>

@@ -1,8 +1,8 @@
 // Import Firebase modules
-import { initializeApp, getApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, setPersistence, browserLocalPersistence, fetchSignInMethodsForEmail } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, getDoc, setDoc, query, where, Timestamp, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { getAnalytics, isSupported } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js';
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { getAuth, setPersistence, browserLocalPersistence, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, fetchSignInMethodsForEmail } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+import { getFirestore, enableIndexedDbPersistence, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, getDoc, setDoc, query, where, Timestamp, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getAnalytics } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js';
 
 // Firebase configuration
 const firebaseConfig = {
@@ -12,108 +12,74 @@ const firebaseConfig = {
     storageBucket: "lms-app-2b903.appspot.com",
     messagingSenderId: "1046108373013",
     appId: "1:1046108373013:web:fc366db1d92b9c4b860e1c",
-    measurementId: "G-WRMW9Z8867"
+    measurementId: "G-WRMW9Z8867",
+    experimentalForceLongPolling: true,
+    experimentalAutoDetectLongPolling: true
 };
 
-let app;
-let analytics;
-
-// Initialize Firebase with proper error handling
-try {
-    app = initializeApp(firebaseConfig);
-    console.log('Firebase app initialized successfully');
-} catch (error) {
-    if (error.code === 'app/duplicate-app') {
-        app = getApp(); // Get the already initialized app
-        console.log('Retrieved existing Firebase app');
-    } else {
-        console.error('Firebase initialization error:', error);
-        throw error;
-    }
-}
-
-// Initialize Firebase services
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const analytics = getAnalytics(app);
 
-// Initialize Analytics with feature detection and setup
-async function initializeAnalytics() {
-    try {
-        // Check authentication if needed
-        if (!auth.currentUser) {
-            console.warn('No user authenticated');
-        }
-
-        // Initialize analytics if supported
-        if (await isSupported()) {
-            analytics = getAnalytics(app);
-            console.log('Firebase Analytics initialized successfully');
-        } else {
-            console.log('Firebase Analytics not supported in this environment');
-        }
-
-        // Create analytics collection if it doesn't exist
-        const analyticsRef = collection(db, 'analytics');
-        await setDoc(doc(analyticsRef, '_config'), {
-            lastUpdated: Timestamp.now(),
-            version: '1.0',
-            initialized: true
-        }, { merge: true });
-
-        return true;
-    } catch (error) {
-        console.warn('Analytics initialization error:', error);
-        return false;
+// Enable offline persistence for Firestore
+enableIndexedDbPersistence(db).catch((err) => {
+    if (err.code == 'failed-precondition') {
+        console.warn('Multiple tabs open, persistence can only be enabled in one tab at a time.');
+    } else if (err.code == 'unimplemented') {
+        console.warn('The current browser does not support persistence.');
     }
-}
-
-// Initialize analytics
-initializeAnalytics().catch(console.error);
-
-// Set persistence to local immediately
-setPersistence(auth, browserLocalPersistence).catch(error => {
-    console.error('Error setting auth persistence:', error);
 });
 
-// Initialize Firebase function - only export this once
-async function initializeFirebase() {
-    try {
-        return app;
-    } catch (error) {
-        console.error('Error initializing Firebase:', error);
-        throw error;
-    }
-}
-
-// Add a helper function to check auth state
-function getCurrentUser() {
-    return new Promise((resolve, reject) => {
-        const unsubscribe = auth.onAuthStateChanged(user => {
-            unsubscribe();
-            resolve(user);
-        }, reject);
-    });
-}
-
-// Add console logs to verify Firebase initialization
-console.log('Firebase app initialized:', !!app);
-console.log('Firestore initialized:', !!db);
+// Set authentication persistence
+setPersistence(auth, browserLocalPersistence).catch((error) => {
+    console.error('Error setting auth persistence:', error);
+});
 
 // Add rate limiting for registration attempts
 const registrationAttempts = new Map();
 
-// Register function
+// Authentication functions
+async function signIn(userIdentifier, password) {
+    try {
+        let email = userIdentifier;
+        
+        // If userIdentifier is not an email, try to find the email by username
+        if (!email.includes('@')) {
+            const usersRef = collection(db, "users");
+            const q = query(usersRef, where("username", "==", userIdentifier.toLowerCase()));
+            const querySnapshot = await getDocs(q);
+            
+            if (querySnapshot.empty) {
+                throw new Error('User not found');
+            }
+            
+            email = querySnapshot.docs[0].data().email;
+        }
+        
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const userDoc = await getDoc(doc(db, "users", userCredential.user.uid));
+        
+        if (!userDoc.exists() || !userDoc.data().isAdmin) {
+            await auth.signOut();
+            throw new Error('Unauthorized access. Admin privileges required.');
+        }
+        
+        return userCredential;
+    } catch (error) {
+        console.error('Sign in error:', error);
+        throw error;
+    }
+}
+
 async function register(email, password, username, fullname) {
     try {
-        // First check if username exists
+        // Check if username exists
         const usersRef = collection(db, "users");
         const normalizedUsername = username.toLowerCase().trim();
         const q = query(usersRef, where("username", "==", normalizedUsername));
         const querySnapshot = await getDocs(q);
-        
-        // Debug logs
-        console.log('Registration username check for:', normalizedUsername);
-        console.log('Existing users with this username:', querySnapshot.size);
         
         if (!querySnapshot.empty) {
             throw new Error('Username already exists');
@@ -128,8 +94,8 @@ async function register(email, password, username, fullname) {
             username: normalizedUsername,
             fullname,
             role: 'admin',
-            isAdmin: true, // Set all users as admin by default
-            createdAt: new Date(),
+            isAdmin: true,
+            createdAt: Timestamp.now(),
             status: 'active'
         };
 
@@ -139,7 +105,7 @@ async function register(email, password, username, fullname) {
         await addDoc(collection(db, 'activityLogs'), {
             userId: userCredential.user.uid,
             actionType: 'registration',
-            timestamp: new Date()
+            timestamp: Timestamp.now()
         });
 
         return userCredential;
@@ -149,38 +115,56 @@ async function register(email, password, username, fullname) {
     }
 }
 
-// Add function to update all existing users to admin
-async function updateAllUsersToAdmin() {
+async function signOut() {
     try {
-        const usersRef = collection(db, "users");
-        const usersSnapshot = await getDocs(usersRef);
-        
-        const updatePromises = [];
-        usersSnapshot.forEach(userDoc => {
-            if (!userDoc.data().isAdmin) {
-                updatePromises.push(
-                    updateDoc(doc(db, "users", userDoc.id), {
-                        isAdmin: true
-                    })
-                );
-            }
-        });
-        
-        await Promise.all(updatePromises);
-        console.log('All users updated to admin');
+        const user = auth.currentUser;
+        if (user) {
+            await logAdminActivity(user.uid, 'logout', 'User logged out');
+        }
+        await auth.signOut();
         return true;
     } catch (error) {
-        console.error('Error updating users to admin:', error);
-        return false;
+        console.error('Sign out error:', error);
+        throw error;
     }
 }
 
-// Call updateAllUsersToAdmin when initializing Firebase
-initializeFirebase().then(() => {
-    updateAllUsersToAdmin().catch(console.error);
-});
+async function getCurrentUser() {
+    return new Promise((resolve, reject) => {
+        const unsubscribe = auth.onAuthStateChanged(user => {
+            unsubscribe();
+            resolve(user);
+        }, reject);
+    });
+}
 
-// Update logAdminActivity to ensure collection exists
+async function checkAuth() {
+    const user = await getCurrentUser();
+    if (!user) {
+        window.location.href = '../Login/index.html';
+        return null;
+    }
+    return user;
+}
+
+async function checkAdminAuth() {
+    const user = await getCurrentUser();
+    if (!user) {
+        window.location.href = '../Login/index.html';
+        return null;
+    }
+
+    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    if (!userDoc.exists() || !userDoc.data().isAdmin) {
+        await signOut();
+        window.location.href = '../Login/index.html';
+        return null;
+    }
+
+    return user;
+}
+
+// Helper functions for authentication
 async function logAdminActivity(userId, actionType, details, userName = null) {
     try {
         // Only allow admin users to write to activityLogs
@@ -221,7 +205,6 @@ async function logAdminActivity(userId, actionType, details, userName = null) {
     }
 }
 
-// Add new function to track page navigation
 async function logPageNavigation(userId, pageName) {
     try {
         if (!userId) return;
@@ -242,81 +225,6 @@ async function logPageNavigation(userId, pageName) {
         );
     } catch (error) {
         console.error('Error logging page navigation:', error);
-    }
-}
-
-// Update signIn function
-async function signIn(userIdentifier, password) {
-    try {
-        let email = userIdentifier;
-        
-        // If userIdentifier doesn't contain @, assume it's a username
-        if (!userIdentifier.includes('@')) {
-            try {
-                const usersRef = collection(db, "users");
-                const q = query(usersRef, where("username", "==", userIdentifier.toLowerCase()));
-                const querySnapshot = await getDocs(q);
-                
-                if (querySnapshot.empty) {
-                    throw { code: 'auth/user-not-found' };
-                }
-                
-                email = querySnapshot.docs[0].data().email;
-            } catch (error) {
-                console.error("Error finding user by username:", error);
-                throw { code: 'auth/user-not-found' };
-            }
-        }
-
-        // First authenticate with Firebase Auth
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        
-        try {
-            // Then check if user is admin
-            const userDoc = await getDoc(doc(db, "users", userCredential.user.uid));
-            
-            if (!userDoc.exists()) {
-                await auth.signOut();
-                throw { code: 'auth/user-not-found' };
-            }
-
-            const userData = userDoc.data();
-            if (userData.role !== 'admin') {
-                await auth.signOut();
-                throw { code: 'auth/insufficient-permissions' };
-            }
-
-            // Log successful login
-            await addDoc(collection(db, 'activityLogs'), {
-                userId: userCredential.user.uid,
-                actionType: 'login',
-                timestamp: new Date(),
-                details: 'Admin login successful'
-            });
-
-            return userCredential;
-        } catch (error) {
-            // If there's an error checking admin status, sign out and throw
-            await auth.signOut();
-            throw error;
-        }
-    } catch (error) {
-        console.error("Sign-in error:", error);
-        throw error;
-    }
-}
-
-// Add this to track logouts
-async function signOut() {
-    try {
-        const userId = auth.currentUser?.uid;
-        if (userId) {
-            await logAdminActivity(userId, 'logout', 'User logged out');
-        }
-        await auth.signOut();
-    } catch (error) {
-        console.error('Error signing out:', error);
-        throw error;
     }
 }
 
@@ -426,41 +334,11 @@ async function updateBooking(bookingId, updateData) {
     }
 }
 
-// Add new function to check if user is logged in and is admin
-async function checkAdminAuth() {
-    return new Promise((resolve, reject) => {
-        const unsubscribe = auth.onAuthStateChanged(async user => {
-            unsubscribe();
-            if (user) {
-                try {
-                    const userDoc = await getDoc(doc(db, "users", user.uid));
-                    if (userDoc.exists() && userDoc.data().role === 'admin') {
-                        resolve(user);
-                    } else {
-                        window.location.href = '../Login/index.html';
-                    }
-                } catch (error) {
-                    console.error('Error checking admin status:', error);
-                    window.location.href = '../Login/index.html';
-                }
-            } else {
-                window.location.href = '../Login/index.html';
-            }
-        });
-    });
-}
-
-// Update the existing checkAuth function
-async function checkAuth() {
-    const user = await checkAdminAuth();
-    return user;
-}
-
 // Update fetchRoomsData to use the new auth check
 async function fetchRoomsData() {
     try {
         // Check authentication
-        await checkAuth();
+        await checkAdminAuth();
 
         console.log('Starting to fetch rooms data...');
         const roomsRef = collection(db, "rooms");
@@ -1071,6 +949,7 @@ export {
     signIn,
     signOut,
     checkAuth,
+    checkAdminAuth,
     addBooking,
     updateBooking,
     fetchRoomsData,
@@ -1088,7 +967,6 @@ export {
     getCurrentUser,
     setAdminRole,
     safeTimestamp,
-    initializeFirebase,
-    initializeAnalytics,
-    updateAllUsersToAdmin
+    createRequiredIndexes,
+    validateBookingData
 };

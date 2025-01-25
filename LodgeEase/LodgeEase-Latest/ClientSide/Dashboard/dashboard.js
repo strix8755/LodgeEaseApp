@@ -1,7 +1,11 @@
 import { auth, db } from '../../AdminSide/firebase.js';
 import { doc, getDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { initializeUserDrawer } from '../components/userDrawer.js';
 
 document.addEventListener('DOMContentLoaded', async function() {
+    // Initialize user drawer
+    initializeUserDrawer(auth, db);
+
     auth.onAuthStateChanged(async (user) => {
         if (user) {
             try {

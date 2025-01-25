@@ -19,6 +19,8 @@ new Vue({
             successMessage: '',
             isLoginForm: true, // Toggle between login and registration forms
             isAdmin: true, // Set default to true since this is admin registration
+            retryCount: 0,
+            maxRetries: 3
         };
     },
     methods: {
@@ -58,22 +60,37 @@ new Vue({
 
         // Handle login
         async handleLogin() {
+            if (this.loading) return;
+            
+            this.loading = true;
             this.errorMessage = '';
             this.successMessage = '';
-            
-            if (!this.email || !this.password) {
-                this.errorMessage = 'Please enter both email and password';
-                return;
-            }
-
-            this.loading = true;
 
             try {
-                const result = await signIn(this.email, this.password);
+                // First try to find user by username
+                const usersRef = collection(db, 'users');
+                const q = query(usersRef, where('username', '==', this.email.toLowerCase()));
+                const querySnapshot = await getDocs(q);
                 
+                let userEmail = this.email;
+                if (!this.validateEmail(this.email) && querySnapshot.size > 0) {
+                    userEmail = querySnapshot.docs[0].data().email;
+                }
+
+                const userCredential = await signIn(this.email, this.password);
+                
+                // Check if user is admin
+                const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
+                const userData = userDoc.data();
+                
+                if (!userData || !userData.isAdmin) {
+                    await auth.signOut();
+                    throw new Error('Unauthorized access. Admin privileges required.');
+                }
+
                 if (this.remember) {
                     localStorage.setItem('userEmail', this.email);
-                    const token = await result.user.getIdToken();
+                    const token = await userCredential.user.getIdToken();
                     localStorage.setItem('authToken', token);
                 } else {
                     localStorage.removeItem('userEmail');
@@ -84,17 +101,15 @@ new Vue({
                     window.location.href = '../Dashboard/Dashboard.html';
                 }, 1500);
             } catch (error) {
-                console.error('Login error:', error);
-                switch (error.code) {
-                    case 'auth/user-not-found':
-                    case 'auth/wrong-password':
-                        this.errorMessage = 'Invalid email or password';
-                        break;
-                    case 'auth/insufficient-permissions':
-                        this.errorMessage = 'Access denied. This portal is for administrators only.';
-                        break;
-                    default:
-                        this.errorMessage = 'Failed to login. Please try again.';
+                this.handleAuthError(error);
+                
+                // Implement retry logic for connection issues
+                if (error.code === 'auth/network-request-failed' && this.retryCount < this.maxRetries) {
+                    this.retryCount++;
+                    setTimeout(() => {
+                        this.handleLogin();
+                    }, 1000 * this.retryCount); // Exponential backoff
+                    return;
                 }
             } finally {
                 this.loading = false;
