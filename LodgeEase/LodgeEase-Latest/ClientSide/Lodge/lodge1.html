@@ -8,6 +8,38 @@
   <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
   <link rel="stylesheet" href="../Homepage/styles.css">
+  <script>
+    // Initialize Google Map
+    function initMap() {
+      const lodgeLocation = { lat: 16.4023, lng: 120.5960 }; // Baguio City coordinates
+      const map = new google.maps.Map(document.getElementById('lodge-map'), {
+        center: lodgeLocation,
+        zoom: 15,
+        styles: [
+          {
+            featureType: 'poi',
+            elementType: 'labels',
+            stylers: [{ visibility: 'off' }]
+          }
+        ]
+      });
+
+      const marker = new google.maps.Marker({
+        position: lodgeLocation,
+        map: map,
+        title: 'Pine Haven Lodge'
+      });
+
+      const infoWindow = new google.maps.InfoWindow({
+        content: '<div class="p-2"><strong>Pine Haven Lodge</strong><br>Your cozy retreat in Baguio City</div>'
+      });
+
+      marker.addListener('click', () => {
+        infoWindow.open(map, marker);
+      });
+    }
+  </script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAaKZC47lvxIv0ej9bECXhUyaoL3FYuDM8&callback=initMap" async defer></script>
 </head>
 
 <body class="text-gray-800">
@@ -48,12 +80,18 @@
     <div class="grid md:grid-cols-3 gap-4">
       <!-- Left Section: Images -->
       <div class="md:col-span-2">
-        <div class="grid grid-cols-2 gap-2">
-          <img src="../components/1.jpg" alt="Main Image" class="rounded-lg object-cover w-full h-64 md:h-96 col-span-2">
-          <img src="../components/2.jpg" alt="Image 1" class="rounded-lg object-cover w-full h-32">
-          <img src="../components/3.jpg" alt="Image 2" class="rounded-lg object-cover w-full h-32">
-          <img src="../components/4.jpg" alt="Image 3" class="rounded-lg object-cover w-full h-32">
-          <img src="../components/5.jpg" alt="Image 4" class="rounded-lg object-cover w-full h-32">
+        <div class="relative">
+          <div class="grid grid-cols-2 gap-2">
+            <img src="../components/1.jpg" alt="Main Image" class="rounded-lg object-cover w-full h-64 md:h-96 col-span-2 cursor-pointer" onclick="openGallery(0)">
+            <img src="../components/2.jpg" alt="Image 1" class="rounded-lg object-cover w-full h-32 cursor-pointer" onclick="openGallery(1)">
+            <img src="../components/3.jpg" alt="Image 2" class="rounded-lg object-cover w-full h-32 cursor-pointer" onclick="openGallery(2)">
+            <img src="../components/4.jpg" alt="Image 3" class="rounded-lg object-cover w-full h-32 cursor-pointer" onclick="openGallery(3)">
+            <img src="../components/5.jpg" alt="Image 4" class="rounded-lg object-cover w-full h-32 cursor-pointer" onclick="openGallery(4)">
+          </div>
+          <button onclick="openGallery(0)" class="absolute bottom-4 right-4 bg-white text-gray-800 px-4 py-2 rounded-lg shadow-md hover:bg-gray-100 transition-colors flex items-center space-x-2">
+            <i class="fas fa-images"></i>
+            <span>View all photos</span>
+          </button>
         </div>
       </div>
 
@@ -113,6 +151,134 @@
             <span>Total before taxes</span>
             <span id="total-price">₱37,088</span>
           </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Photo Gallery Modal -->
+    <div id="gallery-modal" class="fixed inset-0 bg-black bg-opacity-90 z-50 hidden">
+      <div class="h-full w-full flex flex-col">
+        <!-- Gallery Header -->
+        <div class="p-4 flex justify-between items-center text-white">
+          <span class="text-lg" id="gallery-counter">1 / 5</span>
+          <button onclick="closeGallery()" class="text-2xl hover:text-gray-300">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        
+        <!-- Gallery Content -->
+        <div class="flex-1 flex items-center justify-center relative">
+          <button onclick="prevImage()" class="absolute left-4 text-white text-4xl hover:text-gray-300">
+            <i class="fas fa-chevron-left"></i>
+          </button>
+          
+          <div class="relative w-full h-full flex items-center justify-center">
+            <img id="gallery-image" src="../components/1.jpg" alt="Gallery image" class="max-h-[80vh] max-w-[80vw] object-contain">
+          </div>
+          
+          <button onclick="nextImage()" class="absolute right-4 text-white text-4xl hover:text-gray-300">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+        
+        <!-- Thumbnails -->
+        <div class="p-4 flex justify-center space-x-2">
+          <img src="../components/1.jpg" onclick="showImage(0)" class="w-16 h-16 object-cover cursor-pointer rounded gallery-thumb">
+          <img src="../components/2.jpg" onclick="showImage(1)" class="w-16 h-16 object-cover cursor-pointer rounded gallery-thumb">
+          <img src="../components/3.jpg" onclick="showImage(2)" class="w-16 h-16 object-cover cursor-pointer rounded gallery-thumb">
+          <img src="../components/4.jpg" onclick="showImage(3)" class="w-16 h-16 object-cover cursor-pointer rounded gallery-thumb">
+          <img src="../components/5.jpg" onclick="showImage(4)" class="w-16 h-16 object-cover cursor-pointer rounded gallery-thumb">
+        </div>
+      </div>
+    </div>
+
+    <!-- Location & Amenities Section -->
+    <div class="max-w-5xl mx-auto mt-12 p-6 bg-white rounded-lg shadow-lg">
+      <h2 class="text-2xl font-bold mb-6">Location & Amenities</h2>
+      
+      <div class="grid md:grid-cols-2 gap-8">
+        <!-- Map Section -->
+        <div>
+          <div id="lodge-map" class="w-full h-80 rounded-lg mb-4"></div>
+          <p class="text-gray-600">
+            <i class="fas fa-map-marker-alt text-blue-500 mr-2"></i>
+            Located in Baguio City, 10 minutes from Session Road
+          </p>
+          <div class="mt-4 space-y-2">
+            <p class="text-gray-600">
+              <i class="fas fa-walking text-blue-500 mr-2"></i>
+              5 minutes walk to Burnham Park
+            </p>
+            <p class="text-gray-600">
+              <i class="fas fa-car text-blue-500 mr-2"></i>
+              15 minutes drive to Mines View Park
+            </p>
+            <p class="text-gray-600">
+              <i class="fas fa-shopping-bag text-blue-500 mr-2"></i>
+              Near SM Baguio and local markets
+            </p>
+          </div>
+        </div>
+
+        <!-- Amenities Section -->
+        <div>
+          <h3 class="text-xl font-semibold mb-4">What this place offers</h3>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="flex items-center space-x-3">
+              <i class="fas fa-wifi text-blue-500"></i>
+              <span>Free WiFi</span>
+            </div>
+            <div class="flex items-center space-x-3">
+              <i class="fas fa-parking text-blue-500"></i>
+              <span>Free parking</span>
+            </div>
+            <div class="flex items-center space-x-3">
+              <i class="fas fa-tv text-blue-500"></i>
+              <span>Smart TV</span>
+            </div>
+            <div class="flex items-center space-x-3">
+              <i class="fas fa-hot-tub text-blue-500"></i>
+              <span>Hot tub</span>
+            </div>
+            <div class="flex items-center space-x-3">
+              <i class="fas fa-utensils text-blue-500"></i>
+              <span>Kitchen</span>
+            </div>
+            <div class="flex items-center space-x-3">
+              <i class="fas fa-snowflake text-blue-500"></i>
+              <span>Air conditioning</span>
+            </div>
+            <div class="flex items-center space-x-3">
+              <i class="fas fa-washer text-blue-500"></i>
+              <span>Washer</span>
+            </div>
+            <div class="flex items-center space-x-3">
+              <i class="fas fa-fire text-blue-500"></i>
+              <span>Indoor fireplace</span>
+            </div>
+          </div>
+
+          <div class="mt-6">
+            <h3 class="text-xl font-semibold mb-4">House rules</h3>
+            <div class="space-y-2">
+              <p class="flex items-center text-gray-600">
+                <i class="fas fa-clock text-blue-500 mr-3"></i>
+                Check-in: 2:00 PM - 8:00 PM
+              </p>
+              <p class="flex items-center text-gray-600">
+                <i class="fas fa-sign-out-alt text-blue-500 mr-3"></i>
+                Checkout: 11:00 AM
+              </p>
+              <p class="flex items-center text-gray-600">
+                <i class="fas fa-smoking-ban text-blue-500 mr-3"></i>
+                No smoking
+              </p>
+              <p class="flex items-center text-gray-600">
+                <i class="fas fa-paw text-blue-500 mr-3"></i>
+                No pets
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -392,6 +558,61 @@
             toggleButton.textContent = 'Show Reviews';
         }
     });
+
+    // Gallery functionality
+    const images = [
+      '../components/1.jpg',
+      '../components/2.jpg',
+      '../components/3.jpg',
+      '../components/4.jpg',
+      '../components/5.jpg'
+    ];
+    
+    let currentImageIndex = 0;
+    
+    window.openGallery = function(index) {
+      currentImageIndex = index;
+      document.getElementById('gallery-modal').classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+      updateGalleryImage();
+    }
+    
+    window.closeGallery = function() {
+      document.getElementById('gallery-modal').classList.add('hidden');
+      document.body.style.overflow = 'auto';
+    }
+    
+    window.prevImage = function() {
+      currentImageIndex = (currentImageIndex - 1 + images.length) % images.length;
+      updateGalleryImage();
+    }
+    
+    window.nextImage = function() {
+      currentImageIndex = (currentImageIndex + 1) % images.length;
+      updateGalleryImage();
+    }
+    
+    window.showImage = function(index) {
+      currentImageIndex = index;
+      updateGalleryImage();
+    }
+    
+    function updateGalleryImage() {
+      const galleryImage = document.getElementById('gallery-image');
+      const counter = document.getElementById('gallery-counter');
+      const thumbs = document.querySelectorAll('.gallery-thumb');
+      
+      galleryImage.src = images[currentImageIndex];
+      counter.textContent = `${currentImageIndex + 1} / ${images.length}`;
+      
+      thumbs.forEach((thumb, index) => {
+        if (index === currentImageIndex) {
+          thumb.classList.add('ring-2', 'ring-blue-500');
+        } else {
+          thumb.classList.remove('ring-2', 'ring-blue-500');
+        }
+      });
+    }
   </script>
 </body>
 </html>

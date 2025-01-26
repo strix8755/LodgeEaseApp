@@ -3,7 +3,7 @@ import { doc, getDoc, collection, addDoc, Timestamp } from 'https://www.gstatic.
 
 // Constants for pricing
 const NIGHTLY_RATE = 6500; // ₱6,500 per night as shown in the HTML
-const SERVICE_FEE_PERCENTAGE = 0.14; // 14% service fee
+const SERVICE_FEE_PERCENTAGE = 0.15; // 15% service fee
 
 // Calendar Functionality
 const calendarModal = document.getElementById('calendar-modal');
@@ -99,10 +99,10 @@ function handleDateSelection(selectedDate) {
       nightsSelected.textContent = `${nights} nights selected`;
       
       // Update pricing
-      const nightlyRate = 6500;
+      const nightlyRate = NIGHTLY_RATE;
       const totalNights = nights;
       const subtotal = nightlyRate * totalNights;
-      const serviceFeeCalculation = Math.round(subtotal * 0.14);
+      const serviceFeeCalculation = Math.round(subtotal * SERVICE_FEE_PERCENTAGE);
       
       nightsCalculation.textContent = `₱${nightlyRate} x ${totalNights} nights`;
       totalNightsPrice.textContent = `₱${subtotal.toLocaleString()}`;
@@ -130,24 +130,24 @@ function formatDate(date) {
 }
 
 // Event Listeners
-checkInInput.addEventListener('click', () => {
+checkInInput?.addEventListener('click', () => {
   calendarModal.classList.remove('hidden');
   calendarModal.classList.add('flex');
 });
 
-checkOutInput.addEventListener('click', () => {
+checkOutInput?.addEventListener('click', () => {
   if (selectedCheckIn) {
     calendarModal.classList.remove('hidden');
     calendarModal.classList.add('flex');
   }
 });
 
-closeCalendarBtn.addEventListener('click', () => {
+closeCalendarBtn?.addEventListener('click', () => {
   calendarModal.classList.add('hidden');
   calendarModal.classList.remove('flex');
 });
 
-clearDatesBtn.addEventListener('click', () => {
+clearDatesBtn?.addEventListener('click', () => {
   selectedCheckIn = null;
   selectedCheckOut = null;
   checkInInput.value = '';
@@ -157,12 +157,12 @@ clearDatesBtn.addEventListener('click', () => {
   renderCalendar(currentDate);
 });
 
-prevMonthBtn.addEventListener('click', () => {
+prevMonthBtn?.addEventListener('click', () => {
   currentDate.setMonth(currentDate.getMonth() - 1);
   renderCalendar(currentDate);
 });
 
-nextMonthBtn.addEventListener('click', () => {
+nextMonthBtn?.addEventListener('click', () => {
   currentDate.setMonth(currentDate.getMonth() + 1);
   renderCalendar(currentDate);
 });
@@ -171,7 +171,7 @@ nextMonthBtn.addEventListener('click', () => {
 renderCalendar(currentDate);
 
 // Close calendar when clicking outside
-calendarModal.addEventListener('click', (e) => {
+calendarModal?.addEventListener('click', (e) => {
   if (e.target === calendarModal) {
     calendarModal.classList.add('hidden');
     calendarModal.classList.remove('flex');
@@ -338,24 +338,41 @@ export async function handleReserveClick(event) {
     try {
         event.preventDefault();
 
+        // Get form elements
+        const contactNumberInput = document.getElementById('guest-contact');
+        const guestsSelect = document.getElementById('guests');
+
+        // Check if elements exist
+        if (!contactNumberInput || !guestsSelect) {
+            console.error('Required form elements not found:', {
+                contactNumber: !!contactNumberInput,
+                guests: !!guestsSelect
+            });
+            alert('Sorry, there was an error with the form. Please try again later.');
+            return;
+        }
+
         // Check if user is logged in
         const user = auth.currentUser;
         
         // Validate contact number
-        const contactNumber = document.getElementById('guest-contact').value.trim();
+        const contactNumber = contactNumberInput.value.trim();
         if (!contactNumber) {
             alert('Please enter your contact number');
+            contactNumberInput.focus();
             return;
         }
         if (!/^[0-9]{11}$/.test(contactNumber)) {
             alert('Please enter a valid 11-digit contact number');
+            contactNumberInput.focus();
             return;
         }
 
         // Validate guests
-        const guests = document.getElementById('guests').value;
+        const guests = guestsSelect.value;
         if (!guests || !['1', '2'].includes(guests)) {
             alert('Please select a valid number of guests');
+            guestsSelect.focus();
             return;
         }
 
@@ -379,45 +396,29 @@ export async function handleReserveClick(event) {
                 guests: guests,
                 contactNumber: contactNumber
             };
-            localStorage.setItem('pendingBooking', JSON.stringify(bookingDetails));
             
-            const returnUrl = encodeURIComponent(window.location.href);
-            window.location.href = `../Login/index.html?redirect=${returnUrl}`;
+            // Store booking details in sessionStorage
+            sessionStorage.setItem('pendingBooking', JSON.stringify(bookingDetails));
+            
+            // Redirect to login page
+            window.location.href = '../Login/index.html';
             return;
-        }
-
-        // Get user data
-        const userData = await getCurrentUserData();
-        if (!userData) {
-            throw new Error('Unable to get user data');
         }
 
         // Calculate pricing
         const subtotal = NIGHTLY_RATE * nights;
-        const serviceFeeAmount = Math.round(subtotal * SERVICE_FEE_PERCENTAGE);
+        const serviceFeeAmount = Math.round(subtotal * SERVICE_FEE_PERCENTAGE); // 15% service fee
         const total = subtotal + serviceFeeAmount;
 
+        // If logged in, proceed with booking
         const bookingData = {
-            // Guest Information
-            guestName: userData.fullname || '',
-            email: userData.email || '',
-            contactNumber: contactNumber,
             userId: user.uid,
-            guests: parseInt(guests),
-            
-            // Dates
             checkIn: Timestamp.fromDate(selectedCheckIn),
             checkOut: Timestamp.fromDate(selectedCheckOut),
+            guests: parseInt(guests),
+            contactNumber: contactNumber,
+            status: 'pending',
             createdAt: Timestamp.now(),
-            
-            // Property Details
-            propertyDetails: {
-                name: 'Pine Haven Lodge',
-                type: 'Lodge',
-                location: 'Baguio City'
-            },
-            
-            // Pricing
             pricing: {
                 nightlyRate: NIGHTLY_RATE,
                 numberOfNights: nights,
@@ -425,21 +426,26 @@ export async function handleReserveClick(event) {
                 serviceFee: serviceFeeAmount,
                 total: total
             },
-            
-            // Status
-            status: 'pending',
-            paymentStatus: 'pending'
+            propertyDetails: {
+                name: 'Mountain Breeze Lodge',
+                type: 'Lodge',
+                location: 'Baguio City'
+            }
         };
 
-        // Store booking data in localStorage for payment page
-        localStorage.setItem('currentBooking', JSON.stringify(bookingData));
-
-        // Redirect to payment page
-        window.location.href = '../paymentProcess/pay.html';
+        // Save booking
+        try {
+            await addBooking(bookingData);
+            alert('Booking successful! You will be redirected to the payment page.');
+            window.location.href = '../paymentProcess/pay.html';
+        } catch (error) {
+            console.error('Error saving booking:', error);
+            alert('Failed to save booking. Please try again.');
+        }
 
     } catch (error) {
         console.error('Error in handleReserveClick:', error);
-        alert('An error occurred while processing your reservation. Please try again.');
+        alert('An error occurred. Please try again.');
     }
 }
 
@@ -447,7 +453,7 @@ export async function handleReserveClick(event) {
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         // Check if there's a pending booking after login
-        const pendingBooking = localStorage.getItem('pendingBooking');
+        const pendingBooking = sessionStorage.getItem('pendingBooking');
         if (pendingBooking && auth.currentUser) {
             const bookingDetails = JSON.parse(pendingBooking);
             
@@ -488,16 +494,9 @@ function initializeEventListeners() {
   const reserveBtn = document.getElementById('reserve-btn');
   if (reserveBtn) {
     console.log('Found reserve button, adding click listener');
-    reserveBtn.onclick = async (event) => {
-      console.log('Reserve button clicked');
-      try {
-        await handleReserveClick(event);
-      } catch (error) {
-        console.error('Error in reserve button click handler:', error);
-      }
-    };
+    reserveBtn.addEventListener('click', handleReserveClick);
   } else {
-    console.error('Reserve button not found');
+    console.warn('Reserve button not found');
   }
 
   // Auth state observer
@@ -564,10 +563,10 @@ function updatePricingDetails() {
   nightsSelected.textContent = `${nights} nights selected`;
   
   // Update pricing
-  const nightlyRate = 6500;
+  const nightlyRate = NIGHTLY_RATE;
   const totalNights = nights;
   const subtotal = nightlyRate * totalNights;
-  const serviceFeeCalculation = Math.round(subtotal * 0.14);
+  const serviceFeeCalculation = Math.round(subtotal * SERVICE_FEE_PERCENTAGE);
   
   nightsCalculation.textContent = `₱${nightlyRate} x ${totalNights} nights`;
   totalNightsPrice.textContent = `₱${subtotal.toLocaleString()}`;

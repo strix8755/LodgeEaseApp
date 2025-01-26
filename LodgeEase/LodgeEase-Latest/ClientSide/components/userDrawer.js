@@ -2,23 +2,23 @@ import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 export function initializeUserDrawer(auth, db) {
+    console.log('Starting user drawer initialization with auth:', !!auth, 'db:', !!db);
+
     if (!auth || !db) {
         console.error('Auth or Firestore not initialized');
         return;
     }
 
-    console.log('Initializing user drawer...');
-    
     // Get elements
     const userIconBtn = document.getElementById('userIconBtn');
     const drawer = document.getElementById('userDrawer');
     
-    console.log('Elements found:', { userIconBtn, drawer });
-
     if (!userIconBtn || !drawer) {
-        console.error('Required elements not found');
+        console.error('Required elements not found:', { userIconBtn: !!userIconBtn, drawer: !!drawer });
         return;
     }
+
+    console.log('Elements found:', { userIconBtn: !!userIconBtn, drawer: !!drawer });
 
     // Add click handler to user icon
     userIconBtn.addEventListener('click', (e) => {
@@ -39,50 +39,60 @@ export function initializeUserDrawer(auth, db) {
     onAuthStateChanged(auth, async (user) => {
         console.log('Auth state changed:', user ? 'User logged in' : 'No user');
         const drawerContent = drawer.querySelector('.drawer-content');
-        if (!drawerContent) return;
+        if (!drawerContent) {
+            console.error('Drawer content element not found');
+            return;
+        }
 
-        if (user) {
-            try {
+        try {
+            if (user) {
                 console.log('Fetching user data for:', user.uid);
                 const userDocRef = doc(db, 'users', user.uid);
                 const userDoc = await getDoc(userDocRef);
                 
                 if (!userDoc.exists()) {
                     console.log('No user document found');
-                    drawerContent.innerHTML = generateLoginContent();
+                    drawerContent.innerHTML = generateErrorContent();
                     return;
                 }
-                
+
                 const userData = userDoc.data();
-                console.log('User data fetched:', userData);
-                
                 drawerContent.innerHTML = generateDrawerContent(userData);
 
                 // Add logout functionality
-                document.getElementById('logoutBtn')?.addEventListener('click', async () => {
-                    try {
-                        await signOut(auth);
-                        window.location.href = '../Login/index.html';
-                    } catch (error) {
-                        console.error('Error signing out:', error);
-                    }
-                });
+                const logoutBtn = document.getElementById('logoutBtn');
+                if (logoutBtn) {
+                    logoutBtn.addEventListener('click', async () => {
+                        try {
+                            await signOut(auth);
+                            window.location.href = '../Login/index.html';
+                        } catch (error) {
+                            console.error('Error signing out:', error);
+                        }
+                    });
+                }
 
                 // Add close drawer functionality
-                document.getElementById('closeDrawer')?.addEventListener('click', () => {
-                    drawer.classList.add('translate-x-full');
-                });
-            } catch (error) {
-                console.error('Error fetching user data:', error);
-                drawerContent.innerHTML = generateErrorContent();
+                const closeDrawerBtn = document.getElementById('closeDrawer');
+                if (closeDrawerBtn) {
+                    closeDrawerBtn.addEventListener('click', () => {
+                        drawer.classList.add('translate-x-full');
+                    });
+                }
+            } else {
+                drawerContent.innerHTML = generateLoginContent();
+                
+                // Add close drawer functionality
+                const closeDrawerBtn = document.getElementById('closeDrawer');
+                if (closeDrawerBtn) {
+                    closeDrawerBtn.addEventListener('click', () => {
+                        drawer.classList.add('translate-x-full');
+                    });
+                }
             }
-        } else {
-            drawerContent.innerHTML = generateLoginContent();
-            
-            // Add close drawer functionality
-            document.getElementById('closeDrawer')?.addEventListener('click', () => {
-                drawer.classList.add('translate-x-full');
-            });
+        } catch (error) {
+            console.error('Error updating drawer content:', error);
+            drawerContent.innerHTML = generateErrorContent();
         }
     });
 }
