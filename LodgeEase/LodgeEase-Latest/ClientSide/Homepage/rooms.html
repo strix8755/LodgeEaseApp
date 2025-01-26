@@ -9,9 +9,53 @@
   <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
-  <!-- Add these lines for Leaflet -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    .custom-map-control {
+      background-color: white;
+      border: 2px solid #fff;
+      border-radius: 3px;
+      box-shadow: 0 2px 6px rgba(0,0,0,.3);
+      cursor: pointer;
+      margin: 10px;
+      text-align: center;
+      width: 40px;
+      height: 40px;
+      font-size: 18px;
+      font-weight: bold;
+      color: rgb(25, 25, 25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .custom-map-control:hover {
+      background-color: #f8f9fa;
+    }
+    .custom-map-control i {
+      font-size: 20px;
+    }
+    #map {
+      width: 100%;
+      height: 100%;
+      touch-action: manipulation;
+    }
+    .gm-style .gm-style-iw-c {
+      padding: 0;
+    }
+    .gm-style .gm-style-iw-d {
+      overflow: hidden !important;
+      padding: 0;
+    }
+  </style>
+  <script>
+    // Make these functions globally available for the info window buttons
+    function getDirections(destination) {
+        window.getDirectionsCallback?.(destination);
+    }
+    function clearDirections() {
+        window.clearDirectionsCallback?.();
+    }
+  </script>
+  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAaKZC47lvxIv0ej9bECXhUyaoL3FYuDM8&libraries=places,geometry,routes" referrerpolicy="strict-origin-when-cross-origin"></script>
   <script type="module">
     import { auth, db } from "../../AdminSide/firebase.js";
     import { initializeUserDrawer } from "../components/userDrawer.js";
@@ -83,7 +127,7 @@
         <!-- Enhanced Filters Sidebar -->
         <aside class="w-1/4 bg-white shadow-md rounded-xl p-6">
           <div class="mb-6">
-            <button id="toggleView" class="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition shadow-md">
+            <button id="showMap" class="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition shadow-md">
               <i class="ri-map-pin-line text-lg"></i>
               <span class="font-medium">Show Map</span>
             </button>
@@ -302,65 +346,58 @@
     </main>
     </div>
 
+    <!-- Map View Container -->
+    <div id="mapView" class="fixed inset-0 bg-white z-50 hidden">
+      <div class="h-full relative">
+        <button id="closeMap" class="absolute top-4 right-4 z-10 bg-white p-2 rounded-full shadow-lg hover:bg-gray-100">
+          <i class="ri-close-line text-xl"></i>
+        </button>
+        <div id="map" class="w-full h-full"></div>
+      </div>
+    </div>
+
     <div 
     id="userDrawer" 
     class="fixed top-0 right-0 w-80 h-full bg-white shadow-xl transform transition-transform duration-300 z-50 translate-x-full"
->
+    >
         <div class="drawer-content">
             <!-- Content will be dynamically inserted by JavaScript -->
         </div>
     </div>
 
-<!-- Replace the entire mapView div with this simpler version -->
-<div id="mapView" class="hidden fixed inset-0 z-50 bg-white p-4">
-    <div class="h-full flex flex-col">
-        <!-- Header -->
+    <div id="compareDrawer" class="fixed bottom-0 left-0 w-full bg-white shadow-xl transform translate-y-full transition-transform duration-300 z-50">
+      <div class="container mx-auto max-w-6xl px-4 py-6">
         <div class="flex justify-between items-center mb-4">
-            <button id="closeMap" class="text-gray-600 hover:text-gray-900">
-                <i class="ri-arrow-left-line mr-2"></i>Back to Listings
-            </button>
-            <h2 class="text-lg font-semibold">Lodges in Baguio City</h2>
-            <div class="w-8"></div>
+          <h3 class="text-xl font-bold">Compare Lodges</h3>
+          <button id="closeCompare" class="text-gray-500 hover:text-gray-700">
+            <i class="ri-close-line text-2xl"></i>
+          </button>
         </div>
-        
-        <!-- Map Container -->
-        <div id="map" class="flex-1 w-full rounded-lg"></div>
+        <div id="compareLodges" class="grid grid-cols-3 gap-6">
+          <!-- Compare slots will be populated dynamically -->
+        </div>
+      </div>
     </div>
-</div>
 
-<div id="compareDrawer" class="fixed bottom-0 left-0 w-full bg-white shadow-xl transform translate-y-full transition-transform duration-300 z-50">
-  <div class="container mx-auto max-w-6xl px-4 py-6">
-    <div class="flex justify-between items-center mb-4">
-      <h3 class="text-xl font-bold">Compare Lodges</h3>
-      <button id="closeCompare" class="text-gray-500 hover:text-gray-700">
-        <i class="ri-close-line text-2xl"></i>
-      </button>
-    </div>
-    <div id="compareLodges" class="grid grid-cols-3 gap-6">
-      <!-- Compare slots will be populated dynamically -->
-    </div>
-  </div>
-</div>
-
-<footer class="bg-gray-900 text-white py-12">
-  <div class="container mx-auto px-6 text-center">
-    <div class="mb-8">
-      <h3 class="text-3xl font-bold text-blue-500 mb-4">LodgeEase</h3>
-      <p class="text-gray-300">Aspiras palispis highway, Baguio City, Benguet, 2600 Philippines</p>
-      <p class="text-gray-300">Contact: +(63) 9129 912 6584 | lodgeease.baguio@email.com</p>
-    </div>
-    <div class="flex justify-center space-x-6">
-      <a href="#" class="text-2xl text-blue-400 hover:text-white transition-colors">
-        <i class="fab fa-instagram"></i>
-      </a>
-      <a href="#" class="text-2xl text-blue-400 hover:text-white transition-colors">
-        <i class="fab fa-facebook"></i>
-      </a>
-      <a href="#" class="text-2xl text-blue-400 hover:text-white transition-colors">
-        <i class="fab fa-twitter"></i>
-      </a>
-    </div>
-  </div>
-</footer>
-</body>
+    <footer class="bg-gray-900 text-white py-12">
+      <div class="container mx-auto px-6 text-center">
+        <div class="mb-8">
+          <h3 class="text-3xl font-bold text-blue-500 mb-4">LodgeEase</h3>
+          <p class="text-gray-300">Aspiras palispis highway, Baguio City, Benguet, 2600 Philippines</p>
+          <p class="text-gray-300">Contact: +(63) 9129 912 6584 | lodgeease.baguio@email.com</p>
+        </div>
+        <div class="flex justify-center space-x-6">
+          <a href="#" class="text-2xl text-blue-400 hover:text-white transition-colors">
+            <i class="fab fa-instagram"></i>
+          </a>
+          <a href="#" class="text-2xl text-blue-400 hover:text-white transition-colors">
+            <i class="fab fa-facebook"></i>
+          </a>
+          <a href="#" class="text-2xl text-blue-400 hover:text-white transition-colors">
+            <i class="fab fa-twitter"></i>
+          </a>
+        </div>
+      </div>
+    </footer>
+  </body>
 </html>

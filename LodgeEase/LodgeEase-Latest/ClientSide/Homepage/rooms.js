@@ -158,7 +158,7 @@
             createLodgeCards();
             initializeSearch();
             initializeSort();
-            initializeMapToggle();
+            initializeMap();
             initializeFilters();
         } catch (error) {
             console.error('Error initializing functionality:', error);
@@ -332,130 +332,262 @@
     }
 
     // Map toggle functionality
-    function initializeMapToggle() {
-        const toggleButton = document.getElementById('toggleView');
-        const mapView = document.getElementById('mapView');
-        const closeMapButton = document.getElementById('closeMap');
-        
-        if (toggleButton && mapView) {
-            toggleButton.addEventListener('click', () => {
-                mapView.classList.remove('hidden');
-                console.log('Map view shown');
-                
-                setTimeout(() => {
-                    if (!window.lodgeMap) {
-                        console.log('Creating new map instance');
-                        initMap();
-                    } else {
-                        console.log('Refreshing existing map');
-                        window.lodgeMap.invalidateSize();
-                        window.lodgeMap.setView([16.4023, 120.5960], 13);
-                        addMarkersToMap();
-                    }
-                }, 100);
-            });
-        }
+    let map;
+    let markers = [];
+    let userMarker;
+    let directionsService;
+    let directionsRenderer;
+    let userLocation = null;
 
-        if (closeMapButton) {
-            closeMapButton.addEventListener('click', () => {
-                mapView.classList.add('hidden');
-            });
+    // Initialize map functionality when DOM is loaded
+    document.addEventListener('DOMContentLoaded', () => {
+        initMapView();
+        
+        // Connect the global direction functions
+        window.getDirectionsCallback = getDirections;
+        window.clearDirectionsCallback = clearDirections;
+    });
+
+    // Ensure map initialization only happens after Google Maps API is loaded
+    function initializeMap() {
+        if (typeof google === 'undefined') {
+            setTimeout(initializeMap, 100);
+            return;
         }
+        initMap();
+        getUserLocation();
+        addMarkers(lodgeData);
     }
 
-    // Initialize map function
-    function initMap() {
-        try {
-            console.log('Starting map initialization');
-            const mapContainer = document.getElementById('map');
-            
-            if (!mapContainer) {
-                console.error('Map container not found');
-                return;
-            }
-
-            // Clean up existing map and markers
-            if (window.lodgeMap) {
-                window.markers?.forEach(marker => marker?.remove());
-                window.markers = [];
-                window.lodgeMap.remove();
-                window.lodgeMap = null;
-                console.log('Cleaned up existing map');
-            }
-
-            // Create new map instance
-            const map = L.map(mapContainer, {
-                center: [16.4023, 120.5960],
-                zoom: 13
-            });
-
-            console.log('Map object created');
-
-            // Add tile layer
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors'
-            }).addTo(map);
-
-            // Store map reference
-            window.lodgeMap = map;
-
-            // Get user's current location
-            if ("geolocation" in navigator) {
-                navigator.geolocation.getCurrentPosition(function(position) {
-                    const userLat = position.coords.latitude;
-                    const userLng = position.coords.longitude;
-
-                    // Create a red marker for user's location
-                    const userIcon = L.icon({
-                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-                        iconSize: [25, 41],
-                        iconAnchor: [12, 41],
-                        popupAnchor: [1, -34],
-                        shadowSize: [41, 41]
+    function getUserLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    userLocation = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    };
+                    
+                    // Add user marker
+                    if (userMarker) userMarker.setMap(null);
+                    userMarker = new google.maps.Marker({
+                        position: userLocation,
+                        map: map,
+                        title: 'Your Location',
+                        icon: {
+                            path: google.maps.SymbolPath.CIRCLE,
+                            scale: 10,
+                            fillColor: '#4285F4',
+                            fillOpacity: 1,
+                            strokeColor: '#ffffff',
+                            strokeWeight: 2,
+                        },
+                        zIndex: 999
                     });
 
-                    // Add user marker to map
-                    const userMarker = L.marker([userLat, userLng], {
-                        icon: userIcon
-                    }).addTo(map);
+                    // Add location button
+                    const locationButton = document.createElement("button");
+                    locationButton.className = "custom-map-control";
+                    locationButton.innerHTML = '<i class="ri-focus-2-line"></i>';
+                    locationButton.title = "Center to your location";
+                    locationButton.onclick = () => {
+                        map.panTo(userLocation);
+                        map.setZoom(15);
+                    };
 
-                    userMarker.bindPopup('You are here!').openPopup();
-
-                    // Store user marker reference
-                    window.userMarker = userMarker;
-
-                    // Center map on user location
-                    map.setView([userLat, userLng], 14);
-                }, function(error) {
-                    console.error("Error getting location:", error);
-                    // Continue with default map view if location access is denied
-                    addMarkersToMap();
-                });
-            } else {
-                console.log("Geolocation not available");
-                // Continue with default map view if geolocation is not supported
-                addMarkersToMap();
-            }
-
-            // Add lodge markers after a short delay
-            setTimeout(() => {
-                map.invalidateSize();
-                addMarkersToMap();
-            }, 200);
-
-            console.log('Map initialization completed');
-        } catch (error) {
-            console.error('Error in initMap:', error);
+                    map.controls[google.maps.ControlPosition.RIGHT_BOTTOM].push(locationButton);
+                },
+                (error) => {
+                    console.error("Error getting user location:", error);
+                }
+            );
         }
     }
 
-    // Add this function to fit bounds to all markers
-    function fitBounds() {
-        if (window.lodgeMap && window.markers && window.markers.length > 0) {
-            const bounds = L.latLngBounds(window.markers.map(marker => marker.getLatLng()));
-            window.lodgeMap.fitBounds(bounds, { padding: [50, 50] });
+    function initMap() {
+        const baguioCity = { lat: 16.4023, lng: 120.5960 };
+        
+        // Initialize directions service and renderer
+        directionsService = new google.maps.DirectionsService();
+        directionsRenderer = new google.maps.DirectionsRenderer({
+            suppressMarkers: true,
+            polylineOptions: {
+                strokeColor: '#4285F4',
+                strokeWeight: 4
+            }
+        });
+
+        map = new google.maps.Map(document.getElementById("map"), {
+            zoom: 14,
+            center: baguioCity,
+            mapTypeControl: true,
+            streetViewControl: true,
+            fullscreenControl: true,
+            zoomControl: true,
+            gestureHandling: 'greedy',
+            clickableIcons: true,
+            draggable: true,
+            keyboardShortcuts: true,
+            disableDoubleClickZoom: false,
+            styles: [
+                {
+                    featureType: "poi",
+                    elementType: "labels",
+                    stylers: [{ visibility: "on" }]
+                }
+            ]
+        });
+
+        directionsRenderer.setMap(map);
+
+        // Add custom controls
+        const zoomInButton = document.createElement("button");
+        zoomInButton.textContent = "+";
+        zoomInButton.className = "custom-map-control";
+        zoomInButton.onclick = () => map.setZoom(map.getZoom() + 1);
+
+        const zoomOutButton = document.createElement("button");
+        zoomOutButton.textContent = "-";
+        zoomOutButton.className = "custom-map-control";
+        zoomOutButton.onclick = () => map.setZoom(map.getZoom() - 1);
+
+        map.controls[google.maps.ControlPosition.RIGHT_BOTTOM].push(zoomInButton);
+        map.controls[google.maps.ControlPosition.RIGHT_BOTTOM].push(zoomOutButton);
+    }
+
+    function getDirections(destination) {
+        if (!userLocation) {
+            alert("Please allow location access to get directions");
+            return;
         }
+
+        // Show loading state
+        const loadingInfoWindow = new google.maps.InfoWindow({
+            content: `
+                <div class="p-4">
+                    <h3 class="font-bold mb-2">Getting Directions...</h3>
+                    <p class="text-sm">Please wait while we calculate the route.</p>
+                </div>
+            `,
+            position: destination
+        });
+        loadingInfoWindow.open(map);
+
+        const request = {
+            origin: userLocation,
+            destination: destination,
+            travelMode: google.maps.TravelMode.DRIVING
+        };
+
+        directionsService.route(request, (result, status) => {
+            loadingInfoWindow.close();
+
+            if (status === google.maps.DirectionsStatus.OK) {
+                directionsRenderer.setDirections(result);
+                
+                // Show route info
+                const route = result.routes[0].legs[0];
+                const infoContent = `
+                    <div class="p-4">
+                        <h3 class="font-bold mb-2">Directions</h3>
+                        <p class="text-sm mb-1">Distance: ${route.distance.text}</p>
+                        <p class="text-sm mb-2">Duration: ${route.duration.text}</p>
+                        <button onclick="clearDirections()" class="text-blue-500 hover:text-blue-700 text-sm">Clear directions</button>
+                    </div>
+                `;
+                
+                const infoWindow = new google.maps.InfoWindow({
+                    content: infoContent,
+                    position: destination
+                });
+                
+                infoWindow.open(map);
+            } else {
+                let errorMessage = "Unable to get directions at this time.";
+                if (status === google.maps.DirectionsStatus.REQUEST_DENIED) {
+                    errorMessage = "API Error: Please make sure the following APIs are enabled in your Google Cloud Console:\n" +
+                                 "- Maps JavaScript API\n" +
+                                 "- Directions API\n" +
+                                 "Also ensure your API key has the correct restrictions set.";
+                } else if (status === google.maps.DirectionsStatus.ZERO_RESULTS) {
+                    errorMessage = "No route could be found between your location and the destination.";
+                } else if (status === google.maps.DirectionsStatus.OVER_QUERY_LIMIT) {
+                    errorMessage = "You have exceeded your API request quota. Please try again later.";
+                }
+                console.error("Directions request failed:", status);
+                
+                const errorInfoWindow = new google.maps.InfoWindow({
+                    content: `
+                        <div class="p-4">
+                            <h3 class="font-bold mb-2 text-red-600">Error Getting Directions</h3>
+                            <p class="text-sm mb-2">${errorMessage}</p>
+                            <p class="text-sm text-gray-600">Status: ${status}</p>
+                        </div>
+                    `,
+                    position: destination
+                });
+                errorInfoWindow.open(map);
+            }
+        });
+    }
+
+    function clearDirections() {
+        directionsRenderer.setDirections({ routes: [] });
+    }
+
+    function addMarkers(lodges) {
+        // Clear existing markers
+        markers.forEach(marker => marker.setMap(null));
+        markers = [];
+
+        lodges.forEach(lodge => {
+            const marker = new google.maps.Marker({
+                position: { lat: parseFloat(lodge.coordinates.lat), lng: parseFloat(lodge.coordinates.lng) },
+                map: map,
+                title: lodge.name,
+                animation: google.maps.Animation.DROP
+            });
+
+            const infoWindow = new google.maps.InfoWindow({
+                content: `
+                    <div class="p-4">
+                        <h3 class="font-bold">${lodge.name}</h3>
+                        <p class="text-sm">${lodge.location}</p>
+                        <p class="text-sm">₱${lodge.price} per night</p>
+                        <div class="mt-2">
+                            <a href="../Lodge/lodge${lodge.id}.html" class="text-blue-500 hover:text-blue-700">View Details</a>
+                            <button onclick="getDirections({lat: ${lodge.coordinates.lat}, lng: ${lodge.coordinates.lng}})" 
+                                    class="ml-2 text-blue-500 hover:text-blue-700">
+                                Get Directions
+                            </button>
+                        </div>
+                    </div>
+                `
+            });
+
+            marker.addListener("click", () => {
+                infoWindow.open(map, marker);
+            });
+
+            markers.push(marker);
+        });
+    }
+
+    function initMapView() {
+        const showMapBtn = document.getElementById("showMap");
+        const closeMapBtn = document.getElementById("closeMap");
+        const mapView = document.getElementById("mapView");
+
+        showMapBtn?.addEventListener("click", () => {
+            mapView.classList.remove("hidden");
+            if (!map) {
+                initializeMap();
+            }
+        });
+
+        closeMapBtn?.addEventListener("click", () => {
+            mapView.classList.add("hidden");
+        });
     }
 
     // Initialize filters
@@ -587,64 +719,5 @@
 
             lodges.forEach(lodge => container.appendChild(lodge));
         });
-    }
-
-    // Update addMarkersToMap to preserve user marker
-    function addMarkersToMap() {
-        if (!window.lodgeMap) {
-            console.error('Map not initialized');
-            return;
-        }
-        
-        try {
-            // Clear existing markers except user marker
-            if (window.markers) {
-                window.markers.forEach(marker => marker.remove());
-            }
-            window.markers = [];
-
-            // Add lodge markers
-            lodgeData.forEach((lodge, index) => {
-                if (!lodge.coordinates) {
-                    console.warn(`No coordinates for lodge: ${lodge.name}`);
-                    return;
-                }
-
-                try {
-                    const marker = L.marker([
-                        lodge.coordinates.lat,
-                        lodge.coordinates.lng
-                    ]);
-
-                    marker.addTo(window.lodgeMap)
-                        .bindPopup(`
-                            <div class="p-2">
-                                <h3 class="font-bold">${lodge.name}</h3>
-                                <p class="text-sm">${lodge.location}</p>
-                                <p class="text-sm font-bold">₱${lodge.price}/night</p>
-                            </div>
-                        `);
-
-                    window.markers.push(marker);
-                } catch (markerError) {
-                    console.error(`Error adding marker for ${lodge.name}:`, markerError);
-                }
-            });
-
-            // Fit bounds to include all markers and user location
-            const allMarkers = [...window.markers];
-            if (window.userMarker) {
-                allMarkers.push(window.userMarker);
-            }
-            
-            if (allMarkers.length > 0) {
-                const bounds = L.latLngBounds(allMarkers.map(marker => marker.getLatLng()));
-                window.lodgeMap.fitBounds(bounds, { padding: [50, 50] });
-            }
-
-            console.log(`Successfully added ${window.markers.length} markers`);
-        } catch (error) {
-            console.error('Error adding markers:', error);
-        }
     }
 })();
