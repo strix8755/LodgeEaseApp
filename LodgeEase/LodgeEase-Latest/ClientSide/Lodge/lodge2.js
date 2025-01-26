@@ -1,8 +1,11 @@
-// Imports
-import { addBooking } from '../../AdminSide/firebase.js';
-import { Timestamp } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore.js";
+import { db, auth, addBooking } from '../../AdminSide/firebase.js';
+import { doc, getDoc, collection, addDoc, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
-// DOM Elements
+// Constants for pricing
+const NIGHTLY_RATE = 6500; // ₱6,500 per night as shown in the HTML
+const SERVICE_FEE_PERCENTAGE = 0.14; // 14% service fee
+
+// Calendar Functionality
 const calendarModal = document.getElementById('calendar-modal');
 const calendarGrid = document.getElementById('calendar-grid');
 const calendarMonth = document.getElementById('calendar-month');
@@ -17,18 +20,12 @@ const pricingDetails = document.getElementById('pricing-details');
 const nightsCalculation = document.getElementById('nights-calculation');
 const totalNightsPrice = document.getElementById('total-nights-price');
 const totalPrice = document.getElementById('total-price');
-const serviceFee = document.getElementById('service-fee');
+let serviceFee = document.getElementById('service-fee');
 
-// Constants
-const NIGHTLY_RATE = 3200;
-const SERVICE_FEE_PERCENTAGE = 0.14;
-
-// State
-let currentDate = new Date();
+let currentDate = new Date(); // Current date
 let selectedCheckIn = null;
 let selectedCheckOut = null;
 
-// Calendar Functions
 function renderCalendar(date) {
   const month = date.getMonth();
   const year = date.getFullYear();
@@ -54,7 +51,7 @@ function renderCalendar(date) {
   for (let i = 0; i < startingDay; i++) {
     const dayEl = document.createElement('div');
     dayEl.textContent = new Date(year, month, -startingDay + i + 1).getDate();
-    dayEl.className = 'text-gray-300 cursor-not-allowed';
+    dayEl.className = 'text-gray-300';
     calendarGrid.appendChild(dayEl);
   }
 
@@ -62,49 +59,35 @@ function renderCalendar(date) {
   for (let day = 1; day <= lastDay.getDate(); day++) {
     const dayEl = document.createElement('div');
     dayEl.textContent = day;
-    dayEl.className = 'cursor-pointer text-center p-2 hover:bg-blue-50 rounded transition-colors duration-200';
+    dayEl.className = 'hover-date text-gray-500 hover:bg-blue-50 rounded py-2';
     
     const currentDay = new Date(year, month, day);
-    const today = new Date();
-    
-    // Disable past dates
-    if (currentDay < today) {
-      dayEl.className = 'text-gray-300 cursor-not-allowed';
-    } else {
-      // Check if day is in range
-      if (selectedCheckIn && selectedCheckOut && 
-          currentDay > selectedCheckIn && 
-          currentDay < selectedCheckOut) {
-        dayEl.classList.add('bg-blue-100');
-      }
 
-      // Highlight selected dates
-      if ((selectedCheckIn && currentDay.toDateString() === selectedCheckIn.toDateString()) ||
-          (selectedCheckOut && currentDay.toDateString() === selectedCheckOut.toDateString())) {
-        dayEl.classList.add('bg-blue-500', 'text-white');
-      }
-
-      dayEl.addEventListener('click', () => handleDateSelection(currentDay));
+    // Check if day is in range
+    if (selectedCheckIn && selectedCheckOut && 
+        currentDay > selectedCheckIn && 
+        currentDay < selectedCheckOut) {
+      dayEl.classList.add('in-range');
     }
-    
+
+    // Highlight selected dates
+    if ((selectedCheckIn && currentDay.toDateString() === selectedCheckIn.toDateString()) ||
+        (selectedCheckOut && currentDay.toDateString() === selectedCheckOut.toDateString())) {
+      dayEl.classList.add('selected-date');
+    }
+
+    dayEl.addEventListener('click', () => handleDateSelection(currentDay));
     calendarGrid.appendChild(dayEl);
   }
 }
 
 function handleDateSelection(selectedDate) {
-  const today = new Date();
-  if (selectedDate < today) {
-    return; // Don't allow selection of past dates
-  }
-
   if (!selectedCheckIn || (selectedCheckIn && selectedCheckOut)) {
     // First selection or reset
     selectedCheckIn = selectedDate;
     selectedCheckOut = null;
     checkInInput.value = formatDate(selectedDate);
     checkOutInput.value = '';
-    nightsSelected.textContent = '';
-    pricingDetails.classList.add('hidden');
   } else {
     // Second selection
     if (selectedDate > selectedCheckIn) {
@@ -116,29 +99,22 @@ function handleDateSelection(selectedDate) {
       nightsSelected.textContent = `${nights} nights selected`;
       
       // Update pricing
+      const nightlyRate = 6500;
       const totalNights = nights;
-      const subtotal = NIGHTLY_RATE * totalNights;
-      const serviceFeeAmount = Math.round(subtotal * SERVICE_FEE_PERCENTAGE);
+      const subtotal = nightlyRate * totalNights;
+      const serviceFeeCalculation = Math.round(subtotal * 0.14);
       
-      nightsCalculation.textContent = `₱${NIGHTLY_RATE.toLocaleString()} x ${totalNights} nights`;
+      nightsCalculation.textContent = `₱${nightlyRate} x ${totalNights} nights`;
       totalNightsPrice.textContent = `₱${subtotal.toLocaleString()}`;
-      serviceFee.textContent = `₱${serviceFeeAmount.toLocaleString()}`;
+      serviceFee.textContent = `₱${(serviceFeeCalculation).toLocaleString()}`;
       pricingDetails.classList.remove('hidden');
-      totalPrice.textContent = `₱${(subtotal + serviceFeeAmount).toLocaleString()}`;
-
-      // Close calendar after selection is complete
-      setTimeout(() => {
-        calendarModal.classList.add('hidden');
-        calendarModal.classList.remove('flex');
-      }, 500);
+      totalPrice.textContent = `₱${(subtotal + serviceFeeCalculation).toLocaleString()}`;
     } else {
       // If selected date is before check-in, reset and start over
       selectedCheckIn = selectedDate;
       selectedCheckOut = null;
       checkInInput.value = formatDate(selectedDate);
       checkOutInput.value = '';
-      nightsSelected.textContent = '';
-      pricingDetails.classList.add('hidden');
     }
   }
 
@@ -153,123 +129,403 @@ function formatDate(date) {
   });
 }
 
-// Booking Functions
-async function saveBooking() {
-  try {
-    const guestsSelect = document.querySelector('select');
-    const guests = guestsSelect.options[guestsSelect.selectedIndex].text;
-    const nights = Math.round((selectedCheckOut - selectedCheckIn) / (1000 * 60 * 60 * 24));
-    const subtotal = NIGHTLY_RATE * nights;
-    const serviceFeeAmount = Math.round(subtotal * SERVICE_FEE_PERCENTAGE);
-    const total = subtotal + serviceFeeAmount;
-
-    const bookingData = {
-      propertyDetails: {
-        name: "Pine Haven Lodge",
-        location: "Baguio City, Philippines",
-        roomNumber: "A101",
-        roomType: "Deluxe Suite"
-      },
-      floorLevel: "1st Floor",
-      guestName: "Guest",
-      checkIn: Timestamp.fromDate(selectedCheckIn),
-      checkOut: Timestamp.fromDate(selectedCheckOut),
-      guests: guests,
-      nightlyRate: NIGHTLY_RATE,
-      numberOfNights: nights,
-      serviceFee: serviceFeeAmount,
-      totalPrice: total,
-      status: 'pending',
-      createdAt: Timestamp.fromDate(new Date())
-    };
-
-    // Store booking data in localStorage
-    localStorage.setItem('bookingData', JSON.stringify(bookingData));
-    localStorage.setItem('totalPrice', total.toString());
-    
-    console.log('Attempting to save booking with data:', bookingData);
-    
-    const bookingId = await addBooking(bookingData);
-    if (!bookingId) throw new Error('Failed to get booking ID');
-    
-    console.log('Booking saved successfully with ID:', bookingId);
-    localStorage.setItem('currentBookingId', bookingId);
-    
-    return bookingId;
-  } catch (error) {
-    console.error('Error in saveBooking:', error);
-    throw error;
-  }
-}
-
-async function handleReserveClick(event) {
-  event.preventDefault();
-
-  try {
-    if (!selectedCheckIn || !selectedCheckOut) {
-      alert('Please select check-in and check-out dates');
-      return;
-    }
-
-    const bookingId = await saveBooking();
-    if (bookingId) {
-      window.location.href = `pay.html?bookingId=${encodeURIComponent(bookingId)}`;
-    } else {
-      throw new Error('Failed to create booking');
-    }
-  } catch (error) {
-    console.error('Error handling reserve click:', error);
-    alert('There was an error processing your booking. Please try again.');
-  }
-}
-
-// User Drawer Functions
-function initializeUserDrawer() {
-  const userIcon = document.querySelector('.ri-user-line');
-  const userDrawer = document.getElementById('userDrawer');
-  const closeDrawer = document.getElementById('closeDrawer');
-  const drawerOverlay = document.getElementById('drawerOverlay');
-
-  // Only initialize if all required elements are present
-  if (userIcon && userDrawer && closeDrawer && drawerOverlay) {
-    function closeUserDrawer() {
-      userDrawer.classList.add('translate-x-full');
-      drawerOverlay.classList.add('hidden');
-    }
-
-    userIcon.addEventListener('click', () => {
-      userDrawer.classList.remove('translate-x-full');
-      drawerOverlay.classList.remove('hidden');
-    });
-
-    closeDrawer.addEventListener('click', closeUserDrawer);
-    drawerOverlay.addEventListener('click', closeUserDrawer);
-  } else {
-    console.warn('User drawer elements not found, skipping initialization');
-  }
-}
-
 // Event Listeners
+checkInInput.addEventListener('click', () => {
+  calendarModal.classList.remove('hidden');
+  calendarModal.classList.add('flex');
+});
+
+checkOutInput.addEventListener('click', () => {
+  if (selectedCheckIn) {
+    calendarModal.classList.remove('hidden');
+    calendarModal.classList.add('flex');
+  }
+});
+
+closeCalendarBtn.addEventListener('click', () => {
+  calendarModal.classList.add('hidden');
+  calendarModal.classList.remove('flex');
+});
+
+clearDatesBtn.addEventListener('click', () => {
+  selectedCheckIn = null;
+  selectedCheckOut = null;
+  checkInInput.value = '';
+  checkOutInput.value = '';
+  nightsSelected.textContent = '';
+  pricingDetails.classList.add('hidden');
+  renderCalendar(currentDate);
+});
+
+prevMonthBtn.addEventListener('click', () => {
+  currentDate.setMonth(currentDate.getMonth() - 1);
+  renderCalendar(currentDate);
+});
+
+nextMonthBtn.addEventListener('click', () => {
+  currentDate.setMonth(currentDate.getMonth() + 1);
+  renderCalendar(currentDate);
+});
+
+// Initial calendar render
+renderCalendar(currentDate);
+
+// Close calendar when clicking outside
+calendarModal.addEventListener('click', (e) => {
+  if (e.target === calendarModal) {
+    calendarModal.classList.add('hidden');
+    calendarModal.classList.remove('flex');
+  }
+});
+
+// Get current user data
+async function getCurrentUserData() {
+    try {
+        const user = auth.currentUser;
+        if (!user) {
+            console.log('No user is signed in');
+            return null;
+        }
+
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userDocRef);
+        
+        if (userDoc.exists()) {
+            return userDoc.data();
+        } else {
+            console.log('No user data found');
+            return null;
+        }
+    } catch (error) {
+        console.error('Error getting user data:', error);
+        throw error;
+    }
+}
+
+async function saveBooking(bookingData) {
+    try {
+        if (!db) {
+            throw new Error('Firestore is not initialized');
+        }
+
+        // Validate booking data
+        const validationResult = validateBookingData(bookingData);
+        if (!validationResult.isValid) {
+            throw new Error(`Booking validation failed: ${validationResult.error}`);
+        }
+
+        // Add to Firestore
+        const bookingsRef = collection(db, 'bookings');
+        const docRef = await addDoc(bookingsRef, bookingData);
+        
+        console.log('Booking saved successfully with ID:', docRef.id);
+        return docRef.id;
+    } catch (error) {
+        console.error('Error in saveBooking:', error);
+        throw error;
+    }
+}
+
+// Add error checking function
+function validateBookingData(data) {
+    try {
+        const requiredFields = [
+            'guestName',
+            'email',
+            'contactNumber',
+            'userId',
+            'checkIn',
+            'checkOut',
+            'createdAt',
+            'propertyDetails',
+            'guests',
+            'numberOfNights',
+            'nightlyRate',
+            'subtotal',
+            'serviceFee',
+            'totalPrice',
+            'paymentStatus',
+            'status'
+        ];
+
+        for (const field of requiredFields) {
+            if (!data[field]) {
+                return {
+                    isValid: false,
+                    error: `Missing required field: ${field}`
+                };
+            }
+        }
+
+        // Validate property details
+        const requiredPropertyFields = ['name', 'location', 'roomNumber', 'roomType', 'floorLevel'];
+        for (const field of requiredPropertyFields) {
+            if (!data.propertyDetails[field]) {
+                return {
+                    isValid: false,
+                    error: `Missing required property field: ${field}`
+                };
+            }
+        }
+
+        // Validate dates
+        if (!(data.checkIn instanceof Timestamp)) {
+            return {
+                isValid: false,
+                error: 'Invalid checkIn date format'
+            };
+        }
+        if (!(data.checkOut instanceof Timestamp)) {
+            return {
+                isValid: false,
+                error: 'Invalid checkOut date format'
+            };
+        }
+        if (!(data.createdAt instanceof Timestamp)) {
+            return {
+                isValid: false,
+                error: 'Invalid createdAt date format'
+            };
+        }
+
+        // Validate numeric fields
+        if (typeof data.numberOfNights !== 'number' || data.numberOfNights <= 0) {
+            return {
+                isValid: false,
+                error: 'Invalid number of nights'
+            };
+        }
+        if (typeof data.nightlyRate !== 'number' || data.nightlyRate <= 0) {
+            return {
+                isValid: false,
+                error: 'Invalid nightly rate'
+            };
+        }
+        if (typeof data.subtotal !== 'number' || data.subtotal <= 0) {
+            return {
+                isValid: false,
+                error: 'Invalid subtotal'
+            };
+        }
+        if (typeof data.serviceFee !== 'number' || data.serviceFee < 0) {
+            return {
+                isValid: false,
+                error: 'Invalid service fee'
+            };
+        }
+        if (typeof data.totalPrice !== 'number' || data.totalPrice <= 0) {
+            return {
+                isValid: false,
+                error: 'Invalid total price'
+            };
+        }
+
+        // All validations passed
+        return {
+            isValid: true,
+            error: null
+        };
+    } catch (error) {
+        console.error('Error in validateBookingData:', error);
+        return {
+            isValid: false,
+            error: 'Validation error: ' + error.message
+        };
+    }
+}
+
+export async function handleReserveClick(event) {
+    try {
+        event.preventDefault();
+
+        // Check if user is logged in
+        const user = auth.currentUser;
+        
+        // Validate contact number
+        const contactNumber = document.getElementById('guest-contact').value.trim();
+        if (!contactNumber) {
+            alert('Please enter your contact number');
+            return;
+        }
+        if (!/^[0-9]{11}$/.test(contactNumber)) {
+            alert('Please enter a valid 11-digit contact number');
+            return;
+        }
+
+        // Validate guests
+        const guests = document.getElementById('guests').value;
+        if (!guests || !['1', '2'].includes(guests)) {
+            alert('Please select a valid number of guests');
+            return;
+        }
+
+        // Validate dates
+        if (!selectedCheckIn || !selectedCheckOut) {
+            alert('Please select both check-in and check-out dates');
+            return;
+        }
+
+        const nights = Math.round((selectedCheckOut - selectedCheckIn) / (1000 * 60 * 60 * 24));
+        if (nights <= 0) {
+            alert('Check-out date must be after check-in date');
+            return;
+        }
+
+        // If not logged in, save details and redirect
+        if (!user) {
+            const bookingDetails = {
+                checkIn: selectedCheckIn,
+                checkOut: selectedCheckOut,
+                guests: guests,
+                contactNumber: contactNumber
+            };
+            localStorage.setItem('pendingBooking', JSON.stringify(bookingDetails));
+            
+            const returnUrl = encodeURIComponent(window.location.href);
+            window.location.href = `../Login/index.html?redirect=${returnUrl}`;
+            return;
+        }
+
+        // Get user data
+        const userData = await getCurrentUserData();
+        if (!userData) {
+            throw new Error('Unable to get user data');
+        }
+
+        // Calculate pricing
+        const subtotal = NIGHTLY_RATE * nights;
+        const serviceFeeAmount = Math.round(subtotal * SERVICE_FEE_PERCENTAGE);
+        const total = subtotal + serviceFeeAmount;
+
+        const bookingData = {
+            // Guest Information
+            guestName: userData.fullname || '',
+            email: userData.email || '',
+            contactNumber: contactNumber,
+            userId: user.uid,
+            guests: parseInt(guests),
+            
+            // Dates
+            checkIn: Timestamp.fromDate(selectedCheckIn),
+            checkOut: Timestamp.fromDate(selectedCheckOut),
+            createdAt: Timestamp.now(),
+            
+            // Property Details
+            propertyDetails: {
+                name: 'Pine Haven Lodge',
+                type: 'Lodge',
+                location: 'Baguio City'
+            },
+            
+            // Pricing
+            pricing: {
+                nightlyRate: NIGHTLY_RATE,
+                numberOfNights: nights,
+                subtotal: subtotal,
+                serviceFee: serviceFeeAmount,
+                total: total
+            },
+            
+            // Status
+            status: 'pending',
+            paymentStatus: 'pending'
+        };
+
+        // Store booking data in localStorage for payment page
+        localStorage.setItem('currentBooking', JSON.stringify(bookingData));
+
+        // Redirect to payment page
+        window.location.href = '../paymentProcess/pay.html';
+
+    } catch (error) {
+        console.error('Error in handleReserveClick:', error);
+        alert('An error occurred while processing your reservation. Please try again.');
+    }
+}
+
+// Update the event listener setup
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        // Check if there's a pending booking after login
+        const pendingBooking = localStorage.getItem('pendingBooking');
+        if (pendingBooking && auth.currentUser) {
+            const bookingDetails = JSON.parse(pendingBooking);
+            
+            // Restore the booking details
+            selectedCheckIn = new Date(bookingDetails.checkIn);
+            selectedCheckOut = new Date(bookingDetails.checkOut);
+            document.querySelector('select').value = bookingDetails.guests;
+            document.getElementById('guest-contact').value = bookingDetails.contactNumber;
+            
+            // Update the display
+            updateDateInputs();
+            updatePricingDetails();
+        }
+    } catch (error) {
+        console.error('Error restoring pending booking:', error);
+    }
+});
+
+// Add event listener for page load to check for pending bookings
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('DOM Content Loaded');
+  // Initialize all event listeners
+  initializeEventListeners();
+
+  // Auth state observer
+  auth.onAuthStateChanged((user) => {
+    if (!user) {
+      window.location.href = '../Login/index.html';
+    }
+  });
+});
+
 function initializeEventListeners() {
-  // Calendar related listeners
-  checkInInput.addEventListener('click', () => {
+  // Initialize calendar
+  renderCalendar(currentDate);
+
+  // Direct event listener for reserve button
+  const reserveBtn = document.getElementById('reserve-btn');
+  if (reserveBtn) {
+    console.log('Found reserve button, adding click listener');
+    reserveBtn.onclick = async (event) => {
+      console.log('Reserve button clicked');
+      try {
+        await handleReserveClick(event);
+      } catch (error) {
+        console.error('Error in reserve button click handler:', error);
+      }
+    };
+  } else {
+    console.error('Reserve button not found');
+  }
+
+  // Auth state observer
+  auth.onAuthStateChanged((user) => {
+    if (!user) {
+      window.location.href = '../Login/index.html';
+    }
+  });
+
+  // Calendar event listeners
+  checkInInput?.addEventListener('click', () => {
     calendarModal.classList.remove('hidden');
     calendarModal.classList.add('flex');
   });
 
-  checkOutInput.addEventListener('click', () => {
+  checkOutInput?.addEventListener('click', () => {
     if (selectedCheckIn) {
       calendarModal.classList.remove('hidden');
       calendarModal.classList.add('flex');
     }
   });
 
-  closeCalendarBtn.addEventListener('click', () => {
+  closeCalendarBtn?.addEventListener('click', () => {
     calendarModal.classList.add('hidden');
     calendarModal.classList.remove('flex');
   });
 
-  clearDatesBtn.addEventListener('click', () => {
+  clearDatesBtn?.addEventListener('click', () => {
     selectedCheckIn = null;
     selectedCheckOut = null;
     checkInInput.value = '';
@@ -279,35 +535,46 @@ function initializeEventListeners() {
     renderCalendar(currentDate);
   });
 
-  prevMonthBtn.addEventListener('click', () => {
+  prevMonthBtn?.addEventListener('click', () => {
     currentDate.setMonth(currentDate.getMonth() - 1);
     renderCalendar(currentDate);
   });
 
-  nextMonthBtn.addEventListener('click', () => {
+  nextMonthBtn?.addEventListener('click', () => {
     currentDate.setMonth(currentDate.getMonth() + 1);
     renderCalendar(currentDate);
   });
 
-  calendarModal.addEventListener('click', (e) => {
+  // Calendar modal outside click
+  calendarModal?.addEventListener('click', (e) => {
     if (e.target === calendarModal) {
       calendarModal.classList.add('hidden');
       calendarModal.classList.remove('flex');
     }
   });
-
-  // Reserve button listener
-  const reserveBtn = document.getElementById('reserve-btn');
-  if (reserveBtn) {
-    reserveBtn.addEventListener('click', handleReserveClick);
-  } else {
-    console.error('Reserve button not found');
-  }
 }
 
-// Initialize
-document.addEventListener('DOMContentLoaded', () => {
-  initializeEventListeners();
-  initializeUserDrawer();
-  renderCalendar(currentDate);
-});
+function updateDateInputs() {
+  checkInInput.value = formatDate(selectedCheckIn);
+  checkOutInput.value = formatDate(selectedCheckOut);
+}
+
+function updatePricingDetails() {
+  const nights = Math.round((selectedCheckOut - selectedCheckIn) / (1000 * 60 * 60 * 24));
+  nightsSelected.textContent = `${nights} nights selected`;
+  
+  // Update pricing
+  const nightlyRate = 6500;
+  const totalNights = nights;
+  const subtotal = nightlyRate * totalNights;
+  const serviceFeeCalculation = Math.round(subtotal * 0.14);
+  
+  nightsCalculation.textContent = `₱${nightlyRate} x ${totalNights} nights`;
+  totalNightsPrice.textContent = `₱${subtotal.toLocaleString()}`;
+  serviceFee.textContent = `₱${(serviceFeeCalculation).toLocaleString()}`;
+  pricingDetails.classList.remove('hidden');
+  totalPrice.textContent = `₱${(subtotal + serviceFeeCalculation).toLocaleString()}`;
+}
+
+import { initializeUserDrawer } from '../components/userDrawer.js';
+document.addEventListener('DOMContentLoaded', () => initializeUserDrawer(auth, db));

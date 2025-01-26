@@ -57,3 +57,6 @@ function initializeUserDrawer() {
         }
     });
 }
+
+import { initializeUserDrawer } from '../components/userDrawer.js';
+document.addEventListener('DOMContentLoaded', () => initializeUserDrawer(auth, db));

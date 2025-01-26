@@ -575,3 +575,6 @@ function updatePricingDetails() {
   pricingDetails.classList.remove('hidden');
   totalPrice.textContent = `₱${(subtotal + serviceFeeCalculation).toLocaleString()}`;
 }
+
+import { initializeUserDrawer } from '../components/userDrawer.js';
+document.addEventListener('DOMContentLoaded', () => initializeUserDrawer(auth, db));

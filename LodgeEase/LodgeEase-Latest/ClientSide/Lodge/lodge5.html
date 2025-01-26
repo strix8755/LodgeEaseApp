@@ -3,30 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Apartment - Room 6</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <title>Hotel Client Dashboard5</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module" src="lodge4.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../Homepage/styles.css">
-    <script src="lodge5.js"></script>
-    <script src ="../components/userDrawer.js"></script>
+    
 </head>
-<body class="bg-gray-100">
-    <!-- Navigation -->
-    <nav class="bg-white shadow-lg">
-        <div class="max-w-6xl mx-auto px-4">
-            <div class="flex justify-between items-center h-16">
-                <a href="../Homepage/rooms.html" class="text-2xl font-bold text-blue-600">LodgeEase</a>
-                <div class="flex space-x-4 items-center">
-                    <button id="userButton" class="text-gray-600 hover:text-gray-800">
-                        <i class="ri-user-line text-2xl"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </nav>
+
+<body class="text-gray-800">
+  <header class="fixed w-full z-50 bg-white/80 backdrop-blur-md shadow-lg">
+    <nav class="container mx-auto flex justify-between items-center py-4 px-6">
+      <div class="text-3xl font-bold text-blue-600 tracking-wider">
+          LodgeEase
+      </div>
+      <ul class="flex space-x-6 items-center text-gray-700">
+          <li><a href="../Login/index.html" class="hover:text-blue-600 transition-colors">Log In</a></li>
+          <li><a href="../Homepage/rooms.html" class="hover:text-blue-600 transition-colors">Home</a></li>
+          <li>
+            <a href="#" id="userIconBtn" class="text-gray-600 hover:text-blue-600 transition-colors">
+                <i class="ri-user-line text-2xl"></i>
+            </a>
+          </li>
+      </ul>
+  </nav>
+  </header>
+
+  <div id="drawerOverlay" class="fixed inset-0 bg-black opacity-50 hidden z-40"></div>
+  
+  <div id="userDrawer" class="fixed top-0 right-0 w-80 h-full bg-white shadow-xl transform transition-transform duration-300 z-50 translate-x-full">
+    <button id="closeDrawer" class="absolute top-4 right-4 text-gray-600 hover:text-gray-900">
+      <i class="ri-close-line text-2xl"></i>
+    </button>
+    <div class="drawer-content p-6">
+        <!-- Content will be dynamically inserted by JavaScript -->
+    </div>
+  </div>
 
     <!-- Main Content -->
-    <main class="max-w-6xl mx-auto px-4 py-8">
+    <div class="max-w-6xl mx-auto px-4 pt-24">
         <!-- Lodge Details -->
         <div class="bg-white rounded-lg shadow-lg overflow-hidden">
             <!-- Image Gallery -->
@@ -172,72 +188,131 @@
                     </div>
                 </div>
                 
-                <script>
-                    function updateCostBreakdown() {
-                        const leaseDuration = document.getElementById('leaseDuration').value;
-                        const occupantsCount = document.getElementById('occupantsCount').value;
-                        
-                        const baseRent = 6000;
-                        let occupantFee = 0;
-                        
-                        if (occupantsCount === '2') {
-                            occupantFee = 1000;
-                        } else if (occupantsCount === '3') {
-                            occupantFee = 2000;
-                        }
-                        
-                        const totalMonthlyRent = baseRent + occupantFee;
-                        const securityDeposit = baseRent;
-                        const firstLastMonthRent = totalMonthlyRent * 2;
-                        const totalInitialPayment = totalMonthlyRent + securityDeposit + firstLastMonthRent;
-                        
-                        document.getElementById('occupantFee').textContent = `₱${occupantFee}/month`;
-                        document.getElementById('totalMonthlyRent').textContent = `₱${totalMonthlyRent}`;
-                        document.getElementById('firstLastMonthRent').textContent = `₱${firstLastMonthRent}`;
-                        document.getElementById('totalInitialPayment').textContent = `₱${totalInitialPayment.toLocaleString()}`;
-                    }
-                    
-                    function proceedToApplication() {
-                        const moveInDate = document.getElementById('moveInDate').value;
-                        const leaseDuration = document.getElementById('leaseDuration').value;
-                        const occupantsCount = document.getElementById('occupantsCount').value;
-                        
-                        if (!moveInDate) {
-                            alert('Please select a move-in date');
-                            return;
-                        }
-                        
-                        const applicationDetails = {
-                            moveInDate: moveInDate,
-                            leaseDuration: leaseDuration + ' months',
-                            occupants: occupantsCount,
-                            monthlyRent: document.getElementById('totalMonthlyRent').textContent,
-                            totalInitialPayment: document.getElementById('totalInitialPayment').textContent
-                        };
-                        
-                        localStorage.setItem('rentalApplication', JSON.stringify(applicationDetails));
-                        window.location.href = 'rental-application.html';
-                    }
-                    
-                    // Initialize and update cost breakdown
-                    document.getElementById('leaseDuration').addEventListener('change', updateCostBreakdown);
-                    document.getElementById('occupantsCount').addEventListener('change', updateCostBreakdown);
-                    
-                    // Initial calculation
-                    updateCostBreakdown();
-                </script>
+                
             </div>
         </div>
-    </main>
-
-    <!-- Image Attribution Note -->
-    <div class="text-xs text-gray-500 mt-2 text-center">
-        Images sourced from Unsplash/Pexels. For demonstration purposes only.
     </div>
 
-    <!-- User Drawer -->
-    <div id="userDrawer" class="fixed top-0 right-0 w-80 h-full bg-white shadow-xl transform translate-x-full transition-transform duration-300 z-50">
-        <!-- User drawer content -->
-    </div>
+    <script>
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const userIcon = document.querySelector('.ri-user-line');
+            const userDrawer = document.getElementById('userDrawer');
+            const closeDrawer = document.getElementById('closeDrawer');
+            const drawerOverlay = document.getElementById('drawerOverlay');
+            
+            // Open drawer
+            userIcon.addEventListener('click', function() {
+                userDrawer.classList.remove('translate-x-full');
+                drawerOverlay.classList.remove('hidden');
+            });
+            
+            // Close drawer
+            closeDrawer.addEventListener('click', closeUserDrawer);
+            drawerOverlay.addEventListener('click', closeUserDrawer);
+            
+            function closeUserDrawer() {
+                userDrawer.classList.add('translate-x-full');
+                drawerOverlay.classList.add('hidden');
+            }
+            });
+        
+        function updateCostBreakdown() {
+            const leaseDuration = document.getElementById('leaseDuration').value;
+            const occupantsCount = document.getElementById('occupantsCount').value;
+            
+            const baseRent = 6000;
+            let occupantFee = 0;
+            
+            if (occupantsCount === '2') {
+                occupantFee = 1000;
+            } else if (occupantsCount === '3') {
+                occupantFee = 2000;
+            }
+            
+            const totalMonthlyRent = baseRent + occupantFee;
+            const securityDeposit = baseRent;
+            const firstLastMonthRent = totalMonthlyRent * 2;
+            const totalInitialPayment = totalMonthlyRent + securityDeposit + firstLastMonthRent;
+            
+            document.getElementById('occupantFee').textContent = `₱${occupantFee}/month`;
+            document.getElementById('totalMonthlyRent').textContent = `₱${totalMonthlyRent}`;
+            document.getElementById('firstLastMonthRent').textContent = `₱${firstLastMonthRent}`;
+            document.getElementById('totalInitialPayment').textContent = `₱${totalInitialPayment.toLocaleString()}`;
+        }
+        
+        function proceedToApplication() {
+            const moveInDate = document.getElementById('moveInDate').value;
+            const leaseDuration = document.getElementById('leaseDuration').value;
+            const occupantsCount = document.getElementById('occupantsCount').value;
+            
+            if (!moveInDate) {
+                alert('Please select a move-in date');
+                return;
+            }
+            
+            const applicationDetails = {
+                moveInDate: moveInDate,
+                leaseDuration: leaseDuration + ' months',
+                occupants: occupantsCount,
+                monthlyRent: document.getElementById('totalMonthlyRent').textContent,
+                totalInitialPayment: document.getElementById('totalInitialPayment').textContent
+            };
+            
+            localStorage.setItem('rentalApplication', JSON.stringify(applicationDetails));
+            window.location.href = 'rental-application.html';
+        }
+        
+        // Initialize and update cost breakdown
+        document.getElementById('leaseDuration').addEventListener('change', updateCostBreakdown);
+        document.getElementById('occupantsCount').addEventListener('change', updateCostBreakdown);
+        
+        // Initial calculation
+        updateCostBreakdown();
+
+        
+    </script>
+<script type="module">
+import { handleReserveClick } from './lodge1.js';
+import { initializeUserDrawer } from '../components/userDrawer.js';
+import { auth, db } from '../../AdminSide/firebase.js';
+
+// Initialize user drawer
+initializeUserDrawer(auth, db);
+
+// Add event listener to reserve button
+document.addEventListener('DOMContentLoaded', () => {
+const reserveBtn = document.getElementById('reserve-btn');
+if (reserveBtn) {
+reserveBtn.addEventListener('click', handleReserveClick);
+} else {
+console.error('Reserve button not found');
+}
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+const userIcon = document.getElementById('userIconBtn');
+const userDrawer = document.getElementById('userDrawer');
+const closeDrawer = document.getElementById('closeDrawer');
+const drawerOverlay = document.getElementById('drawerOverlay');
+
+if (userIcon && userDrawer && closeDrawer && drawerOverlay) {
+// Open drawer
+userIcon.addEventListener('click', function() {
+userDrawer.classList.remove('translate-x-full');
+drawerOverlay.classList.remove('hidden');
+});
+
+// Close drawer
+closeDrawer.addEventListener('click', closeUserDrawer);
+drawerOverlay.addEventListener('click', closeUserDrawer);
+}
+
+function closeUserDrawer() {
+userDrawer.classList.add('translate-x-full');
+drawerOverlay.classList.add('hidden');
+}
+});
+</script>
 </body>
 </html> 
