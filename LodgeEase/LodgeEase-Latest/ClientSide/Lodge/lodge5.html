@@ -1,16 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hotel Client Dashboard5</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script type="module" src="lodge4.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../Homepage/styles.css">
-    
-</head>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Hotel Client Dashboard5</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script type="module" src="lodge5.js"></script>
+        <script type="module" src="../components/messagePopup.js"></script>
+        <script type="module" src="../components/userDrawer.js"></script>
+        <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+        <link rel="stylesheet" href="../Homepage/styles.css">
+    </head>
+
 
 <body class="text-gray-800">
   <header class="fixed w-full z-50 bg-white/80 backdrop-blur-md shadow-lg">
@@ -194,7 +196,6 @@
     </div>
 
     <script>
-
         document.addEventListener('DOMContentLoaded', function() {
             const userIcon = document.querySelector('.ri-user-line');
             const userDrawer = document.getElementById('userDrawer');
@@ -272,47 +273,47 @@
 
         
     </script>
-<script type="module">
-import { handleReserveClick } from './lodge1.js';
-import { initializeUserDrawer } from '../components/userDrawer.js';
-import { auth, db } from '../../AdminSide/firebase.js';
-
-// Initialize user drawer
-initializeUserDrawer(auth, db);
-
-// Add event listener to reserve button
-document.addEventListener('DOMContentLoaded', () => {
-const reserveBtn = document.getElementById('reserve-btn');
-if (reserveBtn) {
-reserveBtn.addEventListener('click', handleReserveClick);
-} else {
-console.error('Reserve button not found');
-}
-});
-
-document.addEventListener('DOMContentLoaded', function() {
-const userIcon = document.getElementById('userIconBtn');
-const userDrawer = document.getElementById('userDrawer');
-const closeDrawer = document.getElementById('closeDrawer');
-const drawerOverlay = document.getElementById('drawerOverlay');
-
-if (userIcon && userDrawer && closeDrawer && drawerOverlay) {
-// Open drawer
-userIcon.addEventListener('click', function() {
-userDrawer.classList.remove('translate-x-full');
-drawerOverlay.classList.remove('hidden');
-});
-
-// Close drawer
-closeDrawer.addEventListener('click', closeUserDrawer);
-drawerOverlay.addEventListener('click', closeUserDrawer);
-}
-
-function closeUserDrawer() {
-userDrawer.classList.add('translate-x-full');
-drawerOverlay.classList.add('hidden');
-}
-});
-</script>
+    <script type="module">
+      import { handleReserveClick } from './lodge1.js';
+      import { initializeUserDrawer } from '../components/userDrawer.js';
+      import { auth, db } from '../../AdminSide/firebase.js';
+    
+      // Initialize user drawer
+      initializeUserDrawer(auth, db);
+    
+      // Add event listener to reserve button
+      document.addEventListener('DOMContentLoaded', () => {
+          const reserveBtn = document.getElementById('reserve-btn');
+          if (reserveBtn) {
+              reserveBtn.addEventListener('click', handleReserveClick);
+          } else {
+              console.error('Reserve button not found');
+          }
+      });
+    
+      document.addEventListener('DOMContentLoaded', function() {
+        const userIcon = document.getElementById('userIconBtn');
+        const userDrawer = document.getElementById('userDrawer');
+        const closeDrawer = document.getElementById('closeDrawer');
+        const drawerOverlay = document.getElementById('drawerOverlay');
+    
+        if (userIcon && userDrawer && closeDrawer && drawerOverlay) {
+          // Open drawer
+          userIcon.addEventListener('click', function() {
+            userDrawer.classList.remove('translate-x-full');
+            drawerOverlay.classList.remove('hidden');
+          });
+        
+          // Close drawer
+          closeDrawer.addEventListener('click', closeUserDrawer);
+          drawerOverlay.addEventListener('click', closeUserDrawer);
+        }
+      
+        function closeUserDrawer() {
+          userDrawer.classList.add('translate-x-full');
+          drawerOverlay.classList.add('hidden');
+        }
+      });
+        </script>
 </body>
 </html> 

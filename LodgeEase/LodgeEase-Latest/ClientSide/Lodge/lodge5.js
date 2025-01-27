@@ -3,7 +3,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeBooking();
     initializeGallery();
     initializeReviews();
-    initializeUserDrawer();
 });
 
 function initializeLodgeDetails() {

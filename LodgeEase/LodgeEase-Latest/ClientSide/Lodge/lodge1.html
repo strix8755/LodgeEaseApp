@@ -8,6 +8,7 @@
   <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
   <link rel="stylesheet" href="../Homepage/styles.css">
+  <script src="../components/messagePopup.js"></script>
   <script>
     // Initialize Google Map
     function initMap() {
@@ -316,70 +317,6 @@
       </div>
     </div>
 
-    <!-- Message Host Modal -->
-    <div id="message-host-modal" class="fixed bottom-4 right-4 w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-50 flex flex-col overflow-hidden transform translate-y-full transition-transform duration-300">
-      <!-- Modal Header -->
-      <div class="bg-blue-500 text-white p-4 flex justify-between items-center cursor-pointer" id="chat-header">
-        <div class="flex items-center space-x-3">
-          <img src="../components/model.jpg" alt="Host" class="w-10 h-10 rounded-full object-cover">
-          <div>
-            <h2 class="font-semibold">Chezka</h2>
-            <p class="text-xs text-blue-100">Typically responds within an hour</p>
-          </div>
-        </div>
-        <div class="flex items-center space-x-2">
-          <button id="minimize-chat" class="hover:bg-blue-600 p-1 rounded-full transition-colors">
-            <i class="fas fa-minus text-lg"></i>
-          </button>
-          <button id="close-message-modal" class="hover:bg-blue-600 p-1 rounded-full transition-colors">
-            <i class="fas fa-times text-lg"></i>
-          </button>
-        </div>
-      </div>
-    
-      <!-- Chat Messages Container -->
-      <div class="flex-grow overflow-y-auto p-4 space-y-4 bg-gray-50">
-        <!-- Existing Messages -->
-        <div class="flex">
-          <img src="../components/model.jpg" alt="Host" class="w-8 h-8 rounded-full mr-3 self-end">
-          <div class="bg-white p-3 rounded-lg rounded-bl-none shadow-sm max-w-[70%]">
-            <p class="text-gray-800">Hi there! Feel free to ask any questions about the lodge or your upcoming stay.</p>
-          </div>
-        </div>
-        
-        <!-- Placeholder for user messages -->
-        <div class="flex justify-end">
-          <div class="bg-blue-500 text-white p-3 rounded-lg rounded-br-none shadow-sm max-w-[70%]">
-            <p>Could you tell me about the check-in process?</p>
-          </div>
-        </div>
-      </div>
-    
-      <!-- Message Input -->
-      <div class="bg-white p-4 border-t">
-        <div class="flex items-center space-x-3">
-          <button class="text-gray-500 hover:text-blue-500">
-            <i class="fas fa-plus-circle text-2xl"></i>
-          </button>
-          <div class="flex-grow">
-            <textarea 
-              id="message-body" 
-              rows="1" 
-              class="w-full border border-gray-300 rounded-full px-4 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500" 
-              placeholder="Type your message..."
-            ></textarea>
-          </div>
-          <button 
-            id="send-message" 
-            class="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 transition-colors"
-          >
-            <i class="fas fa-paper-plane"></i>
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
 <!-- Host Section with Expanded Layout -->
 <div class="bg-white rounded-lg shadow-lg p-8 max-w-5xl mx-auto mt-8 space-y-6">
     <div class="flex flex-col md:flex-row items-center space-y-6 md:space-y-0 md:space-x-8">
@@ -676,73 +613,6 @@
         }
       });
     }
-  </script>
-
-  <script type="module">
-document.addEventListener('DOMContentLoaded', () => {
-  const messageHostBtn = document.querySelector('button:has(.fa-comment-dots)');
-  const chatPopup = document.getElementById('message-host-modal');
-  const chatHeader = document.getElementById('chat-header');
-  const minimizeBtn = document.getElementById('minimize-chat');
-  const closeBtn = document.getElementById('close-message-modal');
-  const sendBtn = document.getElementById('send-message');
-  const messageInput = document.getElementById('message-body');
-
-  // Open chat popup
-  messageHostBtn?.addEventListener('click', () => {
-    chatPopup.classList.remove('translate-y-full');
-  });
-
-  // Minimize chat
-  minimizeBtn?.addEventListener('click', () => {
-    chatPopup.classList.add('translate-y-full');
-  });
-
-  // Close chat
-  closeBtn?.addEventListener('click', () => {
-    chatPopup.classList.add('translate-y-full');
-  });
-
-  // Toggle chat when header is clicked
-  chatHeader?.addEventListener('click', (e) => {
-    // Prevent triggering if buttons are clicked
-    if (e.target.closest('button')) return;
-    chatPopup.classList.toggle('translate-y-full');
-  });
-
-  // Send message functionality
-  sendBtn?.addEventListener('click', () => {
-    const message = messageInput.value.trim();
-    if (message) {
-      // Create a new message element
-      const messagesContainer = chatPopup.querySelector('.overflow-y-auto');
-      const newMessageElement = document.createElement('div');
-      newMessageElement.classList.add('flex', 'justify-end');
-      newMessageElement.innerHTML = `
-        <div class="bg-blue-500 text-white p-3 rounded-lg rounded-br-none shadow-sm max-w-[70%]">
-          <p>${message}</p>
-        </div>
-      `;
-      
-      // Append the new message
-      messagesContainer.appendChild(newMessageElement);
-      
-      // Clear input
-      messageInput.value = '';
-      
-      // Scroll to bottom
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }
-  });
-
-  // Allow sending message with Enter key
-  messageInput?.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendBtn.click();
-    }
-  });
-});
   </script>
 </body>
 </html>
