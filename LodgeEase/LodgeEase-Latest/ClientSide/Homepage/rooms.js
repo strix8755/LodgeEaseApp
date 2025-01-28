@@ -1,12 +1,149 @@
 // Use an IIFE to avoid global namespace pollution
 (function() {
+    // Make these functions globally available for the info window buttons
+    window.getDirectionsCallback = null;
+    window.clearDirectionsCallback = null;
+
+    window.getDirections = function(destination) {
+        window.getDirectionsCallback?.(destination);
+    }
+
+    window.clearDirections = function() {
+        window.clearDirectionsCallback?.();
+    }
+
+    // Initialize everything when DOM is loaded
+    document.addEventListener('DOMContentLoaded', () => {
+        try {
+            console.log('DOM loaded, initializing functionality...');
+            initializeAllFunctionality();
+            
+            // Create lodge cards immediately after initialization
+            console.log('Creating lodge cards after initialization...');
+            createLodgeCards();
+            
+            // Initialize user drawer
+            import('../../AdminSide/firebase.js').then(({ auth, db }) => {
+                import('../components/userDrawer.js').then(({ initializeUserDrawer }) => {
+                    initializeUserDrawer(auth, db);
+                });
+            });
+        } catch (error) {
+            console.error('Error during initialization:', error);
+        }
+    });
+
+    function initializeAllFunctionality() {
+        try {
+            console.log('Starting initialization of all functionality...');
+            
+            // Initialize map view if the map container exists
+            if (document.getElementById('map')) {
+                initMapView();
+            }
+
+            // Initialize date range picker if the element exists
+            const datePickerBtn = document.getElementById('datePickerBtn');
+            if (datePickerBtn) {
+                initializeDateRangePicker();
+            }
+
+            // Initialize guests dropdown if the element exists
+            const guestsDropdownBtn = document.getElementById('guestsDropdownBtn');
+            if (guestsDropdownBtn) {
+                initGuestsDropdown();
+            }
+
+            // Initialize other components
+            initializeSearch();
+            initializeFilters();
+            initializeSort();
+            
+            console.log('Creating lodge cards from initializeAllFunctionality...');
+            createLodgeCards();
+
+            // Add lodge modal
+            addLodgeModalToDOM();
+            
+            console.log('All functionality initialized successfully');
+        } catch (error) {
+            console.error('Error initializing functionality:', error);
+        }
+    }
+
+    function createLodgeCards() {
+        console.log('Starting createLodgeCards function...');
+        const container = document.querySelector('.lodge-container');
+        
+        if (!container) {
+            console.error('Lodge container not found');
+            return;
+        }
+        
+        // Clear existing cards
+        container.innerHTML = '';
+        
+        lodgeData.forEach((lodge, index) => {
+            console.log(`Creating card ${index + 1} for ${lodge.name}`);
+            const card = document.createElement('article');
+            card.className = 'lodge-card';
+            card.style.opacity = '1'; // Ensure visibility
+            card.style.display = 'block'; // Ensure display
+            card.dataset.propertyType = lodge.propertyType || 'hotel';
+            
+            card.innerHTML = `
+                <img src="${lodge.image}" alt="${lodge.name}" class="lodge-image">
+                <button class="favorite-btn" aria-label="Add to favorites">
+                    <i class="ri-heart-line"></i>
+                </button>
+                <div class="content">
+                    <div class="flex justify-between items-start">
+                        <h2>${lodge.name}</h2>
+                        <div class="rating">
+                            <i class="ri-star-fill"></i>
+                            <span>${lodge.rating}</span>
+                        </div>
+                    </div>
+                    <div class="location">
+                        <i class="ri-map-pin-line"></i>
+                        <span>${lodge.location}</span>
+                    </div>
+                    <div class="amenities">
+                        ${lodge.amenities.map(amenity => 
+                            `<span class="amenity-tag">${amenity}</span>`
+                        ).join('')}
+                    </div>
+                    <div class="price">
+                        ₱${lodge.price.toLocaleString()}
+                        <span>/night</span>
+                    </div>
+                </div>
+            `;
+            
+            // Add click event listener to open lodge details
+            card.addEventListener('click', (e) => {
+                if (!e.target.closest('.favorite-btn')) {
+                    showLodgeDetails(lodge);
+                }
+            });
+            
+            container.appendChild(card);
+            
+            // Force a reflow to ensure the card is visible
+            void card.offsetHeight;
+        });
+        
+        console.log('All lodge cards created successfully');
+        updateResultsCount();
+    }
+
     // Lodge data
     const lodgeData = [
         {
             id: 1,
             name: "Pine Haven Lodge",
             location: "Camp John Hay, Baguio City",
-            image: "../components/1.jpg",
+            image: "../components/pinehaven.jpg",
             price: 6500,
             amenities: ["Mountain View", "Fireplace", "WiFi"],
             rating: 4.8,
@@ -146,160 +283,85 @@
 
     ];
 
-    // Initialize everything when DOM is loaded
-    document.addEventListener('DOMContentLoaded', () => {
-        console.log('DOM loaded, initializing functionality...');
-        initializeAllFunctionality();
-    });
-
-    function initializeAllFunctionality() {
-        try {
-            addLodgeModalToDOM(); 
-            createLodgeCards();
-            initializeSearch();
-            initializeSort();
-            initializeMap();
-            initializeFilters();
-            initializeDateRangePicker();
-            initializeGuestsDropdown();
-        } catch (error) {
-            console.error('Error initializing functionality:', error);
-        }
+    // Add the new modal function here
+    function addLodgeModalToDOM() {
+        const modalHTML = `
+            <div id="lodgeDetailsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+                <div class="fixed inset-0 flex items-center justify-center p-4">
+                    <div class="bg-white rounded-lg max-w-4xl w-full max-h-90vh overflow-y-auto">
+                        <div class="p-6" id="lodgeDetailsContent">
+                            <!-- Content will be dynamically inserted here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+        // Add global click handler to close modal when clicking outside
+        document.getElementById('lodgeDetailsModal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'lodgeDetailsModal') {
+                e.target.classList.add('hidden');
+            }
+        });
     }
-
-        // Add the new modal function here
-        function addLodgeModalToDOM() {
-            const modalHTML = `
-                <div id="lodgeDetailsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
-                    <div class="fixed inset-0 flex items-center justify-center p-4">
-                        <div class="bg-white rounded-lg max-w-4xl w-full max-h-90vh overflow-y-auto">
-                            <div class="p-6" id="lodgeDetailsContent">
-                                <!-- Content will be dynamically inserted here -->
-                            </div>
-                        </div>
+    
+    // Add the show details function here
+    function showLodgeDetails(lodge) {
+        const modal = document.getElementById('lodgeDetailsModal');
+        const content = document.getElementById('lodgeDetailsContent');
+        
+        if (!modal || !content) {
+            console.error('Modal elements not found');
+            return;
+        }
+        
+        // Generate the correct file path with the Lodge folder
+        const bookingUrl = `../Lodge/lodge${lodge.id}.html`;
+        
+        content.innerHTML = `
+            <div class="flex justify-between items-start mb-6">
+                <h2 class="text-2xl font-bold">${lodge.name}</h2>
+                <button class="text-gray-500 hover:text-gray-700" onclick="document.getElementById('lodgeDetailsModal').classList.add('hidden')">
+                    <i class="ri-close-line text-2xl"></i>
+                </button>
+            </div>
+            <img src="${lodge.image}" alt="${lodge.name}" class="w-full h-64 object-cover rounded-lg mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="font-semibold mb-2">Location</h3>
+                    <p class="text-gray-600">${lodge.location}</p>
+                    
+                    <h3 class="font-semibold mt-4 mb-2">Price</h3>
+                    <p class="text-green-600 font-bold text-xl">₱${lodge.price.toLocaleString()}/night</p>
+                    
+                    <h3 class="font-semibold mt-4 mb-2">Rating</h3>
+                    <div class="flex items-center">
+                        <span class="text-yellow-500 mr-1">${'★'.repeat(Math.floor(lodge.rating))}</span>
+                        <span class="text-gray-600">${lodge.rating}/5</span>
                     </div>
                 </div>
-            `;
-            
-            document.body.insertAdjacentHTML('beforeend', modalHTML);
-    
-            // Add global click handler to close modal when clicking outside
-            document.getElementById('lodgeDetailsModal')?.addEventListener('click', (e) => {
-                if (e.target.id === 'lodgeDetailsModal') {
-                    e.target.classList.add('hidden');
-                }
-            });
-        }
-    
-        // Add the show details function here
-        function showLodgeDetails(lodge) {
-            const modal = document.getElementById('lodgeDetailsModal');
-            const content = document.getElementById('lodgeDetailsContent');
-            
-            if (!modal || !content) {
-                console.error('Modal elements not found');
-                return;
-            }
-            
-            // Generate the correct file path with the Lodge folder
-            const bookingUrl = `../Lodge/lodge${lodge.id}.html`;
-            
-            content.innerHTML = `
-                <div class="flex justify-between items-start mb-6">
-                    <h2 class="text-2xl font-bold">${lodge.name}</h2>
-                    <button class="text-gray-500 hover:text-gray-700" onclick="document.getElementById('lodgeDetailsModal').classList.add('hidden')">
-                        <i class="ri-close-line text-2xl"></i>
-                    </button>
+                <div>
+                    <h3 class="font-semibold mb-2">Amenities</h3>
+                    <div class="flex flex-wrap gap-2">
+                        ${lodge.amenities.map(amenity => 
+                            `<span class="bg-gray-100 px-3 py-1 rounded-full text-sm">${amenity}</span>`
+                        ).join('')}
+                    </div>
+                    
+                    <a href="${bookingUrl}">
+                        <button class="w-full bg-blue-600 text-white py-3 rounded-lg mt-6 hover:bg-blue-700 transition-colors">
+                            Book Now
+                        </button>
+                    </a>
                 </div>
-                <img src="${lodge.image}" alt="${lodge.name}" class="w-full h-64 object-cover rounded-lg mb-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <h3 class="font-semibold mb-2">Location</h3>
-                        <p class="text-gray-600">${lodge.location}</p>
-                        
-                        <h3 class="font-semibold mt-4 mb-2">Price</h3>
-                        <p class="text-green-600 font-bold text-xl">₱${lodge.price.toLocaleString()}/night</p>
-                        
-                        <h3 class="font-semibold mt-4 mb-2">Rating</h3>
-                        <div class="flex items-center">
-                            <span class="text-yellow-500 mr-1">${'★'.repeat(Math.floor(lodge.rating))}</span>
-                            <span class="text-gray-600">${lodge.rating}/5</span>
-                        </div>
-                    </div>
-                    <div>
-                        <h3 class="font-semibold mb-2">Amenities</h3>
-                        <div class="flex flex-wrap gap-2">
-                            ${lodge.amenities.map(amenity => 
-                                `<span class="bg-gray-100 px-3 py-1 rounded-full text-sm">${amenity}</span>`
-                            ).join('')}
-                        </div>
-                        
-                        <a href="${bookingUrl}">
-                            <button class="w-full bg-blue-600 text-white py-3 rounded-lg mt-6 hover:bg-blue-700 transition-colors">
-                                Book Now
-                            </button>
-                        </a>
-                    </div>
-                </div>
-            `;
-            
-            modal.classList.remove('hidden');
-        }
+            </div>
+        `;
+        
+        modal.classList.remove('hidden');
+    }
     
-        // Update your existing createLodgeCards function
-        function createLodgeCards() {
-            console.log('Creating lodge cards...');
-            const container = document.querySelector('.lodge-container');
-            if (!container) {
-                console.error('Lodge container not found');
-                return;
-            }
-    
-            // Clear existing cards
-            container.innerHTML = '';
-    
-            lodgeData.forEach(lodge => {
-                const card = document.createElement('div');
-                card.className = 'lodge-card bg-white rounded-lg shadow-lg overflow-hidden cursor-pointer';
-                card.dataset.propertyType = lodge.propertyType || 'hotel';
-                
-                card.innerHTML = `
-                    <div class="block">
-                        <img src="${lodge.image}" alt="${lodge.name}" class="w-full h-48 object-cover">
-                        <div class="p-4">
-                            <h2 class="text-xl font-semibold mb-2">${lodge.name}</h2>
-                            <p class="text-gray-500 mb-2">${lodge.location}</p>
-                            <div class="flex flex-wrap gap-2 mb-3">
-                                ${lodge.amenities.map(amenity => 
-                                    `<span class="text-xs bg-gray-100 px-2 py-1 rounded">${amenity}</span>`
-                                ).join('')}
-                            </div>
-                            <div class="flex justify-between items-center mb-2">
-                                <span class="text-green-600 font-bold">₱${lodge.price.toLocaleString()}/night</span>
-                                <button class="text-gray-500 hover:text-red-500">
-                                    <i class="ri-heart-line text-xl"></i>
-                                </button>
-                            </div>
-                            <div class="text-xs text-gray-500 flex items-center">
-                                <i class="ri-map-pin-line mr-1"></i>
-                                <span>Coordinates: ${lodge.coordinates.lat.toFixed(4)}, ${lodge.coordinates.lng.toFixed(4)}</span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
-                // Add click event listener to open lodge details
-                card.addEventListener('click', (e) => {
-                    if (!e.target.closest('.ri-heart-line')) {  // Ignore clicks on the heart icon
-                        showLodgeDetails(lodge);
-                    }
-                });
-                
-                container.appendChild(card);
-            });
-    
-            updateResultsCount();
-        }
     // Search functionality
     function initializeSearch() {
         const searchInput = document.querySelector('input[placeholder*="Search"]');
@@ -726,289 +788,198 @@
     // Date Range Picker
     function initializeDateRangePicker() {
         const datePickerBtn = document.getElementById('datePickerBtn');
-        const datePickerDropdown = document.getElementById('datePickerDropdown');
-        const dateRangeText = document.getElementById('dateRangeText');
-        const checkInDate = document.getElementById('checkInDate');
-        const checkOutDate = document.getElementById('checkOutDate');
-        const applyDates = document.getElementById('applyDates');
-        const quickDateBtns = document.querySelectorAll('.quick-date-btn');
-
-        // Set minimum dates
-        const today = new Date();
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-
-        checkInDate.min = today.toISOString().split('T')[0];
-        checkOutDate.min = tomorrow.toISOString().split('T')[0];
-
-        // Toggle dropdown
-        datePickerBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            datePickerDropdown.classList.toggle('hidden');
-            if (!datePickerDropdown.classList.contains('hidden')) {
-                datePickerDropdown.classList.add('show');
-            }
-        });
-
-        // Close dropdown when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!datePickerDropdown.contains(e.target) && !datePickerBtn.contains(e.target)) {
-                datePickerDropdown.classList.add('hidden');
-                datePickerDropdown.classList.remove('show');
-            }
-        });
-
-        // Update checkout min date when check-in changes
-        checkInDate.addEventListener('change', () => {
-            const selectedDate = new Date(checkInDate.value);
-            const nextDay = new Date(selectedDate);
-            nextDay.setDate(nextDay.getDate() + 1);
-            checkOutDate.min = nextDay.toISOString().split('T')[0];
-            
-            if (checkOutDate.value && new Date(checkOutDate.value) <= selectedDate) {
-                checkOutDate.value = nextDay.toISOString().split('T')[0];
-            }
-        });
-
-        // Quick select buttons
-        quickDateBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const days = parseInt(btn.dataset.days);
-                const startDate = new Date();
-                const endDate = new Date(startDate);
-                endDate.setDate(endDate.getDate() + days);
-                
-                checkInDate.value = startDate.toISOString().split('T')[0];
-                checkOutDate.value = endDate.toISOString().split('T')[0];
-                
-                // Update active state
-                quickDateBtns.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-            });
-        });
-
-        // Format date for display
-        function formatDate(date) {
-            const options = { month: 'short', day: 'numeric' };
-            return new Date(date).toLocaleDateString('en-US', options);
+        if (!datePickerBtn) {
+            console.warn('Date picker button not found');
+            return;
         }
 
-        // Apply button
-        applyDates.addEventListener('click', () => {
-            if (checkInDate.value && checkOutDate.value) {
-                const checkIn = formatDate(checkInDate.value);
-                const checkOut = formatDate(checkOutDate.value);
-                dateRangeText.textContent = `${checkIn} - ${checkOut}`;
-                datePickerDropdown.classList.add('hidden');
-                datePickerDropdown.classList.remove('show');
+        try {
+            if (typeof flatpickr === 'undefined') {
+                console.error('Flatpickr library not loaded');
+                return;
             }
-        });
+
+            const picker = flatpickr(datePickerBtn, {
+                mode: "range",
+                minDate: "today",
+                dateFormat: "Y-m-d",
+                altInput: true,
+                altFormat: "F j, Y",
+                static: true,
+                onChange: function(selectedDates, dateStr) {
+                    const span = datePickerBtn.querySelector('span');
+                    if (!span) return;
+
+                    if (selectedDates.length === 2) {
+                        const [start, end] = selectedDates;
+                        const nights = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+                        span.textContent = `${start.toLocaleDateString()} - ${end.toLocaleDateString()} (${nights} nights)`;
+                    } else {
+                        span.textContent = 'Select dates';
+                    }
+                }
+            });
+
+            // Initialize with empty state
+            const span = datePickerBtn.querySelector('span');
+            if (span) {
+                span.textContent = 'Select dates';
+            }
+
+            return picker;
+        } catch (error) {
+            console.error('Error initializing date picker:', error);
+            return null;
+        }
     }
 
-    // Guests Dropdown
-    function initializeGuestsDropdown() {
-        const guestsDropdownBtn = document.getElementById('guestsDropdownBtn');
-        const guestsDropdown = document.getElementById('guestsDropdown');
-        const guestsCount = document.getElementById('guestsCount');
-        const guestBtns = document.querySelectorAll('.guest-btn');
+    // Guests Dropdown Functionality
+    const guestsDropdownBtn = document.getElementById('guestsDropdownBtn');
+    const guestsDropdown = document.getElementById('guestsDropdown');
+    const guestsText = document.getElementById('guestsText');
+    const applyGuestsBtn = document.getElementById('applyGuests');
+    const guestBtns = document.querySelectorAll('.guest-btn');
+    const guestCounts = document.querySelectorAll('.guest-count');
 
-        let guests = {
-            adults: 0,
-            children: 0
-        };
+    let guestState = {
+      adults: 1,
+      children: 0,
+      infants: 0
+    };
 
-        // Toggle guests dropdown
-        guestsDropdownBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            guestsDropdown.classList.toggle('hidden');
-        });
+    // Initialize guest buttons
+    function initGuestsDropdown() {
+      if (!guestsDropdownBtn || !guestsDropdown) {
+        console.error('Guests dropdown elements not found');
+        return;
+      }
 
-        // Close guests dropdown when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!guestsDropdown.contains(e.target) && !guestsDropdownBtn.contains(e.target)) {
-                guestsDropdown.classList.add('hidden');
-            }
-        });
+      // Toggle dropdown
+      guestsDropdownBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        guestsDropdown.classList.toggle('hidden');
+      });
 
-        // Handle guest count buttons
-        guestBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const type = btn.dataset.type;
-                const action = btn.classList.contains('plus') ? 'add' : 'remove';
-                const countElement = btn.parentElement.querySelector('.guest-count');
-                
-                if (action === 'add') {
-                    guests[type]++;
-                } else if (guests[type] > 0) {
-                    guests[type]--;
-                }
-                
-                // Update count display
-                countElement.textContent = guests[type];
-                
-                // Update total guests text
-                updateGuestsText();
-                
-                // Update button states
-                updateGuestButtonStates();
-            });
-        });
-
-        function updateGuestsText() {
-            const total = guests.adults + guests.children;
-            const guestText = total === 1 ? 'guest' : 'guests';
-            
-            if (total === 0) {
-                guestsCount.textContent = 'Add guests';
-            } else {
-                const details = [];
-                if (guests.adults) {
-                    details.push(`${guests.adults} adult${guests.adults !== 1 ? 's' : ''}`);
-                }
-                if (guests.children) {
-                    details.push(`${guests.children} child${guests.children !== 1 ? 'ren' : ''}`);
-                }
-                guestsCount.textContent = details.join(', ');
-            }
+      // Close dropdown when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!guestsDropdown.contains(e.target) && e.target !== guestsDropdownBtn) {
+          guestsDropdown.classList.add('hidden');
         }
+      });
 
-        function updateGuestButtonStates() {
-            // Disable minus buttons when count is 0
-            document.querySelectorAll('.guest-btn.minus').forEach(btn => {
-                const type = btn.dataset.type;
-                btn.disabled = guests[type] === 0;
-            });
-        }
+      // Handle guest count buttons
+      guestBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const type = btn.dataset.type;
+          const action = btn.dataset.action;
+          updateGuestCount(type, action);
+        });
+      });
 
-        // Initialize button states
-        updateGuestButtonStates();
+      // Apply button
+      applyGuestsBtn.addEventListener('click', () => {
+        updateGuestsText();
+        guestsDropdown.classList.add('hidden');
+      });
+
+      // Initial text update
+      updateGuestsText();
     }
 
-    // Header scroll effect
-    const header = document.querySelector('.main-header');
-    const mobileMenu = document.getElementById('mobile-menu');
-    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
-
-    window.addEventListener('scroll', () => {
-      if (window.scrollY > 20) {
-        header.classList.add('scrolled');
-      } else {
-        header.classList.remove('scrolled');
+    // Update guest count
+    function updateGuestCount(type, action) {
+      const currentCount = guestState[type];
+      const countElement = document.querySelector(`.guest-count[data-type="${type}"]`);
+      
+      if (action === 'increment') {
+        if ((type === 'adults' && currentCount < 8) ||
+            (type === 'children' && currentCount < 6) ||
+            (type === 'infants' && currentCount < 4)) {
+          guestState[type]++;
+        }
+      } else if (action === 'decrement') {
+        if (type === 'adults' && currentCount > 1) {
+          guestState[type]--;
+        } else if ((type === 'children' || type === 'infants') && currentCount > 0) {
+          guestState[type]--;
+        }
       }
-    });
 
-    // Mobile menu toggle
-    mobileMenuBtn.addEventListener('click', () => {
-      mobileMenu.classList.toggle('show');
-      const isOpen = mobileMenu.classList.contains('show');
-      mobileMenuBtn.innerHTML = isOpen ? 
-        '<i class="ri-close-line text-xl"></i>' : 
-        '<i class="ri-menu-line text-xl"></i>';
-    });
+      // Update count display
+      countElement.textContent = guestState[type];
 
-    // Close mobile menu on window resize
-    window.addEventListener('resize', () => {
-      if (window.innerWidth >= 768) { // md breakpoint
-        mobileMenu.classList.remove('show');
-        mobileMenuBtn.innerHTML = '<i class="ri-menu-line text-xl"></i>';
-      }
-    });
+      // Update buttons state
+      updateGuestButtons();
+    }
 
-    // Header Scroll Effect
-    const navSearchInput = document.querySelector('#nav-search-input');
-    const mobileSearchInput = document.querySelector('#mobile-search-input');
-    const userIconBtn = document.querySelector('#userIconBtn');
-    const notificationBadge = document.querySelector('#notification-badge');
-    const guestsDropdown = document.querySelector('#guests-dropdown');
-    const guestsMenu = document.querySelector('#guests-menu');
-    const adultsCount = document.querySelector('#adults-count');
-    const dateRangeInput = document.querySelector('#date-range');
-
-    // Header scroll effect
-    window.addEventListener('scroll', () => {
-      if (window.scrollY > 50) {
-        header.classList.add('scrolled');
-      } else {
-        header.classList.remove('scrolled');
-      }
-    });
-
-    // Mobile menu toggle
-    mobileMenuBtn.addEventListener('click', () => {
-      mobileMenu.classList.toggle('hidden');
-    });
-
-    // Close mobile menu when clicking outside
-    document.addEventListener('click', (e) => {
-      if (!mobileMenu.contains(e.target) && !mobileMenuBtn.contains(e.target)) {
-        mobileMenu.classList.add('hidden');
-      }
-    });
-
-    // Search functionality
-    [navSearchInput, mobileSearchInput].forEach(input => {
-      if (input) {
-        input.addEventListener('keypress', (e) => {
-          if (e.key === 'Enter') {
-            const searchTerm = input.value.trim().toLowerCase();
-            filterLodges(searchTerm);
-          }
-        });
-      }
-    });
-
-    // Notification badge demo
-    setTimeout(() => {
-      notificationBadge.classList.add('show');
-    }, 2000);
-
-    // Guests dropdown
-    guestsDropdown.addEventListener('click', (e) => {
-      e.stopPropagation();
-      guestsMenu.classList.toggle('hidden');
-    });
-
-    // Close guests menu when clicking outside
-    document.addEventListener('click', (e) => {
-      if (!guestsMenu.contains(e.target) && !guestsDropdown.contains(e.target)) {
-        guestsMenu.classList.add('hidden');
-      }
-    });
-
-    // Handle guest count buttons
-    const guestBtns = guestsMenu.querySelectorAll('.guest-btn');
-    guestBtns.forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        const isPlus = btn.classList.contains('plus');
-        const currentCount = parseInt(adultsCount.textContent);
+    // Update guest buttons state
+    function updateGuestButtons() {
+      guestBtns.forEach(btn => {
+        const type = btn.dataset.type;
+        const action = btn.dataset.action;
         
-        if (isPlus && currentCount < 10) {
-          adultsCount.textContent = currentCount + 1;
-          guestsDropdown.querySelector('span').textContent = `${currentCount + 1} Adults`;
-        } else if (!isPlus && currentCount > 1) {
-          adultsCount.textContent = currentCount - 1;
-          guestsDropdown.querySelector('span').textContent = `${currentCount - 1} Adults`;
-        }
-      });
-    });
-
-    // Initialize date range picker
-    if (dateRangeInput) {
-      flatpickr(dateRangeInput, {
-        mode: "range",
-        minDate: "today",
-        dateFormat: "Y-m-d",
-        altInput: true,
-        altFormat: "F j, Y",
-        onChange: function(selectedDates, dateStr) {
-          if (selectedDates.length === 2) {
-            // Handle date range selection
-            const startDate = selectedDates[0];
-            const endDate = selectedDates[1];
-            // You can add your logic here
+        if (action === 'decrement') {
+          if (type === 'adults') {
+            btn.disabled = guestState[type] <= 1;
+          } else {
+            btn.disabled = guestState[type] <= 0;
+          }
+        } else if (action === 'increment') {
+          if (type === 'adults') {
+            btn.disabled = guestState[type] >= 8;
+          } else if (type === 'children') {
+            btn.disabled = guestState[type] >= 6;
+          } else if (type === 'infants') {
+            btn.disabled = guestState[type] >= 4;
           }
         }
       });
     }
+
+    // Update guests text
+    function updateGuestsText() {
+      const total = guestState.adults + guestState.children;
+      let text = `${total} guest${total !== 1 ? 's' : ''}`;
+      
+      if (guestState.infants > 0) {
+        text += `, ${guestState.infants} infant${guestState.infants !== 1 ? 's' : ''}`;
+      }
+      
+      guestsText.textContent = text;
+    }
+
+    // Call initialization
+    document.addEventListener('DOMContentLoaded', () => {
+      try {
+        initGuestsDropdown();
+      } catch (error) {
+        console.error('Error initializing guests dropdown:', error);
+      }
+    });
+
+    // Header scroll effect
+    function initializeHeaderScroll() {
+        const header = document.querySelector('.main-header');
+        const mobileMenu = document.getElementById('mobile-menu');
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+
+        if (header) {
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > 0) {
+                    header.classList.add('scrolled');
+                } else {
+                    header.classList.remove('scrolled');
+                }
+            });
+        }
+
+        if (mobileMenuBtn && mobileMenu) {
+            mobileMenuBtn.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+        }
+    }
+
+    // Initialize header scroll effect
+    initializeHeaderScroll();
 })();

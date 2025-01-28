@@ -4,68 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LodgeEase - Baguio City Hotels</title>
-  <link rel="icon" type="image/x-icon" href="../assets/favicon.ico">
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="icon" type="image/x-icon" href="../components/favicon.ico">
+  <link href="../../dist/output.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <link rel="stylesheet" href="styles.css">
-  <style>
-    .custom-map-control {
-      background-color: white;
-      border: 2px solid #fff;
-      border-radius: 3px;
-      box-shadow: 0 2px 6px rgba(0,0,0,.3);
-      cursor: pointer;
-      margin: 10px;
-      text-align: center;
-      width: 40px;
-      height: 40px;
-      font-size: 18px;
-      font-weight: bold;
-      color: rgb(25, 25, 25);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .custom-map-control:hover {
-      background-color: #f8f9fa;
-    }
-    .custom-map-control i {
-      font-size: 20px;
-    }
-    #map {
-      width: 100%;
-      height: 100%;
-      touch-action: manipulation;
-    }
-    .gm-style .gm-style-iw-c {
-      padding: 0;
-    }
-    .gm-style .gm-style-iw-d {
-      overflow: hidden !important;
-      padding: 0;
-    }
-  </style>
-  <script>
-    // Make these functions globally available for the info window buttons
-    function getDirections(destination) {
-        window.getDirectionsCallback?.(destination);
-    }
-    function clearDirections() {
-        window.clearDirectionsCallback?.();
-    }
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script async defer 
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAaKZC47lvxIv0ej9bECXhUyaoL3FYuDM8&libraries=places,geometry,routes&loading=async" 
+    referrerpolicy="strict-origin-when-cross-origin">
   </script>
-  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAaKZC47lvxIv0ej9bECXhUyaoL3FYuDM8&libraries=places,geometry,routes" referrerpolicy="strict-origin-when-cross-origin"></script>
-  <script type="module">
-    import { auth, db } from "../../AdminSide/firebase.js";
-    import { initializeUserDrawer } from "../components/userDrawer.js";
-
-    // Initialize user drawer
-    document.addEventListener('DOMContentLoaded', () => {
-      initializeUserDrawer(auth, db);
-    });
-  </script>
-  <script src="rooms.js"></script>
+  <script src="rooms.js" type="module"></script>
 </head>
 
 <body class="text-gray-800">
@@ -73,30 +23,26 @@
     <nav class="container mx-auto h-full px-4 lg:px-6 flex items-center justify-between">
       <!-- Logo -->
       <a href="../Homepage/rooms.html" class="logo flex items-center space-x-2">
-        <i class="ri-home-smile-line text-2xl"></i>
-        <span>LodgeEase</span>
+        <img src="../components/LodgeEaseLogo.png" alt="LodgeEase" class="h-12">
       </a>
-      
-      <!-- Desktop Navigation -->
-      <div class="hidden md:flex items-center space-x-8">
-        <div class="relative">
-          <input type="text" 
-                 placeholder="Quick search..." 
-                 class="nav-search"
-          >
-          <i class="ri-search-line absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-        </div>
-        <a href="../Homepage/rooms.html" class="nav-link">Home</a>
-        <a href="../Login/index.html" class="nav-link">Log In</a>
-      </div>
 
-      <!-- Right Side Controls -->
-      <div class="flex items-center space-x-2">
-        <button id="userIconBtn" class="user-btn">
-          <i class="ri-user-line text-xl"></i>
+      <!-- Navigation Links -->
+      <div class="flex items-center space-x-4">
+        <button class="nav-button">
+          <i class="ri-search-line"></i>
+          <span>Quick Search</span>
         </button>
-        <button id="mobile-menu-btn" class="mobile-menu-btn md:hidden">
-          <i class="ri-menu-line text-xl"></i>
+        <a href="rooms.html" class="nav-button">
+          <i class="ri-home-line"></i>
+          <span>Home</span>
+        </a>
+        <button class="nav-button">
+          <i class="ri-login-box-line"></i>
+          <span>Log in</span>
+        </button>
+        <button id="userIconBtn" class="menu-button">
+          <i class="ri-menu-line"></i>
+          <i class="ri-user-line"></i>
         </button>
       </div>
     </nav>
@@ -129,8 +75,8 @@
         <h1 class="hero-title">Discover Baguio City</h1>
         <p class="hero-subtitle">Find your perfect mountain retreat</p>
         
-        <div class="search-container-wrapper flex justify-center">
-          <div class="search-container flex space-x-4">
+        <div class="search-container-wrapper">
+          <div class="search-container">
             <!-- Location Search -->
             <div class="search-input-group">
               <div class="input-wrapper">
@@ -147,7 +93,7 @@
               <div class="input-wrapper">
                 <i class="ri-calendar-line"></i>
                 <button id="datePickerBtn" class="w-full text-left">
-                  Select dates
+                  <span class="text-gray-500">Check in - Check out</span>
                 </button>
               </div>
             </div>
@@ -157,7 +103,65 @@
               <div class="input-wrapper">
                 <i class="ri-user-line"></i>
                 <button id="guestsDropdownBtn" class="w-full text-left">
-                  Add guests
+                  <span id="guestsText" class="text-gray-500">Add guests</span>
+                </button>
+              </div>
+
+              <!-- Guests Dropdown -->
+              <div id="guestsDropdown" class="hidden absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-50">
+                <!-- Adults -->
+                <div class="flex items-center justify-between mb-4">
+                  <div>
+                    <div class="font-medium">Adults</div>
+                    <div class="text-sm text-gray-500">Ages 13+</div>
+                  </div>
+                  <div class="flex items-center space-x-4">
+                    <button class="guest-btn" data-type="adults" data-action="decrement">
+                      <i class="ri-subtract-line"></i>
+                    </button>
+                    <span class="guest-count" data-type="adults">1</span>
+                    <button class="guest-btn" data-type="adults" data-action="increment">
+                      <i class="ri-add-line"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Children -->
+                <div class="flex items-center justify-between mb-4">
+                  <div>
+                    <div class="font-medium">Children</div>
+                    <div class="text-sm text-gray-500">Ages 2-12</div>
+                  </div>
+                  <div class="flex items-center space-x-4">
+                    <button class="guest-btn" data-type="children" data-action="decrement">
+                      <i class="ri-subtract-line"></i>
+                    </button>
+                    <span class="guest-count" data-type="children">0</span>
+                    <button class="guest-btn" data-type="children" data-action="increment">
+                      <i class="ri-add-line"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Infants -->
+                <div class="flex items-center justify-between mb-4">
+                  <div>
+                    <div class="font-medium">Infants</div>
+                    <div class="text-sm text-gray-500">Under 2</div>
+                  </div>
+                  <div class="flex items-center space-x-4">
+                    <button class="guest-btn" data-type="infants" data-action="decrement">
+                      <i class="ri-subtract-line"></i>
+                    </button>
+                    <span class="guest-count" data-type="infants">0</span>
+                    <button class="guest-btn" data-type="infants" data-action="increment">
+                      <i class="ri-add-line"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <button id="applyGuests" class="w-full mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                  Apply
                 </button>
               </div>
             </div>
