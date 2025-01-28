@@ -1,3 +1,7 @@
+// lodge5.js
+import { auth, db } from '../../AdminSide/firebase.js';
+import { initializeUserDrawer } from '../components/userDrawer.js';
+
 document.addEventListener('DOMContentLoaded', () => {
     initializeLodgeDetails();
     initializeBooking();
@@ -152,24 +156,29 @@ function initializeGallery() {
 }
 
 // Ensure this is called when the DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    initializeGallery();
-});
+// Initialize user drawer with proper elements
+const userIcon = document.getElementById('userIconBtn');
+const userDrawer = document.getElementById('userDrawer');
+const closeDrawer = document.getElementById('closeDrawer');
+const drawerOverlay = document.getElementById('drawerOverlay');
 
-function initializeUserDrawer() {
-    const userButton = document.getElementById('userButton');
-    const userDrawer = document.getElementById('userDrawer');
-    
-    userButton.addEventListener('click', () => {
-        userDrawer.classList.toggle('translate-x-full');
+if (userIcon && userDrawer && closeDrawer && drawerOverlay) {
+    // Open drawer
+    userIcon.addEventListener('click', function(e) {
+        e.preventDefault();
+        userDrawer.classList.remove('translate-x-full');
+        drawerOverlay.classList.remove('hidden');
     });
 
-    document.addEventListener('click', (e) => {
-        if (!userDrawer.contains(e.target) && !userButton.contains(e.target)) {
-            userDrawer.classList.add('translate-x-full');
-        }
-    });
+    // Close drawer
+    closeDrawer.addEventListener('click', closeUserDrawer);
+    drawerOverlay.addEventListener('click', closeUserDrawer);
 }
 
-import { initializeUserDrawer } from '../components/userDrawer.js';
-document.addEventListener('DOMContentLoaded', () => initializeUserDrawer(auth, db));
+function closeUserDrawer() {
+    userDrawer.classList.add('translate-x-full');
+    drawerOverlay.classList.add('hidden');
+}
+
+// Initialize the user drawer with auth and db
+initializeUserDrawer(auth, db);

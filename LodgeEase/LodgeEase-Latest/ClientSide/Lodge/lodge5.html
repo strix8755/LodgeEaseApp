@@ -33,14 +33,16 @@
   </header>
 
   <div id="drawerOverlay" class="fixed inset-0 bg-black opacity-50 hidden z-40"></div>
-  
-  <div id="userDrawer" class="fixed top-0 right-0 w-80 h-full bg-white shadow-xl transform transition-transform duration-300 z-50 translate-x-full">
-    <button id="closeDrawer" class="absolute top-4 right-4 text-gray-600 hover:text-gray-900">
-      <i class="ri-close-line text-2xl"></i>
-    </button>
-    <div class="drawer-content p-6">
-        <!-- Content will be dynamically inserted by JavaScript -->
-    </div>
+
+  <div id="userDrawer" class="fixed top-0 right-0 w-80 h-full bg-white shadow-xl transform transition-transform duration-300 z-50 translate-x-full flex flex-col">
+      <div class="flex justify-end p-4 border-b">
+          <button id="closeDrawer" class="text-gray-600 hover:text-gray-900">
+              <i class="ri-close-line text-2xl"></i>
+          </button>
+      </div>
+      <div class="drawer-content flex-1 overflow-y-auto">
+          <!-- Content will be dynamically inserted by JavaScript -->
+      </div>
   </div>
 
     <!-- Main Content -->
@@ -195,29 +197,7 @@
         </div>
     </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const userIcon = document.querySelector('.ri-user-line');
-            const userDrawer = document.getElementById('userDrawer');
-            const closeDrawer = document.getElementById('closeDrawer');
-            const drawerOverlay = document.getElementById('drawerOverlay');
-            
-            // Open drawer
-            userIcon.addEventListener('click', function() {
-                userDrawer.classList.remove('translate-x-full');
-                drawerOverlay.classList.remove('hidden');
-            });
-            
-            // Close drawer
-            closeDrawer.addEventListener('click', closeUserDrawer);
-            drawerOverlay.addEventListener('click', closeUserDrawer);
-            
-            function closeUserDrawer() {
-                userDrawer.classList.add('translate-x-full');
-                drawerOverlay.classList.add('hidden');
-            }
-            });
-        
+    <script>   
         function updateCostBreakdown() {
             const leaseDuration = document.getElementById('leaseDuration').value;
             const occupantsCount = document.getElementById('occupantsCount').value;
@@ -270,50 +250,24 @@
         
         // Initial calculation
         updateCostBreakdown();
-
-        
     </script>
     <script type="module">
-      import { handleReserveClick } from './lodge1.js';
-      import { initializeUserDrawer } from '../components/userDrawer.js';
-      import { auth, db } from '../../AdminSide/firebase.js';
-    
-      // Initialize user drawer
-      initializeUserDrawer(auth, db);
-    
-      // Add event listener to reserve button
-      document.addEventListener('DOMContentLoaded', () => {
-          const reserveBtn = document.getElementById('reserve-btn');
-          if (reserveBtn) {
-              reserveBtn.addEventListener('click', handleReserveClick);
-          } else {
-              console.error('Reserve button not found');
-          }
-      });
-    
-      document.addEventListener('DOMContentLoaded', function() {
-        const userIcon = document.getElementById('userIconBtn');
-        const userDrawer = document.getElementById('userDrawer');
-        const closeDrawer = document.getElementById('closeDrawer');
-        const drawerOverlay = document.getElementById('drawerOverlay');
-    
-        if (userIcon && userDrawer && closeDrawer && drawerOverlay) {
-          // Open drawer
-          userIcon.addEventListener('click', function() {
-            userDrawer.classList.remove('translate-x-full');
-            drawerOverlay.classList.remove('hidden');
-          });
-        
-          // Close drawer
-          closeDrawer.addEventListener('click', closeUserDrawer);
-          drawerOverlay.addEventListener('click', closeUserDrawer);
-        }
+        import { initializeUserDrawer } from '../components/userDrawer.js';
+        import { auth, db } from '../../AdminSide/firebase.js';
       
-        function closeUserDrawer() {
-          userDrawer.classList.add('translate-x-full');
-          drawerOverlay.classList.add('hidden');
-        }
-      });
-        </script>
+        // Initialize user drawer
+        initializeUserDrawer(auth, db);
+      
+        // Add event listener to reserve button
+        document.addEventListener('DOMContentLoaded', () => {
+            const reserveBtn = document.getElementById('reserve-btn');
+            if (reserveBtn) {
+                reserveBtn.addEventListener('click', handleReserveClick);
+            } else {
+                console.error('Reserve button not found');
+            }
+        });
+      
+          </script>
 </body>
 </html> 
