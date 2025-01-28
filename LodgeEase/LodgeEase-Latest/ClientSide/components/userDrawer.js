@@ -105,22 +105,25 @@ export function initializeUserDrawer(auth, db) {
 // Fetch recent messages for the user
 async function fetchRecentMessages(db, userId) {
     try {
-        // Assuming you have a 'messages' collection with sender and recipient fields
+        // First check if we can get messages without ordering
         const messagesRef = collection(db, 'messages');
         const q = query(
             messagesRef, 
             where('recipientId', '==', userId),
-            orderBy('timestamp', 'desc'),
             limit(5)
         );
 
         const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => ({
+        const messages = querySnapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
         }));
+
+        // Sort messages client-side as a temporary workaround
+        return messages.sort((a, b) => b.timestamp - a.timestamp);
     } catch (error) {
         console.error('Error fetching messages:', error);
+        // Return empty array but don't throw error to prevent UI disruption
         return [];
     }
 }

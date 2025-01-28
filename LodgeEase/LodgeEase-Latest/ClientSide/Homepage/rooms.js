@@ -160,6 +160,8 @@
             initializeSort();
             initializeMap();
             initializeFilters();
+            initializeDateRangePicker();
+            initializeGuestsDropdown();
         } catch (error) {
             console.error('Error initializing functionality:', error);
         }
@@ -719,5 +721,294 @@
 
             lodges.forEach(lodge => container.appendChild(lodge));
         });
+    }
+
+    // Date Range Picker
+    function initializeDateRangePicker() {
+        const datePickerBtn = document.getElementById('datePickerBtn');
+        const datePickerDropdown = document.getElementById('datePickerDropdown');
+        const dateRangeText = document.getElementById('dateRangeText');
+        const checkInDate = document.getElementById('checkInDate');
+        const checkOutDate = document.getElementById('checkOutDate');
+        const applyDates = document.getElementById('applyDates');
+        const quickDateBtns = document.querySelectorAll('.quick-date-btn');
+
+        // Set minimum dates
+        const today = new Date();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        checkInDate.min = today.toISOString().split('T')[0];
+        checkOutDate.min = tomorrow.toISOString().split('T')[0];
+
+        // Toggle dropdown
+        datePickerBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            datePickerDropdown.classList.toggle('hidden');
+            if (!datePickerDropdown.classList.contains('hidden')) {
+                datePickerDropdown.classList.add('show');
+            }
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!datePickerDropdown.contains(e.target) && !datePickerBtn.contains(e.target)) {
+                datePickerDropdown.classList.add('hidden');
+                datePickerDropdown.classList.remove('show');
+            }
+        });
+
+        // Update checkout min date when check-in changes
+        checkInDate.addEventListener('change', () => {
+            const selectedDate = new Date(checkInDate.value);
+            const nextDay = new Date(selectedDate);
+            nextDay.setDate(nextDay.getDate() + 1);
+            checkOutDate.min = nextDay.toISOString().split('T')[0];
+            
+            if (checkOutDate.value && new Date(checkOutDate.value) <= selectedDate) {
+                checkOutDate.value = nextDay.toISOString().split('T')[0];
+            }
+        });
+
+        // Quick select buttons
+        quickDateBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const days = parseInt(btn.dataset.days);
+                const startDate = new Date();
+                const endDate = new Date(startDate);
+                endDate.setDate(endDate.getDate() + days);
+                
+                checkInDate.value = startDate.toISOString().split('T')[0];
+                checkOutDate.value = endDate.toISOString().split('T')[0];
+                
+                // Update active state
+                quickDateBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            });
+        });
+
+        // Format date for display
+        function formatDate(date) {
+            const options = { month: 'short', day: 'numeric' };
+            return new Date(date).toLocaleDateString('en-US', options);
+        }
+
+        // Apply button
+        applyDates.addEventListener('click', () => {
+            if (checkInDate.value && checkOutDate.value) {
+                const checkIn = formatDate(checkInDate.value);
+                const checkOut = formatDate(checkOutDate.value);
+                dateRangeText.textContent = `${checkIn} - ${checkOut}`;
+                datePickerDropdown.classList.add('hidden');
+                datePickerDropdown.classList.remove('show');
+            }
+        });
+    }
+
+    // Guests Dropdown
+    function initializeGuestsDropdown() {
+        const guestsDropdownBtn = document.getElementById('guestsDropdownBtn');
+        const guestsDropdown = document.getElementById('guestsDropdown');
+        const guestsCount = document.getElementById('guestsCount');
+        const guestBtns = document.querySelectorAll('.guest-btn');
+
+        let guests = {
+            adults: 0,
+            children: 0
+        };
+
+        // Toggle guests dropdown
+        guestsDropdownBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            guestsDropdown.classList.toggle('hidden');
+        });
+
+        // Close guests dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!guestsDropdown.contains(e.target) && !guestsDropdownBtn.contains(e.target)) {
+                guestsDropdown.classList.add('hidden');
+            }
+        });
+
+        // Handle guest count buttons
+        guestBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const type = btn.dataset.type;
+                const action = btn.classList.contains('plus') ? 'add' : 'remove';
+                const countElement = btn.parentElement.querySelector('.guest-count');
+                
+                if (action === 'add') {
+                    guests[type]++;
+                } else if (guests[type] > 0) {
+                    guests[type]--;
+                }
+                
+                // Update count display
+                countElement.textContent = guests[type];
+                
+                // Update total guests text
+                updateGuestsText();
+                
+                // Update button states
+                updateGuestButtonStates();
+            });
+        });
+
+        function updateGuestsText() {
+            const total = guests.adults + guests.children;
+            const guestText = total === 1 ? 'guest' : 'guests';
+            
+            if (total === 0) {
+                guestsCount.textContent = 'Add guests';
+            } else {
+                const details = [];
+                if (guests.adults) {
+                    details.push(`${guests.adults} adult${guests.adults !== 1 ? 's' : ''}`);
+                }
+                if (guests.children) {
+                    details.push(`${guests.children} child${guests.children !== 1 ? 'ren' : ''}`);
+                }
+                guestsCount.textContent = details.join(', ');
+            }
+        }
+
+        function updateGuestButtonStates() {
+            // Disable minus buttons when count is 0
+            document.querySelectorAll('.guest-btn.minus').forEach(btn => {
+                const type = btn.dataset.type;
+                btn.disabled = guests[type] === 0;
+            });
+        }
+
+        // Initialize button states
+        updateGuestButtonStates();
+    }
+
+    // Header scroll effect
+    const header = document.querySelector('.main-header');
+    const mobileMenu = document.getElementById('mobile-menu');
+    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 20) {
+        header.classList.add('scrolled');
+      } else {
+        header.classList.remove('scrolled');
+      }
+    });
+
+    // Mobile menu toggle
+    mobileMenuBtn.addEventListener('click', () => {
+      mobileMenu.classList.toggle('show');
+      const isOpen = mobileMenu.classList.contains('show');
+      mobileMenuBtn.innerHTML = isOpen ? 
+        '<i class="ri-close-line text-xl"></i>' : 
+        '<i class="ri-menu-line text-xl"></i>';
+    });
+
+    // Close mobile menu on window resize
+    window.addEventListener('resize', () => {
+      if (window.innerWidth >= 768) { // md breakpoint
+        mobileMenu.classList.remove('show');
+        mobileMenuBtn.innerHTML = '<i class="ri-menu-line text-xl"></i>';
+      }
+    });
+
+    // Header Scroll Effect
+    const navSearchInput = document.querySelector('#nav-search-input');
+    const mobileSearchInput = document.querySelector('#mobile-search-input');
+    const userIconBtn = document.querySelector('#userIconBtn');
+    const notificationBadge = document.querySelector('#notification-badge');
+    const guestsDropdown = document.querySelector('#guests-dropdown');
+    const guestsMenu = document.querySelector('#guests-menu');
+    const adultsCount = document.querySelector('#adults-count');
+    const dateRangeInput = document.querySelector('#date-range');
+
+    // Header scroll effect
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 50) {
+        header.classList.add('scrolled');
+      } else {
+        header.classList.remove('scrolled');
+      }
+    });
+
+    // Mobile menu toggle
+    mobileMenuBtn.addEventListener('click', () => {
+      mobileMenu.classList.toggle('hidden');
+    });
+
+    // Close mobile menu when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!mobileMenu.contains(e.target) && !mobileMenuBtn.contains(e.target)) {
+        mobileMenu.classList.add('hidden');
+      }
+    });
+
+    // Search functionality
+    [navSearchInput, mobileSearchInput].forEach(input => {
+      if (input) {
+        input.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') {
+            const searchTerm = input.value.trim().toLowerCase();
+            filterLodges(searchTerm);
+          }
+        });
+      }
+    });
+
+    // Notification badge demo
+    setTimeout(() => {
+      notificationBadge.classList.add('show');
+    }, 2000);
+
+    // Guests dropdown
+    guestsDropdown.addEventListener('click', (e) => {
+      e.stopPropagation();
+      guestsMenu.classList.toggle('hidden');
+    });
+
+    // Close guests menu when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!guestsMenu.contains(e.target) && !guestsDropdown.contains(e.target)) {
+        guestsMenu.classList.add('hidden');
+      }
+    });
+
+    // Handle guest count buttons
+    const guestBtns = guestsMenu.querySelectorAll('.guest-btn');
+    guestBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const isPlus = btn.classList.contains('plus');
+        const currentCount = parseInt(adultsCount.textContent);
+        
+        if (isPlus && currentCount < 10) {
+          adultsCount.textContent = currentCount + 1;
+          guestsDropdown.querySelector('span').textContent = `${currentCount + 1} Adults`;
+        } else if (!isPlus && currentCount > 1) {
+          adultsCount.textContent = currentCount - 1;
+          guestsDropdown.querySelector('span').textContent = `${currentCount - 1} Adults`;
+        }
+      });
+    });
+
+    // Initialize date range picker
+    if (dateRangeInput) {
+      flatpickr(dateRangeInput, {
+        mode: "range",
+        minDate: "today",
+        dateFormat: "Y-m-d",
+        altInput: true,
+        altFormat: "F j, Y",
+        onChange: function(selectedDates, dateStr) {
+          if (selectedDates.length === 2) {
+            // Handle date range selection
+            const startDate = selectedDates[0];
+            const endDate = selectedDates[1];
+            // You can add your logic here
+          }
+        }
+      });
     }
 })();
