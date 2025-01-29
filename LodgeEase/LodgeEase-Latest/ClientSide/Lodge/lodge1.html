@@ -50,7 +50,9 @@
           LodgeEase
       </div>
       <ul class="flex space-x-6 items-center text-gray-700">
-          <li><a href="../Login/index.html" class="hover:text-blue-600 transition-colors">Log In</a></li>
+          <li id="login-button" class="hidden">
+              <a href="../Login/index.html" class="hover:text-blue-600 transition-colors">Log In</a>
+          </li>
           <li><a href="../Homepage/rooms.html" class="hover:text-blue-600 transition-colors">Home</a></li>
           <li>
             <a href="#" id="userIconBtn" class="text-gray-600 hover:text-blue-600 transition-colors">
@@ -58,7 +60,7 @@
             </a>
           </li>
       </ul>
-  </nav>
+    </nav>
   </header>
 
   <div id="drawerOverlay" class="fixed inset-0 bg-black opacity-50 hidden z-40"></div>

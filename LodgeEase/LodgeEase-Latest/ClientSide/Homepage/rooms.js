@@ -12,11 +12,32 @@
         window.clearDirectionsCallback?.();
     }
 
+    // Add this function to handle login button visibility
+    function updateLoginButtonVisibility(user) {
+        const loginButton = document.getElementById('loginButton');
+        const mobileLoginButton = document.getElementById('mobileLoginButton');
+        
+        if (loginButton) {
+            loginButton.style.display = user ? 'none' : 'flex';
+        }
+        
+        if (mobileLoginButton) {
+            mobileLoginButton.style.display = user ? 'none' : 'block';
+        }
+    }
+
     // Initialize everything when DOM is loaded
     document.addEventListener('DOMContentLoaded', () => {
         try {
             console.log('DOM loaded, initializing functionality...');
             initializeAllFunctionality();
+            
+            // Initialize auth state monitoring
+            import('../../AdminSide/firebase.js').then(({ auth }) => {
+                auth.onAuthStateChanged((user) => {
+                    updateLoginButtonVisibility(user);
+                });
+            });
             
             // Create lodge cards immediately after initialization
             console.log('Creating lodge cards after initialization...');

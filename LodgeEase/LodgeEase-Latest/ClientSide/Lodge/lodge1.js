@@ -552,6 +552,18 @@ function initializeEventListeners() {
       calendarModal.classList.remove('flex');
     }
   });
+
+  // Add auth state observer to handle login button visibility
+  auth.onAuthStateChanged((user) => {
+    const loginButton = document.getElementById('login-button');
+    if (loginButton) {
+      if (!user) {
+        loginButton.classList.remove('hidden');
+      } else {
+        loginButton.classList.add('hidden');
+      }
+    }
+  });
 }
 
 function updateDateInputs() {
