@@ -78,13 +78,12 @@
         <div class="search-container-wrapper">
           <div class="search-container">
             <!-- Location Search -->
-            <div class="search-input-group">
+            <div class="search-input-group relative">
               <div class="input-wrapper">
                 <i class="ri-map-pin-line"></i>
-                <input type="text" 
-                       id="location-search"
-                       placeholder="Where are you going?"
-                       class="w-full">
+                <button id="barangayDropdownBtn" class="w-full text-left focus:outline-none">
+                  <span id="barangayText" class="text-gray-500">Where are you going?</span>
+                </button>
               </div>
             </div>
 
@@ -447,5 +446,12 @@
           </div>
         </div>
       </footer>
+
+      <div id="barangayDropdown" class="hidden fixed bg-white shadow-lg border border-gray-200" style="z-index: 99999;">
+        <div id="barangayList" class="py-2 max-h-[300px] overflow-y-auto">
+          <!-- Barangay items will be populated by JavaScript -->
+        </div>
+      </div>
+
     </body>
   </html>

@@ -54,6 +54,9 @@
                 initGuestsDropdown();
             }
 
+            // Initialize barangay dropdown
+            initializeBarangayDropdown();
+
             // Initialize other components
             initializeSearch();
             initializeFilters();
@@ -90,6 +93,7 @@
             card.style.opacity = '1'; // Ensure visibility
             card.style.display = 'block'; // Ensure display
             card.dataset.propertyType = lodge.propertyType || 'hotel';
+            card.dataset.barangay = lodge.barangay;
             
             card.innerHTML = `
                 <img src="${lodge.image}" alt="${lodge.name}" class="lodge-image">
@@ -143,6 +147,7 @@
             id: 1,
             name: "Pine Haven Lodge",
             location: "Camp John Hay, Baguio City",
+            barangay: "Camp 7",
             image: "../components/pinehaven.jpg",
             price: 6500,
             amenities: ["Mountain View", "Fireplace", "WiFi"],
@@ -156,7 +161,8 @@
         {
             id: 2,
             name: "Mountain Breeze Lodge",
-            location: "Session Road, Baguio City",
+            location: "Session Road Area, Baguio City",
+            barangay: "Session Road",
             image: "../components/6.jpg",
             price: 3200,
             amenities: ["City View", "Kitchen", "Parking"],
@@ -171,6 +177,7 @@
             id: 3,
             name: "Baguio Hillside Retreat",
             location: "Burnham Park, Baguio City",
+            barangay: "Burnham-Legarda",
             image: "../components/3.jpg",
             price: 4800,
             amenities: ["Mountain View", "Kitchen", "WiFi", "Parking"],
@@ -185,6 +192,7 @@
             id: 5,
             name: "Super Apartment - Room 6",
             location: "City Center, Baguio City",
+            barangay: "City Camp Central",
             image: "../components/SuperApartmentRoom6.jpg",
             price: 3200,
             amenities: ["City View", "WiFi", "Kitchen"],
@@ -199,7 +207,8 @@
         {
             id: 4,
             name: "The Forest Lodge",
-            location: "Session Road, Baguio City",
+            location: "Session Road Area, Baguio City",
+            barangay: "Session Road",
             image: "../components/4.jpg",
             price: 2800,
             amenities: ["City View", "WiFi", "Restaurant"],
@@ -214,6 +223,7 @@
             id: 6,
             name: "Wright Park Manor",
             location: "Wright Park, Baguio City",
+            barangay: "Kisad",
             image: "../components/7.jpg",
             price: 5200,
             amenities: ["Mountain View", "Kitchen", "Parking", "Pet Friendly"],
@@ -228,6 +238,7 @@
             id: 7,
             name: "Highland Haven",
             location: "Burnham Park, Baguio City",
+            barangay: "Burnham-Legarda",
             image: "../components/8.jpg",
             price: 4100,
             amenities: ["City View", "WiFi", "Fitness Center"],
@@ -242,6 +253,7 @@
             id: 8,
             name: "Sunset View Villa",
             location: "Camp John Hay, Baguio City",
+            barangay: "Camp 7",
             image: "../components/9.jpg",
             price: 8900,
             amenities: ["Mountain View", "Pool", "Kitchen", "Fireplace"],
@@ -256,6 +268,7 @@
             id: 9,
             name: "Cozy Corner B&B",
             location: "Wright Park, Baguio City",
+            barangay: "Kisad",
             image: "../components/10.jpg",
             price: 3500,
             amenities: ["Garden View", "Free Breakfast", "WiFi"],
@@ -270,6 +283,7 @@
             id: 10,
             name: "The Manor Hotel",
             location: "Camp John Hay, Baguio City",
+            barangay: "Camp 7",
             image: "../components/11.jpg",
             price: 9500,
             amenities: ["Mountain View", "Spa", "Restaurant", "Room Service"],
@@ -282,6 +296,227 @@
         },
 
     ];
+
+    // Barangay data
+    const barangays = [
+        'Abanao-Zandueta-Kayong-Chugum-Otek',
+        'Alfonso Tabora',
+        'Ambiong',
+        'Andres Bonifacio',
+        'Apugan-Loakan',
+        'Aurora Hill North Central',
+        'Aurora Hill Proper',
+        'Aurora Hill South Central',
+        'Bagong Abreza',
+        'BGH Compound',
+        'Cabinet Hill-Teachers Camp',
+        'Camp 7',
+        'Camp 8',
+        'Camp Allen',
+        'City Camp Central',
+        'City Camp Proper',
+        'Country Club Village',
+        'Dagsian Lower',
+        'Dagsian Upper',
+        'Dominican Hill-Mirador',
+        'Dontogan',
+        'Engineers Hill',
+        'Fairview Village',
+        'Fort del Pilar',
+        'Gibraltar',
+        'Greenwater Village',
+        'Guisad Central',
+        'Guisad Sorong',
+        'Happy Hollow',
+        'Happy Homes-Lucban',
+        'Harrison-Claudio Carantes',
+        'Holy Ghost Extension',
+        'Holy Ghost Proper',
+        'Imelda Village',
+        'Irisan',
+        'Kabayanihan',
+        'Kagitingan',
+        'Kias',
+        'Loakan Proper',
+        'Lopez Jaena',
+        'Lourdes Subdivision Extension',
+        'Lourdes Subdivision Proper',
+        'Lower Magsaysay',
+        'Lower Rock Quarry',
+        'Lualhati',
+        'Lucnab',
+        'Magsaysay Private Road',
+        'Malcolm Square-Perfecto',
+        'Manuel A. Roxas',
+        'Market Subdivision',
+        'Middle Quezon Hill',
+        'Military Cut-off',
+        'Mines View Park',
+        'Modern Site East',
+        'Modern Site West',
+        'MRR-Queen of Peace',
+        'New Lucban',
+        'Outlook Drive',
+        'Pacdal',
+        'Padre Burgos',
+        'Padre Zamora',
+        'Phil-Am',
+        'Pinget',
+        'Pinsao Pilot Project',
+        'Pinsao Proper',
+        'Poliwes',
+        'Pucsusan',
+        'Quezon Hill Proper',
+        'Rizal Monument',
+        'Rock Quarry Lower',
+        'Rock Quarry Middle',
+        'Saint Joseph Village',
+        'Salud Mitra',
+        'San Antonio Village',
+        'San Luis Village',
+        'San Roque Village',
+        'San Vicente',
+        'Sanitary Camp North',
+        'Sanitary Camp South',
+        'Santa Escolastica',
+        'Santo Rosario',
+        'Santo Tomas Proper',
+        'Santo Tomas School Area',
+        'Scout Barrio',
+        'Session Road',
+        'Slaughter House Area',
+        'SLU-SVP Housing Village',
+        'South Drive',
+        'Teodora Alonzo',
+        'Upper Market Subdivision',
+        'Upper Magsaysay',
+        'Upper QM Subdivision',
+        'Upper Rock Quarry',
+        'Victoria Village'
+    ];
+
+    // Initialize barangay dropdown
+    function initializeBarangayDropdown() {
+        const barangayDropdownBtn = document.getElementById('barangayDropdownBtn');
+        const barangayDropdown = document.getElementById('barangayDropdown');
+        const barangayText = document.getElementById('barangayText');
+        const barangayList = document.getElementById('barangayList');
+    
+        if (!barangayDropdownBtn || !barangayDropdown || !barangayList) {
+            console.error('Barangay dropdown elements not found');
+            return;
+        }
+    
+        // Clear and populate the list
+        barangayList.innerHTML = '';
+        
+        // Add "All Barangays" option
+        const allBarangaysBtn = document.createElement('button');
+        allBarangaysBtn.className = 'w-full text-left px-4 py-2 hover:bg-gray-100';
+        allBarangaysBtn.textContent = 'All Barangays';
+        allBarangaysBtn.addEventListener('click', () => {
+            barangayText.textContent = 'All Barangays';
+            barangayDropdown.classList.add('hidden');
+            filterLodgesByBarangay('All Barangays');
+        });
+        barangayList.appendChild(allBarangaysBtn);
+    
+        // Add separator
+        const separator = document.createElement('div');
+        separator.className = 'border-t border-gray-200 my-2';
+        barangayList.appendChild(separator);
+    
+        // Add barangay options
+        barangays.forEach(barangay => {
+            const button = document.createElement('button');
+            button.className = 'w-full text-left px-4 py-2 hover:bg-gray-100';
+            button.textContent = barangay;
+            button.addEventListener('click', () => {
+                barangayText.textContent = barangay;
+                barangayDropdown.classList.add('hidden');
+                filterLodgesByBarangay(barangay);
+            });
+            barangayList.appendChild(button);
+        });
+    
+        // Toggle dropdown
+        barangayDropdownBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Position the dropdown below the button
+            const buttonRect = barangayDropdownBtn.getBoundingClientRect();
+            barangayDropdown.style.top = `${buttonRect.bottom + window.scrollY + 4}px`;
+            barangayDropdown.style.left = `${buttonRect.left}px`;
+            barangayDropdown.style.width = `${buttonRect.width}px`;
+            
+            barangayDropdown.classList.toggle('hidden');
+        });
+    
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!barangayDropdown.contains(e.target) && !barangayDropdownBtn.contains(e.target)) {
+                barangayDropdown.classList.add('hidden');
+            }
+        });
+    }
+
+    // Filter lodges by barangay
+    function filterLodgesByBarangay(barangay) {
+        const container = document.querySelector('.lodge-container');
+        if (!container) return;
+
+        const cards = container.querySelectorAll('.lodge-card');
+        let visibleCount = 0;
+
+        cards.forEach(card => {
+            if (barangay === 'All Barangays' || card.dataset.barangay === barangay) {
+                card.style.display = 'block';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+
+        // Update results count
+        const resultsCount = document.querySelector('.lodge-count');
+        if (resultsCount) {
+            resultsCount.textContent = `Showing ${visibleCount} of ${cards.length} lodges`;
+        }
+
+        // Update map markers if map is visible
+        if (!document.getElementById('mapView').classList.contains('hidden')) {
+            updateMapMarkers(barangay);
+        }
+    }
+
+    // Add this function to update map markers based on barangay filter
+    function updateMapMarkers(barangay) {
+        if (!markers || !map) return;
+
+        markers.forEach(marker => {
+            const lodge = lodgeData.find(l => 
+                l.coordinates.lat === marker.getPosition().lat() && 
+                l.coordinates.lng === marker.getPosition().lng()
+            );
+
+            if (lodge) {
+                if (barangay === 'All Barangays' || lodge.barangay === barangay) {
+                    marker.setMap(map);
+                } else {
+                    marker.setMap(null);
+                }
+            }
+        });
+    }
+
+    // Update the updateResultsCount function
+    function updateResultsCount(count) {
+        const resultsCount = document.getElementById('resultsCount');
+        if (resultsCount) {
+            resultsCount.textContent = `${count} lodges available`;
+        }
+    }
 
     // Add the new modal function here
     function addLodgeModalToDOM() {
@@ -334,7 +569,7 @@
                     <p class="text-gray-600">${lodge.location}</p>
                     
                     <h3 class="font-semibold mt-4 mb-2">Price</h3>
-                    <p class="text-green-600 font-bold text-xl">₱${lodge.price.toLocaleString()}/night</p>
+                    <p class="text-green-600 font-bold text-xl">₱${lodge.price} per night</p>
                     
                     <h3 class="font-semibold mt-4 mb-2">Rating</h3>
                     <div class="flex items-center">
