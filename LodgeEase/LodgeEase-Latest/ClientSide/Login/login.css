@@ -194,3 +194,61 @@ body {
   label[for="terms"] {
     font-size: 0.7rem;
   }
+
+  /* Terms and Conditions Modal Styles */
+  .terms-modal-enter-active, .terms-modal-leave-active {
+    transition: all 0.3s ease;
+  }
+
+  .terms-modal-enter, .terms-modal-leave-to {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+
+  /* Custom scrollbar for terms modal */
+  .terms-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(156, 163, 175, 0.5) rgba(243, 244, 246, 0.7);
+  }
+
+  .terms-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .terms-scrollbar::-webkit-scrollbar-track {
+    background: rgba(243, 244, 246, 0.7);
+    border-radius: 3px;
+  }
+
+  .terms-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(156, 163, 175, 0.5);
+    border-radius: 3px;
+    border: 2px solid rgba(243, 244, 246, 0.7);
+  }
+
+  /* Section animations */
+  .terms-section {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .terms-section:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+
+  /* Terms content typography */
+  .terms-content h4 {
+    font-weight: 600;
+    color: #1a202c;
+    margin-bottom: 1rem;
+  }
+
+  .terms-content p {
+    line-height: 1.7;
+    color: #4a5568;
+  }
+
+  .terms-content ul li {
+    margin-bottom: 0.5rem;
+    line-height: 1.6;
+  }

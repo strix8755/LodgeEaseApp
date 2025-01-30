@@ -12,6 +12,8 @@ new Vue({
             loading: false,
             errorMessage: '',
             successMessage: '',
+            acceptedTerms: false,
+            showTerms: false
         };
     },
     methods: {
@@ -19,6 +21,11 @@ new Vue({
             this.errorMessage = '';
             this.successMessage = '';
             
+            if (!this.acceptedTerms) {
+                this.errorMessage = 'Please accept the Terms and Conditions';
+                return;
+            }
+
             if (!this.email) {
                 this.errorMessage = 'Please enter your email or username';
                 return;
@@ -71,6 +78,11 @@ new Vue({
             } finally {
                 this.loading = false;
             }
+        },
+
+        acceptTerms() {
+            this.acceptedTerms = true;
+            this.showTerms = false;
         },
 
         handleAuthError(error) {

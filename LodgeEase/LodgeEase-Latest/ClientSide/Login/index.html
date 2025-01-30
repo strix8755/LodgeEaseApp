@@ -75,6 +75,17 @@
                                 <a href="CreateAcc.html" class="text-green-300 hover:text-green-100 text-sm transition">Create Account</a>
                             </div>
                         </div>
+                        <div class="flex items-center mb-4">
+                            <input 
+                                type="checkbox" 
+                                id="terms" 
+                                v-model="acceptedTerms"
+                                class="mr-2 text-blue-500 rounded focus:ring-blue-500"
+                            >
+                            <label for="terms" class="text-white text-sm">
+                                I accept the <a href="#" @click.prevent="showTerms = true" class="text-blue-300 hover:text-blue-100">Terms and Conditions</a>
+                            </label>
+                        </div>
                         <button 
                             type="submit" 
                             :disabled="loading"
@@ -99,6 +110,170 @@
                             <button class="bg-gray-800 text-white py-2 rounded-md flex items-center justify-center hover:bg-gray-900 transition">
                                 <i class="fab fa-apple mr-2"></i>Apple
                             </button>
+                        </div>
+                    </div>
+                    <!-- Terms and Conditions Modal -->
+                    <div v-if="showTerms" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+                        <div class="bg-gradient-to-br from-white to-gray-50 rounded-xl p-4 max-w-4xl max-h-[85vh] overflow-y-auto shadow-2xl terms-scrollbar">
+                            <div class="sticky top-0 bg-gradient-to-br from-white to-gray-50 pt-2 pb-2 mb-3 border-b border-gray-200">
+                                <h3 class="text-xl font-bold text-gray-800 tracking-tight">Terms and Conditions</h3>
+                                <p class="text-gray-500 mt-1 text-xs">Last updated: January 2024 | Version 1.0</p>
+                            </div>
+
+                            <div class="text-gray-600 space-y-3 px-2 text-xs">
+                                <!-- Introduction Section -->
+                                <section class="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                                    <h4 class="flex items-center text-sm font-semibold text-blue-800 mb-2">
+                                        <i class="fas fa-book mr-2"></i>1. Introduction and Scope
+                                    </h4>
+                                    <div class="text-blue-900/80 leading-relaxed space-y-2">
+                                        <p>Welcome to LodgeEase. By accessing our platform, you agree to these terms:</p>
+                                        <ul class="list-disc pl-4 space-y-1">
+                                            <li>Age requirement: Minimum 18 years old for account creation and booking</li>
+                                            <li>Legal capacity to enter binding contracts</li>
+                                            <li>Acceptance of electronic communications as primary method of contact</li>
+                                            <li>Agreement to periodic terms updates with continued use constituting acceptance</li>
+                                            <li>Understanding that these terms govern your use of LodgeEase services worldwide</li>
+                                        </ul>
+                                    </div>
+                                </section>
+
+                                <!-- Account & Security Section -->
+                                <section class="bg-indigo-50 p-3 rounded-lg border border-indigo-100">
+                                    <h4 class="flex items-center text-sm font-semibold text-indigo-800 mb-2">
+                                        <i class="fas fa-user-shield mr-2"></i>2. Account Security and Requirements
+                                    </h4>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div class="bg-white/50 p-2 rounded-lg">
+                                            <h5 class="font-medium text-indigo-800 mb-1 text-xs">Account Creation:</h5>
+                                            <ul class="space-y-1 text-indigo-900/80">
+                                                <li>• Valid email verification required</li>
+                                                <li>• Strong password requirements</li>
+                                                <li>• Complete profile information</li>
+                                                <li>• Phone number verification</li>
+                                            </ul>
+                                        </div>
+                                        <div class="bg-white/50 p-2 rounded-lg">
+                                            <h5 class="font-medium text-indigo-800 mb-1 text-xs">Security Responsibilities:</h5>
+                                            <ul class="space-y-1 text-indigo-900/80">
+                                                <li>• Regular password updates</li>
+                                                <li>• Secure account access</li>
+                                                <li>• Immediate breach reporting</li>
+                                                <li>• No credential sharing</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <!-- Booking Terms Section -->
+                                <section class="bg-green-50 p-3 rounded-lg border border-green-100">
+                                    <h4 class="flex items-center text-sm font-semibold text-green-800 mb-2">
+                                        <i class="fas fa-calendar-check mr-2"></i>3. Booking and Reservation Terms
+                                    </h4>
+                                    <div class="space-y-2">
+                                        <div class="bg-white/50 p-2 rounded-lg">
+                                            <h5 class="font-medium text-green-800 mb-1 text-xs">Booking Process:</h5>
+                                            <ul class="list-none space-y-1 text-green-900/80">
+                                                <li>• Real-time availability subject to change</li>
+                                                <li>• Instant booking confirmation required</li>
+                                                <li>• Maximum stay limitations apply</li>
+                                                <li>• Special requests subject to availability</li>
+                                            </ul>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            <div class="bg-white/50 p-2 rounded-lg">
+                                                <h5 class="font-medium text-green-800 mb-1 text-xs">Cancellation Policies:</h5>
+                                                <ul class="space-y-1 text-green-900/80">
+                                                    <li>• Flexible: 24hr free cancellation</li>
+                                                    <li>• Moderate: 3-day notice</li>
+                                                    <li>• Strict: 7-day notice</li>
+                                                    <li>• Non-refundable options</li>
+                                                </ul>
+                                            </div>
+                                            <div class="bg-white/50 p-2 rounded-lg">
+                                                <h5 class="font-medium text-green-800 mb-1 text-xs">Payment Terms:</h5>
+                                                <ul class="space-y-1 text-green-900/80">
+                                                    <li>• Deposit requirements</li>
+                                                    <li>• Accepted payment methods</li>
+                                                    <li>• Currency conversion rates</li>
+                                                    <li>• Service fee breakdown</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <!-- House Rules Section -->
+                                <section class="bg-yellow-50 p-3 rounded-lg border border-yellow-100">
+                                    <h4 class="flex items-center text-sm font-semibold text-yellow-800 mb-2">
+                                        <i class="fas fa-home mr-2"></i>4. Property Rules and Guest Conduct
+                                    </h4>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div class="bg-white/50 p-2 rounded-lg">
+                                            <h5 class="font-medium text-yellow-800 mb-1 text-xs">General Rules:</h5>
+                                            <ul class="space-y-1 text-yellow-900/80">
+                                                <li>• Noise restrictions</li>
+                                                <li>• Smoking policies</li>
+                                                <li>• Pet policies</li>
+                                                <li>• Occupancy limits</li>
+                                                <li>• Check-in/out times</li>
+                                            </ul>
+                                        </div>
+                                        <div class="bg-white/50 p-2 rounded-lg">
+                                            <h5 class="font-medium text-yellow-800 mb-1 text-xs">Guest Responsibilities:</h5>
+                                            <ul class="space-y-1 text-yellow-900/80">
+                                                <li>• Property care standards</li>
+                                                <li>• Damage reporting</li>
+                                                <li>• Security protocols</li>
+                                                <li>• Emergency procedures</li>
+                                                <li>• Visitor restrictions</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <!-- Liability Section -->
+                                <section class="bg-red-50 p-3 rounded-lg border border-red-100">
+                                    <h4 class="flex items-center text-sm font-semibold text-red-800 mb-2">
+                                        <i class="fas fa-exclamation-circle mr-2"></i>5. Liability and Insurance
+                                    </h4>
+                                    <div class="space-y-2">
+                                        <div class="bg-white/50 p-2 rounded-lg">
+                                            <h5 class="font-medium text-red-800 mb-1 text-xs">LodgeEase is not liable for:</h5>
+                                            <ul class="list-disc pl-4 space-y-1 text-red-900/80">
+                                                <li>Third-party service failures</li>
+                                                <li>Force majeure events</li>
+                                                <li>Guest personal property</li>
+                                                <li>Host-guest disputes</li>
+                                                <li>Inaccurate listing information</li>
+                                            </ul>
+                                        </div>
+                                        <div class="bg-white/50 p-2 rounded-lg">
+                                            <h5 class="font-medium text-red-800 mb-1 text-xs">Insurance Requirements:</h5>
+                                            <ul class="list-disc pl-4 space-y-1 text-red-900/80">
+                                                <li>Personal travel insurance recommended</li>
+                                                <li>Property damage coverage details</li>
+                                                <li>Liability coverage limitations</li>
+                                                <li>Claims process overview</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </section>
+                            </div>
+
+                            <div class="sticky bottom-0 bg-gradient-to-br from-white to-gray-50 pt-3 mt-3 border-t border-gray-200">
+                                <div class="flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0 text-xs">
+                                    <p class="text-gray-500">By accepting, you acknowledge reading and understanding all terms</p>
+                                    <div class="flex space-x-2">
+                                        <button @click="showTerms = false" class="px-3 py-1.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:shadow transition duration-200 flex items-center">
+                                            <i class="fas fa-times mr-1"></i>Close
+                                        </button>
+                                        <button @click="acceptTerms" class="px-3 py-1.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 hover:shadow-lg transition duration-200 flex items-center">
+                                            <i class="fas fa-check mr-1"></i>Accept Terms
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
