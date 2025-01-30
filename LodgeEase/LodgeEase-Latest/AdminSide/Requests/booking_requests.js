@@ -1,5 +1,10 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-auth.js";
+import { 
+    getAuth, 
+    onAuthStateChanged,
+    setPersistence,
+    browserLocalPersistence 
+} from "https://www.gstatic.com/firebasejs/9.18.0/firebase-auth.js";
 import { 
     getFirestore, 
     collection, 
@@ -28,6 +33,12 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+
+// Set persistence to LOCAL (this keeps the user logged in)
+setPersistence(auth, browserLocalPersistence)
+    .catch((error) => {
+        console.error("Auth persistence error:", error);
+    });
 
 // Function declarations moved outside DOMContentLoaded
 async function loadModificationRequests() {
@@ -153,6 +164,7 @@ function setupRequestListeners() {
 
 document.addEventListener('DOMContentLoaded', () => {
     let unsubscribeAuth = null;
+    let authInitialized = false;
 
     // Tab switching functionality
     const tabs = document.querySelectorAll('.tab-btn');
@@ -169,36 +181,74 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Improved auth state management
+    // Replace the auth state management code
     try {
         unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
             try {
+                console.log("Auth state changed:", user ? "User exists" : "No user");
+                
+                // Skip if auth is already initialized and user exists
+                if (authInitialized && user) {
+                    console.log("Auth already initialized, skipping checks");
+                    return;
+                }
+
                 if (user) {
-                    // Changed from admin_users to users collection
+                    authInitialized = true;
                     const userDoc = await getDoc(doc(db, "users", user.uid));
-                    if (userDoc.exists() && userDoc.data().role === 'admin') {
-                        // Add debug logging
-                        console.log('Admin authentication successful:', userDoc.data());
-                        setupRequestListeners(); // Set up real-time listeners
+                    console.log("User document:", userDoc.exists() ? "exists" : "does not exist");
+
+                    if (userDoc.exists()) {
+                        // Store user data in sessionStorage
+                        sessionStorage.setItem('userAuthenticated', 'true');
+                        sessionStorage.setItem('userId', user.uid);
+                        
+                        console.log("Setting up listeners and loading requests");
+                        setupRequestListeners();
                         await loadRequests();
                     } else {
-                        console.error('User is not admin:', userDoc.data());
-                        window.location.href = '../Login/index.html';
+                        console.error('User document not found');
+                        sessionStorage.clear();
+                        if (!window.location.href.includes('Login/index.html')) {
+                            window.location.href = '../Login/index.html';
+                        }
                     }
-                } else {
-                    console.error('No user authenticated');
-                    window.location.href = '../Login/index.html';
+                } else if (sessionStorage.getItem('userAuthenticated')) {
+                    // User was previously authenticated in this session
+                    console.log("Session exists but no user, waiting for auth...");
+                    // Don't redirect immediately, wait for a moment
+                    setTimeout(() => {
+                        if (!auth.currentUser) {
+                            console.log("No user after delay, redirecting");
+                            sessionStorage.clear();
+                            window.location.href = '../Login/index.html';
+                        }
+                    }, 2000);
                 }
             } catch (error) {
                 console.error('Auth state error:', error);
-                alert('Authentication error. Please try logging in again.');
-                window.location.href = '../Login/index.html';
+                // Only redirect on critical errors
+                if (error.code === 'permission-denied') {
+                    sessionStorage.clear();
+                    window.location.href = '../Login/index.html';
+                }
             }
         });
     } catch (error) {
         console.error('Auth setup error:', error);
-        alert('Failed to initialize authentication. Please refresh the page.');
     }
+
+    // Add page visibility change handler
+    document.addEventListener('visibilitychange', async () => {
+        if (!document.hidden && auth.currentUser) {
+            console.log('Page became visible, refreshing data...');
+            try {
+                await loadRequests();
+            } catch (error) {
+                console.error('Error refreshing data:', error);
+            }
+        }
+    });
 
     // Cleanup on page unload
     window.addEventListener('unload', () => {

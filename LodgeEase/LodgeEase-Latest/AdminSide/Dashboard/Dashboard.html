@@ -67,8 +67,9 @@
             </div>
 
             <div v-else>
+                <!-- Dashboard Header -->
                 <header class="dashboard-header">
-                    <h1>Dashboard</h1>
+                    <h1>Dashboard Overview</h1>
                     <div class="header-actions">
                         <button @click="updateDashboardStats" class="refresh-btn">
                             <i class="fas fa-sync-alt"></i> Refresh Data
@@ -76,28 +77,31 @@
                     </div>
                 </header>
 
-                <!-- Charts Section -->
-                <section class="charts-section">
-                    <div class="chart-container revenue-chart">
-                        <h3>Revenue Trend</h3>
-                        <canvas id="revenueChart"></canvas>
-                    </div>
-                    <div class="chart-container occupancy-chart">
-                        <h3>Occupancy Rate</h3>
-                        <canvas id="occupancyChart"></canvas>
-                    </div>
-                    <div class="chart-container room-chart">
-                        <h3>Room Distribution</h3>
-                        <canvas id="roomTypeChart"></canvas>
-                    </div>
-                </section>
-
-                <!-- Key Metrics -->
-                <section class="key-metrics">
+                <!-- Unified Metrics Dashboard -->
+                <section class="metrics-dashboard">
                     <div class="metric-card">
-                        <div class="metric-icon">
-                            <i class="fas fa-book"></i>
+                        <i class="fas fa-calendar-check"></i>
+                        <div class="metric-content">
+                            <h3>Today's Check-ins</h3>
+                            <p class="metric-value">{{ todayCheckIns }}</p>
                         </div>
+                    </div>
+                    <div class="metric-card">
+                        <i class="fas fa-door-open"></i>
+                        <div class="metric-content">
+                            <h3>Available Rooms</h3>
+                            <p class="metric-value">{{ availableRooms }}</p>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <i class="fas fa-bed"></i>
+                        <div class="metric-content">
+                            <h3>Occupied Rooms</h3>
+                            <p class="metric-value">{{ occupiedRooms }}</p>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <i class="fas fa-book"></i>
                         <div class="metric-content">
                             <h3>Total Bookings</h3>
                             <p class="metric-value">{{ stats.totalBookings }}</p>
@@ -105,9 +109,7 @@
                         </div>
                     </div>
                     <div class="metric-card">
-                        <div class="metric-icon">
-                            <i class="fas fa-chart-line"></i>
-                        </div>
+                        <i class="fas fa-chart-line"></i>
                         <div class="metric-content">
                             <h3>Occupancy Rate</h3>
                             <p class="metric-value">{{ stats.occupancyRate }}%</p>
@@ -115,14 +117,39 @@
                         </div>
                     </div>
                     <div class="metric-card">
-                        <div class="metric-icon">
-                            <i class="fas fa-clock"></i>
-                        </div>
+                        <i class="fas fa-clock"></i>
                         <div class="metric-content">
                             <h3>Average Stay</h3>
                             <p class="metric-value">{{ stats.averageStayDuration }} days</p>
                             <span class="metric-period">This Month</span>
                         </div>
+                    </div>
+                </section>
+
+                <!-- Charts Section -->
+                <section class="charts-section">
+                    <div class="chart-container baguio-map-chart">
+                        <h3><i class="fas fa-map-marked-alt"></i> Baguio Lodging Distribution</h3>
+                        <div class="chart-info">
+                            <p class="chart-description">Distribution of lodges and apartments across Baguio City barangays</p>
+                        </div>
+                        <canvas id="baguioWebChart"></canvas>
+                    </div>
+                    <div class="chart-container revenue-chart">
+                        <h3><i class="fas fa-chart-line"></i> Revenue Trend</h3>
+                        <canvas id="revenueChart"></canvas>
+                    </div>
+                    <div class="chart-container booking-trend-chart">
+                        <h3><i class="fas fa-calendar-check"></i> Booking Trends</h3>
+                        <canvas id="bookingTrendChart"></canvas>
+                    </div>
+                    <div class="chart-container occupancy-chart">
+                        <h3><i class="fas fa-percentage"></i> Occupancy Rate</h3>
+                        <canvas id="occupancyChart"></canvas>
+                    </div>
+                    <div class="chart-container room-chart">
+                        <h3><i class="fas fa-bed"></i> Room Distribution</h3>
+                        <canvas id="roomTypeChart"></canvas>
                     </div>
                 </section>
 
@@ -167,25 +194,6 @@
                                 </tr>
                             </tbody>
                         </table>
-                    </div>
-                </section>
-
-                <!-- Statistics Overview -->
-                <section class="statistics-overview">
-                    <div class="stat-card">
-                        <i class="fas fa-calendar-check"></i>
-                        <h3>Today's Check-ins</h3>
-                        <p>{{ todayCheckIns }}</p>
-                    </div>
-                    <div class="stat-card">
-                        <i class="fas fa-door-open"></i>
-                        <h3>Available Rooms</h3>
-                        <p>{{ availableRooms }}</p>
-                    </div>
-                    <div class="stat-card">
-                        <i class="fas fa-bed"></i>
-                        <h3>Occupied Rooms</h3>
-                        <p>{{ occupiedRooms }}</p>
                     </div>
                 </section>
             </div>

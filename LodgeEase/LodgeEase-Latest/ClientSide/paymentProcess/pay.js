@@ -1,5 +1,7 @@
 import { auth, db, addBooking } from '../../AdminSide/firebase.js';
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js";
+import { generateEmailTemplate } from './emailTemplate.js';
 
 const paymentTypeInputs = document.querySelectorAll('input[name="payment_type"]');
 const paymentMethodInputs = document.querySelectorAll('input[name="payment_method"]');
@@ -118,7 +120,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-// Add this after payment success
+async function sendBookingConfirmationEmail(bookingDetails, userEmail) {
+    try {
+        const functions = getFunctions();
+        const sendEmail = httpsCallable(functions, 'sendBookingConfirmation');
+        
+        const emailContent = generateEmailTemplate(bookingDetails);
+        
+        await sendEmail({
+            email: userEmail,
+            subject: `Booking Confirmation - ${bookingDetails.bookingId}`,
+            html: emailContent
+        });
+        
+        console.log('Confirmation email sent successfully');
+    } catch (error) {
+        console.error('Error sending confirmation email:', error);
+    }
+}
+
 async function handlePaymentSuccess() {
     const user = auth.currentUser;
 
@@ -134,9 +154,14 @@ async function handlePaymentSuccess() {
             throw new Error('No booking data found');
         }
 
+        // Generate unique booking ID
+        const bookingId = `BK${Date.now()}`;
+
         // Create the final booking object with all required fields
         const finalBooking = {
+            bookingId,
             userId: user.uid,
+            userEmail: user.email,
             checkIn: bookingData.checkIn,
             checkOut: bookingData.checkOut,
             guests: parseInt(bookingData.guests) || 1,
@@ -156,6 +181,9 @@ async function handlePaymentSuccess() {
 
         // Save to Firestore using the imported addBooking function
         await addBooking(finalBooking);
+
+        // Send confirmation email
+        await sendBookingConfirmationEmail(finalBooking, user.email);
 
         // Update the booking in localStorage with the final version
         localStorage.setItem('currentBooking', JSON.stringify(finalBooking));

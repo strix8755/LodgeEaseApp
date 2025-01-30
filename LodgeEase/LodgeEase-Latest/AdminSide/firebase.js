@@ -926,6 +926,22 @@ function safeTimestamp(date) {
     }
 }
 
+// Add this function before the exports
+async function initializeFirebase() {
+    try {
+        if (!app) {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            console.log('Firebase initialized successfully');
+        }
+        return true;
+    } catch (error) {
+        console.error('Firebase initialization error:', error);
+        return false;
+    }
+}
+
 // Export everything needed
 export {
     app,
@@ -975,5 +991,6 @@ export {
     setAdminRole,
     safeTimestamp,
     createRequiredIndexes,
-    validateBookingData
+    validateBookingData,
+    initializeFirebase
 };

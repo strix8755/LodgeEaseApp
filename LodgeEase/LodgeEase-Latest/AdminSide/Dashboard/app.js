@@ -400,8 +400,10 @@ new Vue({
                 await this.$nextTick();
                 
                 const revenueCanvas = document.getElementById('revenueChart');
+                const bookingTrendCanvas = document.getElementById('bookingTrendChart');
                 const occupancyCanvas = document.getElementById('occupancyChart');
                 const roomTypeCanvas = document.getElementById('roomTypeChart');
+                const baguioWebCanvas = document.getElementById('baguioWebChart');
                 
                 if (!revenueCanvas || !occupancyCanvas || !roomTypeCanvas) {
                     console.warn('Chart canvas elements not found. Charts will not be initialized.');
@@ -496,6 +498,126 @@ new Vue({
                     }
                 });
 
+                // Add booking trend chart initialization
+                this.bookingTrendChart = new Chart(bookingTrendCanvas, {
+                    type: 'line',
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            label: 'Monthly Bookings',
+                            data: [],
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 2,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    precision: 0
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top'
+                            }
+                        }
+                    }
+                });
+
+                // Initialize Baguio Web Chart
+                this.baguioWebChart = new Chart(baguioWebCanvas, {
+                    type: 'radar',
+                    data: {
+                        labels: [
+                            'Session Road Area',
+                            'Mines View',
+                            'Burnham Park',
+                            'Camp John Hay',
+                            'Teachers Camp',
+                            'Upper General Luna',
+                            'Military Cut-off',
+                            'Legarda Road',
+                            'Baguio City Market'
+                        ],
+                        datasets: [{
+                            label: 'Number of Lodges',
+                            data: [], // Will be populated from Firebase
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 2,
+                            pointBackgroundColor: 'rgba(54, 162, 235, 1)',
+                            pointRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            r: {
+                                beginAtZero: true,
+                                grid: {
+                                    color: 'rgba(0, 0, 0, 0.1)'
+                                },
+                                angleLines: {
+                                    color: 'rgba(0, 0, 0, 0.1)'
+                                },
+                                ticks: {
+                                    stepSize: 1,
+                                    backdropColor: 'transparent'
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top'
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `${context.label}: ${context.raw} lodges`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                // Add this method to update the web chart
+                async function updateBaguioWebChart() {
+                    try {
+                        const lodgesRef = collection(db, 'lodges');
+                        const snapshot = await getDocs(lodgesRef);
+                        
+                        // Create a map to store lodge counts by area
+                        const areaLodgeCounts = new Map();
+                        
+                        snapshot.forEach(doc => {
+                            const lodge = doc.data();
+                            const area = lodge.area || 'Other';
+                            areaLodgeCounts.set(area, (areaLodgeCounts.get(area) || 0) + 1);
+                        });
+                        
+                        // Update chart data
+                        this.baguioWebChart.data.datasets[0].data = this.baguioWebChart.data.labels.map(
+                            label => areaLodgeCounts.get(label) || 0
+                        );
+                        
+                        this.baguioWebChart.update();
+                    } catch (error) {
+                        console.error('Error updating Baguio web chart:', error);
+                    }
+                }
+
+                // Call update method
+                await updateBaguioWebChart();
+                
                 // Initialize with data
                 await this.updateDashboardStats();
             } catch (error) {
