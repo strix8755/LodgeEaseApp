@@ -915,13 +915,20 @@
         // Price filter
         const priceSlider = document.querySelector('input[type="range"]');
         if (priceSlider) {
-            priceSlider.addEventListener('input', updateFilters);
+            priceSlider.addEventListener('input', (e) => {
+                const maxPrice = parseInt(e.target.value);
+                const priceDisplay = document.querySelector('.price-display');
+                if (priceDisplay) {
+                    priceDisplay.textContent = `₱${maxPrice.toLocaleString()}`;
+                }
+                applyFilters();
+            });
         }
 
-        // Neighborhood and amenity filters
+        // All other filters (checkboxes)
         const checkboxes = document.querySelectorAll('input[type="checkbox"]');
         checkboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', updateFilters);
+            checkbox.addEventListener('change', applyFilters);
         });
 
         // Reset button
@@ -931,86 +938,110 @@
         }
     }
 
-    // Update filters
-    function updateFilters() {
+    function applyFilters() {
         const lodges = document.querySelectorAll('.lodge-card');
         const priceSlider = document.querySelector('input[type="range"]');
         const maxPrice = priceSlider ? parseInt(priceSlider.value) : Infinity;
+
+        // Get all selected filters
+        const selectedFilters = {
+            neighborhoods: getSelectedValues('neighborhood'),
+            amenities: getSelectedValues('amenity'),
+            propertyTypes: getPropertyTypeValues(),
+            stayDuration: getSelectedValues('stayDuration')
+        };
 
         let visibleCount = 0;
 
         lodges.forEach(lodge => {
             const price = extractPrice(lodge);
-            const shouldShow = price <= maxPrice && matchesSelectedFilters(lodge);
-            lodge.style.display = shouldShow ? 'block' : 'none';
-            if (shouldShow) visibleCount++;
+            const matchesPrice = price <= maxPrice;
+            const matchesFilters = checkAllFilters(lodge, selectedFilters);
+
+            if (matchesPrice && matchesFilters) {
+                lodge.style.display = 'block';
+                visibleCount++;
+            } else {
+                lodge.style.display = 'none';
+            }
         });
 
         updateResultsCount(visibleCount);
     }
 
-    // Helper functions
+    function getSelectedValues(selector) {
+        return Array.from(document.querySelectorAll(`input[name="${selector}"]:checked`))
+            .map(cb => cb.value.toLowerCase());
+    }
+
+    function getPropertyTypeValues() {
+        return Array.from(document.querySelectorAll('[data-filter="property-type"] input:checked'))
+            .map(cb => cb.value.toLowerCase());
+    }
+
+    function checkAllFilters(lodge, filters) {
+        // Check property type
+        const propertyType = lodge.dataset.propertyType?.toLowerCase();
+        if (filters.propertyTypes.length > 0 && !filters.propertyTypes.includes(propertyType)) {
+            return false;
+        }
+
+        // Check neighborhood
+        const location = lodge.querySelector('.location span')?.textContent.toLowerCase() || '';
+        if (filters.neighborhoods.length > 0 && !filters.neighborhoods.some(n => location.includes(n.toLowerCase()))) {
+            return false;
+        }
+
+        // Check amenities
+        const lodgeAmenities = Array.from(lodge.querySelectorAll('.amenity-tag'))
+            .map(tag => tag.textContent.toLowerCase());
+        if (filters.amenities.length > 0 && !filters.amenities.every(a => lodgeAmenities.includes(a.toLowerCase()))) {
+            return false;
+        }
+
+        // Check stay duration (if implemented)
+        if (filters.stayDuration.length > 0) {
+            // Add your stay duration logic here
+            // For now, we'll return true to not affect the filtering
+            return true;
+        }
+
+        return true;
+    }
+
     function extractPrice(lodge) {
-        const priceText = lodge.querySelector('.text-green-600')?.textContent || '0';
+        const priceText = lodge.querySelector('.price')?.textContent || '0';
         return parseInt(priceText.replace(/[^0-9]/g, ''));
     }
 
-    function matchesSelectedFilters(lodge) {
-        // Check neighborhoods
-        const selectedNeighborhoods = Array.from(document.querySelectorAll('input[name="neighborhood"]:checked'))
-            .map(cb => cb.value.toLowerCase());
-        
-        // Check amenities
-        const selectedAmenities = Array.from(document.querySelectorAll('input[name="amenity"]:checked'))
-            .map(cb => cb.value.toLowerCase());
-        
-        // Check property types
-        const selectedPropertyTypes = Array.from(document.querySelectorAll('[data-filter="property-type"] input:checked'))
-            .map(cb => cb.value.toLowerCase());
-
-        // Get lodge details
-        const location = lodge.querySelector('.text-gray-500')?.textContent.toLowerCase() || '';
-        const amenities = Array.from(lodge.querySelectorAll('.text-xs'))
-            .map(el => el.textContent.toLowerCase());
-
-        // Check if lodge matches all selected filters
-        const matchesNeighborhood = selectedNeighborhoods.length === 0 || 
-            selectedNeighborhoods.some(n => location.includes(n));
-
-        const matchesAmenities = selectedAmenities.length === 0 || 
-            selectedAmenities.every(a => amenities.some(am => am.includes(a)));
-
-        const matchesPropertyType = selectedPropertyTypes.length === 0 || 
-            selectedPropertyTypes.some(pt => lodge.dataset.propertyType?.toLowerCase() === pt);
-
-        return matchesNeighborhood && matchesAmenities && matchesPropertyType;
-    }
-
-    function updateResultsCount() {
-        const total = document.querySelectorAll('.lodge-card').length;
-        const visible = document.querySelectorAll('.lodge-card[style*="display: block"]').length;
-        const countDisplay = document.querySelector('.lodge-count');
-        
-        if (countDisplay) {
-            countDisplay.textContent = `Showing ${visible} of ${total} lodges`;
-        }
-    }
-
     function resetFilters() {
+        // Reset price slider
         const priceSlider = document.querySelector('input[type="range"]');
         if (priceSlider) {
             priceSlider.value = priceSlider.max;
         }
 
+        // Reset all checkboxes
         document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
             cb.checked = false;
         });
 
+        // Show all lodges
         document.querySelectorAll('.lodge-card').forEach(card => {
             card.style.display = 'block';
         });
 
-        updateResultsCount();
+        // Update the count
+        updateResultsCount(document.querySelectorAll('.lodge-card').length);
+    }
+
+    // Update the updateResultsCount function
+    function updateResultsCount(visibleCount) {
+        const total = document.querySelectorAll('.lodge-card').length;
+        const countDisplay = document.querySelector('.lodge-count');
+        if (countDisplay) {
+            countDisplay.textContent = `Showing ${visibleCount} of ${total} lodges`;
+        }
     }
 
     // Sort functionality
