@@ -53,6 +53,13 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/system/ratelimits).data.counts[path] || 0;
     }
 
+    // Add new helper function for email validation
+    function isValidEmailRequest(data) {
+      return data.keys().hasAll(['bookingDetails', 'recipientEmail']) &&
+             isValidEmail(data.recipientEmail) &&
+             data.bookingDetails.keys().hasAll(['bookingId', 'checkIn', 'checkOut']);
+    }
+
     // Enhanced security rules for collections
     // Modified analytics rules to be more permissive during development
     match /analytics/{document=**} {
@@ -211,5 +218,23 @@ service cloud.firestore {
         request.resource.data.keys().hasAll(['trends', 'lastUpdated']) &&
         request.resource.data.trends is list;
     }
+
+    // Simplified email rules - only require user authentication
+    match /emailNotifications/{emailId} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /emailTemplates/{templateId} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /emailQueue/{queueId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Remove or comment out any admin-specific email rules
+    // match /emailQueue/{queueId} {
+    //   allow update: if isAdmin();
+    // }
   }
 }

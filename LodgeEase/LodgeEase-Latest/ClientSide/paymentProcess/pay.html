@@ -63,21 +63,34 @@
           <span class="font-medium" id="summary-guests"></span>
       </div>
       <div class="flex justify-between">
-          <span class="text-gray-600">Nights</span>
+          <span class="text-gray-600">Contact Number</span>
+          <span class="font-medium" id="summary-contact"></span>
+      </div>
+      <div class="flex justify-between">
+          <span class="text-gray-600">Length of stay</span>
           <span class="font-medium" id="summary-nights"></span>
       </div>
-      <div class="flex justify-between">
-          <span class="text-gray-600">Rate per night</span>
-          <span class="font-medium" id="summary-rate"></span>
+      <div class="mt-4 border-t pt-4">
+          <div class="flex justify-between">
+              <span class="text-gray-600">Rate per night</span>
+              <span class="font-medium" id="summary-rate"></span>
+          </div>
+          <div class="flex justify-between">
+              <span class="text-gray-600">Subtotal</span>
+              <span class="font-medium" id="summary-subtotal"></span>
+          </div>
+          <div class="flex justify-between">
+              <span class="text-gray-600">Service fee</span>
+              <span class="font-medium" id="summary-fee"></span>
+          </div>
+          <div class="flex justify-between font-semibold mt-4 pt-4 border-t">
+              <span>Total Price</span>
+              <span id="summary-total"></span>
+          </div>
       </div>
-      <div class="flex justify-between">
-          <span class="text-gray-600">Service fee</span>
-          <span class="font-medium" id="summary-fee"></span>
-      </div>
-      <div class="flex justify-between font-semibold mt-4 pt-4 border-t">
-          <span>Total</span>
-          <span id="summary-total"></span>
-      </div>
+  </div>
+</div>
+
     <!-- Payment Options -->
     <div class="mb-6">
       <h2 class="text-lg font-semibold text-gray-800 mb-4">Choose how to pay</h2>
@@ -192,11 +205,11 @@
     <div class="bg-white p-8 rounded-lg shadow-xl max-w-md w-full text-center">
       <i class="fas fa-check-circle text-5xl text-green-500 mb-4"></i>
       <h2 class="text-2xl font-semibold mb-4">Payment Successful!</h2>
-      <p class="text-gray-600 mb-6">Your booking has been confirmed. Redirecting to dashboard...</p>
+      <p class="text-gray-600 mb-6"></p>
       <button 
         id="close-modal-btn"
         class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-        Close
+        Go to Dashboard
       </button>
     </div>
   </div>

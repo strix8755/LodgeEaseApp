@@ -386,53 +386,32 @@ export async function handleReserveClick(event) {
             return;
         }
 
-        // Get user data
-        const userData = await getCurrentUserData();
-        if (!userData) {
-            throw new Error('Unable to get user data');
-        }
-
-        // Calculate pricing
+        // Calculate costs consistently
         const subtotal = NIGHTLY_RATE * nights;
-        const serviceFeeAmount = Math.round(subtotal * SERVICE_FEE_PERCENTAGE);
-        const total = subtotal + serviceFeeAmount;
+        const serviceFeeAmount = Math.round(subtotal * SERVICE_FEE_PERCENTAGE); // Using constant
+        const totalPrice = subtotal + serviceFeeAmount;
 
+        // Create booking data object with all necessary details
         const bookingData = {
-            // Guest Information
-            guestName: userData.fullname || '',
-            email: userData.email || '',
+            checkIn: selectedCheckIn.toISOString(),
+            checkOut: selectedCheckOut.toISOString(),
+            guests: Number(guests),
             contactNumber: contactNumber,
-            userId: user.uid,
-            guests: parseInt(guests),
-            
-            // Dates
-            checkIn: Timestamp.fromDate(selectedCheckIn),
-            checkOut: Timestamp.fromDate(selectedCheckOut),
-            createdAt: Timestamp.now(),
-            
-            // Property Details
+            numberOfNights: nights,
+            nightlyRate: NIGHTLY_RATE,
+            subtotal: subtotal,
+            serviceFee: serviceFeeAmount,
+            totalPrice: totalPrice,
             propertyDetails: {
                 name: 'Pine Haven Lodge',
-                type: 'Lodge',
-                location: 'Baguio City'
-            },
-            
-            // Pricing
-            pricing: {
-                nightlyRate: NIGHTLY_RATE,
-                numberOfNights: nights,
-                subtotal: subtotal,
-                serviceFee: serviceFeeAmount,
-                total: total
-            },
-            
-            // Status
-            status: 'pending',
-            paymentStatus: 'pending'
+                location: 'Baguio City, Philippines',
+                roomType: 'Deluxe Suite',
+                roomNumber: "304"
+            }
         };
 
-        // Store booking data in localStorage for payment page
-        localStorage.setItem('currentBooking', JSON.stringify(bookingData));
+        // Save to localStorage
+        localStorage.setItem('bookingData', JSON.stringify(bookingData));
 
         // Redirect to payment page
         window.location.href = '../paymentProcess/pay.html';
