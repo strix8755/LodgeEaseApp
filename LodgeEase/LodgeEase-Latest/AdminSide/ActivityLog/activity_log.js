@@ -1,4 +1,4 @@
-import { getAuth } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-auth.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { 
     getFirestore, 
     collection, 
@@ -10,12 +10,11 @@ import {
     onSnapshot,
     getDoc,
     doc
-} from "https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore.js";
-import { app } from '../firebase.js';  // Import the existing Firebase instance
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { app, db } from '../firebase.js';  // Import both app and db
 
 // Use the existing Firebase instance
 const auth = getAuth(app);
-const db = getFirestore(app);
 
 // Add this helper function at the top
 async function verifyAdminAuth() {
@@ -70,8 +69,8 @@ async function checkActivityLogsCollection() {
     }
 }
 
-// Add Vue instance to handle auth state
-new Vue({
+// Rename Vue instance to vueApp instead of app to avoid conflict
+const vueApp = new Vue({
     el: '#app',
     data: {
         isAuthenticated: false
@@ -84,18 +83,14 @@ new Vue({
             } catch (error) {
                 console.error('Error signing out:', error);
             }
-        },
-        async checkAuthState() {
-            this.isAuthenticated = !!auth.currentUser;
         }
     },
-    created() {
+    mounted() {
         // Set up auth state listener
-        auth.onAuthStateChanged(async (user) => {
+        auth.onAuthStateChanged(user => {
             this.isAuthenticated = !!user;
             if (!user) {
                 window.location.href = '../Login/index.html';
-                return;
             }
         });
     }
@@ -152,22 +147,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function setupFilters() {
-    // Populate user filter
-    const usersRef = collection(db, 'users');
-    const usersSnapshot = await getDocs(usersRef);
-    const userFilter = document.getElementById('userFilter');
+    try {
+        const usersRef = collection(db, 'users');
+        const usersSnapshot = await getDocs(usersRef);
+        const userFilter = document.getElementById('userFilter');
 
-    usersSnapshot.forEach(doc => {
-        const userData = doc.data();
-        const option = document.createElement('option');
-        option.value = doc.id;
-        option.textContent = userData.fullname || userData.username;
-        userFilter.appendChild(option);
-    });
+        if (userFilter) {
+            userFilter.innerHTML = '<option value="">All Users</option>';
+            usersSnapshot.forEach(doc => {
+                const userData = doc.data();
+                const option = document.createElement('option');
+                option.value = doc.id;
+                option.textContent = userData.fullname || userData.username;
+                userFilter.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error setting up filters:', error);
+    }
 }
 
+// Update loadActivityLogs to use the imported db
 async function loadActivityLogs() {
-    console.log('Loading activity logs...'); // Debug log
+    console.log('Loading activity logs...');
     
     const logsContainer = document.getElementById('activityLogTable');
     if (!logsContainer) return;
@@ -185,17 +187,11 @@ async function loadActivityLogs() {
             </tr>
         `;
 
-        // Check if collection exists and has documents
         const logsRef = collection(db, 'activityLogs');
-        console.log('Checking activityLogs collection...'); // Debug log
-
-        // Get all logs ordered by timestamp
-        const querySnapshot = await getDocs(query(logsRef, orderBy('timestamp', 'desc')));
-        
-        console.log('Found logs:', querySnapshot.size); // Debug log
+        const logsQuery = query(logsRef, orderBy('timestamp', 'desc'));
+        const querySnapshot = await getDocs(logsQuery);
 
         if (querySnapshot.empty) {
-            console.log('No logs found'); // Debug log
             logsContainer.innerHTML = `
                 <tr>
                     <td colspan="4" class="px-6 py-4 text-center text-gray-500">
