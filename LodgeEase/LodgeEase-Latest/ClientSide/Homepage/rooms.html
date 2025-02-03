@@ -28,11 +28,11 @@
 
       <!-- Navigation Links -->
       <div class="flex items-center space-x-4">
-        <button class="nav-button">
+        <button id="quickSearchBtn" class="nav-button" title="Open search">
           <i class="ri-search-line"></i>
           <span>Quick Search</span>
         </button>
-        <a href="rooms.html" class="nav-button">
+        <a href="../Homepage/rooms.html" class="nav-button active" title="Go to homepage">
           <i class="ri-home-line"></i>
           <span>Home</span>
         </a>
@@ -75,7 +75,7 @@
         <h1 class="hero-title">Discover Baguio City</h1>
         <p class="hero-subtitle">Find your perfect mountain retreat</p>
         
-        <div class="search-container-wrapper">
+        <div class="search-container-wrapper relative z-50">
           <div class="search-container">
             <!-- Location Search -->
             <div class="search-input-group relative">
@@ -88,12 +88,16 @@
             </div>
 
             <!-- Date Range -->
-            <div class="search-input-group">
+            <div class="search-input-group relative">
               <div class="input-wrapper">
                 <i class="ri-calendar-line"></i>
-                <button id="datePickerBtn" class="w-full text-left">
-                  <span class="text-gray-500">Check in - Check out</span>
-                </button>
+                <input 
+                    type="text" 
+                    id="datePickerBtn"
+                    class="w-full text-left bg-transparent border-none focus:outline-none cursor-pointer"
+                    placeholder="Check in - Check out"
+                    readonly
+                >
               </div>
             </div>
 

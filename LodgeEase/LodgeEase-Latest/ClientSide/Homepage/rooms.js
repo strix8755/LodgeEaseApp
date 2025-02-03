@@ -49,6 +49,9 @@
                     initializeUserDrawer(auth, db);
                 });
             });
+
+            // Initialize navigation
+            initializeNavigation();
         } catch (error) {
             console.error('Error during initialization:', error);
         }
@@ -1074,175 +1077,157 @@
 
     // Date Range Picker
     function initializeDateRangePicker() {
-        const datePickerBtn = document.getElementById('datePickerBtn');
-        if (!datePickerBtn) {
-            console.warn('Date picker button not found');
+        const datePickerInput = document.getElementById('datePickerBtn');
+        if (!datePickerInput) {
+            console.warn('Date picker input not found');
             return;
         }
-
-        try {
-            if (typeof flatpickr === 'undefined') {
-                console.error('Flatpickr library not loaded');
-                return;
-            }
-
-            const picker = flatpickr(datePickerBtn, {
-                mode: "range",
-                minDate: "today",
-                dateFormat: "Y-m-d",
-                altInput: true,
-                altFormat: "F j, Y",
-                static: true,
-                onChange: function(selectedDates, dateStr) {
-                    const span = datePickerBtn.querySelector('span');
-                    if (!span) return;
-
-                    if (selectedDates.length === 2) {
-                        const [start, end] = selectedDates;
-                        const nights = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-                        span.textContent = `${start.toLocaleDateString()} - ${end.toLocaleDateString()} (${nights} nights)`;
-                    } else {
-                        span.textContent = 'Select dates';
-                    }
+    
+        const fp = flatpickr(datePickerInput, {
+            mode: "range",
+            minDate: "today",
+            dateFormat: "Y-m-d",
+            altInput: true,
+            altFormat: "F j, Y",
+            static: true,
+            position: "auto",
+            disableMobile: true,
+            monthSelectorType: "static",
+            showMonths: 2,
+            inline: false,
+            appendTo: document.body,
+            onOpen: function() {
+                // Add overlay class to body
+                document.body.classList.add('datepicker-open');
+                datePickerInput.closest('.search-input-group').classList.add('active');
+            },
+            onClose: function() {
+                // Remove overlay class from body
+                document.body.classList.remove('datepicker-open');
+                datePickerInput.closest('.search-input-group').classList.remove('active');
+            },
+            onChange: function(selectedDates) {
+                if (selectedDates.length === 2) {
+                    const [start, end] = selectedDates;
+                    const nights = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+                    datePickerInput.value = `${start.toLocaleDateString()} - ${end.toLocaleDateString()} (${nights} nights)`;
                 }
-            });
-
-            // Initialize with empty state
-            const span = datePickerBtn.querySelector('span');
-            if (span) {
-                span.textContent = 'Select dates';
             }
-
-            return picker;
-        } catch (error) {
-            console.error('Error initializing date picker:', error);
-            return null;
-        }
-    }
-
-    // Guests Dropdown Functionality
-    const guestsDropdownBtn = document.getElementById('guestsDropdownBtn');
-    const guestsDropdown = document.getElementById('guestsDropdown');
-    const guestsText = document.getElementById('guestsText');
-    const applyGuestsBtn = document.getElementById('applyGuests');
-    const guestBtns = document.querySelectorAll('.guest-btn');
-    const guestCounts = document.querySelectorAll('.guest-count');
-
-    let guestState = {
-      adults: 1,
-      children: 0,
-      infants: 0
-    };
-
-    // Initialize guest buttons
-    function initGuestsDropdown() {
-      if (!guestsDropdownBtn || !guestsDropdown) {
-        console.error('Guests dropdown elements not found');
-        return;
-      }
-
-      // Toggle dropdown
-      guestsDropdownBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        guestsDropdown.classList.toggle('hidden');
-      });
-
-      // Close dropdown when clicking outside
-      document.addEventListener('click', (e) => {
-        if (!guestsDropdown.contains(e.target) && e.target !== guestsDropdownBtn) {
-          guestsDropdown.classList.add('hidden');
-        }
-      });
-
-      // Handle guest count buttons
-      guestBtns.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          const type = btn.dataset.type;
-          const action = btn.dataset.action;
-          updateGuestCount(type, action);
         });
-      });
+    
+        // Close other dropdowns when date picker opens
+        datePickerInput.addEventListener('click', (e) => {
+            e.stopPropagation();
+            // Close any other open dropdowns
+            document.querySelectorAll('.search-dropdown, #guestsDropdown').forEach(el => {
+                el.classList.add('hidden');
+            });
+        });
+    
+        return fp;
+    }
 
-      // Apply button
-      applyGuestsBtn.addEventListener('click', () => {
+    function initGuestsDropdown() {
+        const guestsDropdownBtn = document.getElementById('guestsDropdownBtn');
+        const guestsDropdown = document.getElementById('guestsDropdown');
+        const guestsText = document.getElementById('guestsText');
+        const applyGuestsBtn = document.getElementById('applyGuests');
+        const guestBtns = document.querySelectorAll('.guest-btn');
+
+        if (!guestsDropdownBtn || !guestsDropdown || !guestsText) return;
+
+        const guestState = {
+            adults: 1,
+            children: 0,
+            infants: 0
+        };
+
+        function updateGuestsText() {
+            const total = guestState.adults + guestState.children;
+            let text = `${total} guest${total !== 1 ? 's' : ''}`;
+            if (guestState.infants > 0) {
+                text += `, ${guestState.infants} infant${guestState.infants !== 1 ? 's' : ''}`;
+            }
+            guestsText.textContent = text;
+        }
+
+        function updateButtonStates() {
+            guestBtns.forEach(btn => {
+                const type = btn.dataset.type;
+                const action = btn.dataset.action;
+                
+                if (action === 'decrement') {
+                    btn.disabled = (type === 'adults' && guestState[type] <= 1) || 
+                                 ((type === 'children' || type === 'infants') && guestState[type] <= 0);
+                } else if (action === 'increment') {
+                    btn.disabled = (type === 'adults' && guestState[type] >= 8) ||
+                                 (type === 'children' && guestState[type] >= 6) ||
+                                 (type === 'infants' && guestState[type] >= 4);
+                }
+                
+                btn.classList.toggle('opacity-50', btn.disabled);
+            });
+        }
+
+        // Handle guest buttons
+        guestBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                if (btn.disabled) return;
+
+                const type = btn.dataset.type;
+                const action = btn.dataset.action;
+                
+                if (action === 'increment') {
+                    guestState[type]++;
+                } else if (action === 'decrement') {
+                    guestState[type]--;
+                }
+                
+                // Update the count display
+                const countElement = document.querySelector(`.guest-count[data-type="${type}"]`);
+                if (countElement) {
+                    countElement.textContent = guestState[type];
+                }
+                
+                updateButtonStates();
+                updateGuestsText();
+            });
+        });
+
+        // Toggle dropdown
+        guestsDropdownBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const buttonRect = guestsDropdownBtn.getBoundingClientRect();
+            guestsDropdown.style.position = 'fixed';
+            guestsDropdown.style.top = `${buttonRect.bottom + window.scrollY + 4}px`;
+            guestsDropdown.style.left = `${buttonRect.left}px`;
+            guestsDropdown.style.width = `${buttonRect.width}px`;
+            guestsDropdown.style.zIndex = '10000';
+            
+            guestsDropdown.classList.toggle('hidden');
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!guestsDropdown.contains(e.target) && !guestsDropdownBtn.contains(e.target)) {
+                guestsDropdown.classList.add('hidden');
+            }
+        });
+
+        // Apply button
+        applyGuestsBtn?.addEventListener('click', () => {
+            guestsDropdown.classList.add('hidden');
+        });
+
+        // Initial state
+        updateButtonStates();
         updateGuestsText();
-        guestsDropdown.classList.add('hidden');
-      });
-
-      // Initial text update
-      updateGuestsText();
     }
-
-    // Update guest count
-    function updateGuestCount(type, action) {
-      const currentCount = guestState[type];
-      const countElement = document.querySelector(`.guest-count[data-type="${type}"]`);
-      
-      if (action === 'increment') {
-        if ((type === 'adults' && currentCount < 8) ||
-            (type === 'children' && currentCount < 6) ||
-            (type === 'infants' && currentCount < 4)) {
-          guestState[type]++;
-        }
-      } else if (action === 'decrement') {
-        if (type === 'adults' && currentCount > 1) {
-          guestState[type]--;
-        } else if ((type === 'children' || type === 'infants') && currentCount > 0) {
-          guestState[type]--;
-        }
-      }
-
-      // Update count display
-      countElement.textContent = guestState[type];
-
-      // Update buttons state
-      updateGuestButtons();
-    }
-
-    // Update guest buttons state
-    function updateGuestButtons() {
-      guestBtns.forEach(btn => {
-        const type = btn.dataset.type;
-        const action = btn.dataset.action;
-        
-        if (action === 'decrement') {
-          if (type === 'adults') {
-            btn.disabled = guestState[type] <= 1;
-          } else {
-            btn.disabled = guestState[type] <= 0;
-          }
-        } else if (action === 'increment') {
-          if (type === 'adults') {
-            btn.disabled = guestState[type] >= 8;
-          } else if (type === 'children') {
-            btn.disabled = guestState[type] >= 6;
-          } else if (type === 'infants') {
-            btn.disabled = guestState[type] >= 4;
-          }
-        }
-      });
-    }
-
-    // Update guests text
-    function updateGuestsText() {
-      const total = guestState.adults + guestState.children;
-      let text = `${total} guest${total !== 1 ? 's' : ''}`;
-      
-      if (guestState.infants > 0) {
-        text += `, ${guestState.infants} infant${guestState.infants !== 1 ? 's' : ''}`;
-      }
-      
-      guestsText.textContent = text;
-    }
-
-    // Call initialization
-    document.addEventListener('DOMContentLoaded', () => {
-      try {
-        initGuestsDropdown();
-      } catch (error) {
-        console.error('Error initializing guests dropdown:', error);
-      }
-    });
 
     // Header scroll effect
     function initializeHeaderScroll() {
@@ -1269,4 +1254,35 @@
 
     // Initialize header scroll effect
     initializeHeaderScroll();
+
+    function initializeNavigation() {
+        // Quick Search button handler
+        const quickSearchBtn = document.getElementById('quickSearchBtn');
+        if (quickSearchBtn) {
+            quickSearchBtn.addEventListener('click', () => {
+                const searchInput = document.querySelector('input[placeholder*="Search lodges"]');
+                if (searchInput) {
+                    searchInput.scrollIntoView({ behavior: 'smooth' });
+                    searchInput.focus();
+                    
+                    // Highlight the search container
+                    const searchContainer = searchInput.closest('.search-container-wrapper');
+                    if (searchContainer) {
+                        searchContainer.classList.add('highlight');
+                        setTimeout(() => {
+                            searchContainer.classList.remove('highlight');
+                        }, 2000);
+                    }
+                }
+            });
+        }
+
+        // Add active state to current page
+        const currentPath = window.location.pathname;
+        document.querySelectorAll('.nav-button').forEach(button => {
+            if (button.getAttribute('href') && button.getAttribute('href').includes(currentPath)) {
+                button.classList.add('active');
+            }
+        });
+    }
 })();
