@@ -99,85 +99,56 @@ closeModalBtn.addEventListener('click', () => {
 // Initial state
 confirmButton.disabled = true;
 
-function populateBookingSummary() {
-    let bookingData = JSON.parse(localStorage.getItem('bookingData'));
+// Consolidate booking data handling
+function getBookingData() {
+    const data = localStorage.getItem('bookingData');
+    if (!data) return null;
+    return JSON.parse(data);
+}
 
+// Single function to initialize page
+function initializePage() {
+    const bookingData = getBookingData();
     if (!bookingData) {
-        console.error('No booking data found');
         window.location.href = '../Homepage/rooms.html';
         return;
     }
 
     try {
-        // Verify costs are correct
         const costs = verifyBookingCosts(bookingData);
-        
-        // Update booking data with verified costs
-        bookingData = {
-            ...bookingData,
-            serviceFee: costs.serviceFee,
-            totalPrice: costs.totalPrice
-        };
-
-        const formatDate = (dateObj) => {
-            if (!dateObj) return 'N/A';
-            if (dateObj.seconds) {
-                return new Date(dateObj.seconds * 1000).toLocaleDateString();
-            }
-            return new Date(dateObj).toLocaleDateString();
-        };
-
-        document.getElementById('summary-checkin').textContent = formatDate(bookingData.checkIn);
-        document.getElementById('summary-checkout').textContent = formatDate(bookingData.checkOut);
-        document.getElementById('summary-guests').textContent = bookingData.guests || 'N/A';
-        document.getElementById('summary-nights').textContent = `${bookingData.numberOfNights || 0} nights`;
-        document.getElementById('summary-rate').textContent = `₱${(bookingData.nightlyRate || 0).toLocaleString()}`;
-        document.getElementById('summary-fee').textContent = `₱${(bookingData.serviceFee || 0).toLocaleString()}`;
-        document.getElementById('summary-total').textContent = `₱${(bookingData.totalPrice || 0).toLocaleString()}`;
-
-        // Save verified data back to localStorage
-        localStorage.setItem('bookingData', JSON.stringify(bookingData));
-
-        // Disable payment button if no valid booking data
-        const confirmButton = document.getElementById('confirm-button');
-        if (!bookingData.totalPrice) {
-            confirmButton.disabled = true;
-            confirmButton.title = 'Invalid booking data';
-        }
+        updateSummaryDisplay(bookingData, costs);
+        updatePaymentAmounts(costs.totalPrice);
     } catch (error) {
-        console.error('Error processing booking costs:', error);
-        alert('There was an error with the booking information. Please try again.');
+        console.error('Error initializing page:', error);
+        alert('Error loading booking details. Please try again.');
         window.location.href = '../Homepage/rooms.html';
     }
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-    populateBookingSummary();
-    
-    // Get stored booking data
-    const bookingData = JSON.parse(localStorage.getItem('bookingData'));
-    
-    if (bookingData && bookingData.totalPrice) {
-        try {
-            const totalAmount = bookingData.totalPrice;
-            const firstPayment = totalAmount * 0.562; // 56.2% of total
-            const secondPayment = totalAmount * 0.438; // 43.8% of total
+function updateSummaryDisplay(bookingData, costs) {
+    const formatDate = (date) => new Date(date).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+    });
 
-            document.getElementById('pay-now-amount').textContent = `₱${totalAmount.toLocaleString()}`;
-            document.getElementById('pay-later-first').textContent = `₱${firstPayment.toLocaleString()}`;
-            document.getElementById('pay-later-second').textContent = `₱${secondPayment.toLocaleString()}`;
+    document.getElementById('summary-checkin').textContent = formatDate(bookingData.checkIn);
+    document.getElementById('summary-checkout').textContent = formatDate(bookingData.checkOut);
+    document.getElementById('summary-guests').textContent = `${bookingData.guests} guest${bookingData.guests > 1 ? 's' : ''}`;
+    document.getElementById('summary-nights').textContent = `${bookingData.numberOfNights} night${bookingData.numberOfNights > 1 ? 's' : ''}`;
+    document.getElementById('summary-rate').textContent = `₱${NIGHTLY_RATE.toLocaleString()}`;
+    document.getElementById('summary-subtotal').textContent = `₱${costs.subtotal.toLocaleString()}`;
+    document.getElementById('summary-fee').textContent = `₱${costs.serviceFee.toLocaleString()}`;
+    document.getElementById('summary-total').textContent = `₱${costs.totalPrice.toLocaleString()}`;
+}
 
-            // Update success modal amount
-            const successAmount = document.querySelector('#payment-success-modal p');
-            if (successAmount) {
-                successAmount.textContent = `Your payment of ₱${totalAmount.toLocaleString()} has been processed successfully.`;
-            }
-        } catch (error) {
-            console.error('Error loading booking details:', error);
-            alert('Error loading booking details. Please try again.');
-        }
-    }
-});
+function updatePaymentAmounts(totalPrice) {
+    document.getElementById('pay-now-amount').textContent = `₱${totalPrice.toLocaleString()}`;
+    const firstPayment = Math.round(totalPrice * 0.562);
+    const secondPayment = Math.round(totalPrice * 0.438);
+    document.getElementById('pay-later-first').textContent = `₱${firstPayment.toLocaleString()}`;
+    document.getElementById('pay-later-second').textContent = `₱${secondPayment.toLocaleString()}`;
+}
 
 async function sendBookingConfirmationEmail(bookingDetails, userEmail) {
     try {
@@ -298,67 +269,6 @@ document.getElementById('confirm-button').addEventListener('click', function() {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
-    const bookingData = JSON.parse(localStorage.getItem('bookingData'));
-    if (!bookingData) {
-        window.location.href = '../Homepage/rooms.html';
-        return;
-    }
-
-    try {
-        // Verify and update costs
-        const costs = verifyBookingCosts(bookingData);
-        
-        // Update the display with verified costs
-        document.getElementById('summary-rate').textContent = `₱${NIGHTLY_RATE.toLocaleString()}`;
-        document.getElementById('summary-subtotal').textContent = `₱${costs.subtotal.toLocaleString()}`;
-        document.getElementById('summary-fee').textContent = `₱${costs.serviceFee.toLocaleString()}`;
-        document.getElementById('summary-total').textContent = `₱${costs.totalPrice.toLocaleString()}`;
-
-        // Update payment amounts
-        document.getElementById('pay-now-amount').textContent = `₱${costs.totalPrice.toLocaleString()}`;
-        document.getElementById('pay-later-first').textContent = `₱${Math.round(costs.totalPrice / 2).toLocaleString()}`;
-        document.getElementById('pay-later-second').textContent = `₱${Math.round(costs.totalPrice / 2).toLocaleString()}`;
-    } catch (error) {
-        console.error('Error displaying booking details:', error);
-        alert('Error loading booking details. Please try again.');
-        window.location.href = '../Homepage/rooms.html';
-    }
-});
-
-document.addEventListener('DOMContentLoaded', () => {
-    const bookingData = JSON.parse(localStorage.getItem('bookingData'));
-    if (!bookingData) {
-        window.location.href = '../Homepage/rooms.html';
-        return;
-    }
-
-    try {
-        // Update summary with all booking details
-        document.getElementById('summary-checkin').textContent = new Date(bookingData.checkIn).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric'
-        });
-        document.getElementById('summary-checkout').textContent = new Date(bookingData.checkOut).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric'
-        });
-        document.getElementById('summary-guests').textContent = `${bookingData.guests} guest${bookingData.guests > 1 ? 's' : ''}`;
-        document.getElementById('summary-contact').textContent = bookingData.contactNumber;
-        document.getElementById('summary-nights').textContent = `${bookingData.numberOfNights} night${bookingData.numberOfNights > 1 ? 's' : ''}`;
-        document.getElementById('summary-rate').textContent = `₱${bookingData.nightlyRate.toLocaleString()}`;
-        document.getElementById('summary-fee').textContent = `₱${bookingData.serviceFee.toLocaleString()}`;
-        document.getElementById('summary-subtotal').textContent = `₱${bookingData.subtotal.toLocaleString()}`;
-        document.getElementById('summary-total').textContent = `₱${bookingData.totalPrice.toLocaleString()}`;
-
-        // Update payment options
-        document.getElementById('pay-now-amount').textContent = `₱${bookingData.totalPrice.toLocaleString()}`;
-        document.getElementById('pay-later-first').textContent = `₱${Math.round(bookingData.totalPrice / 2).toLocaleString()}`;
-        document.getElementById('pay-later-second').textContent = `₱${Math.round(bookingData.totalPrice / 2).toLocaleString()}`;
-    } catch (error) {
-        console.error('Error displaying booking details:', error);
-        alert('Error loading booking details. Please try again.');
-        window.location.href = '../Homepage/rooms.html';
-    }
+    initializePage();
+    initializePaymentListeners();
 });
