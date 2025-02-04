@@ -1,6 +1,6 @@
-import { getAuth } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { 
-    getFirestore, 
+    auth, 
+    db, 
     collection, 
     query, 
     where, 
@@ -9,12 +9,16 @@ import {
     Timestamp,
     onSnapshot,
     getDoc,
-    doc
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { app, db } from '../firebase.js';  // Import both app and db
+    doc,
+    addDoc,
+    signOut 
+} from '../firebase.js';
+import ActivityLogger from './activityLogger.js';
+import { checkAuthentication } from '../js/auth-check.js';
+import { PageLogger } from '../js/pageLogger.js'; // Update import to use PageLogger instead of logPageView
 
 // Use the existing Firebase instance
-const auth = getAuth(app);
+// const auth = getAuth(app); // This line is no longer needed
 
 // Add this helper function at the top
 async function verifyAdminAuth() {
@@ -28,6 +32,27 @@ async function verifyAdminAuth() {
         throw new Error('Not authorized as admin');
     }
     return true;
+}
+
+// Add createActivityLog function at the top
+async function createActivityLog(actionType, details, userId = null, userName = null) {
+    try {
+        const user = auth.currentUser;
+        const logEntry = {
+            actionType,
+            details,
+            timestamp: Timestamp.now(),
+            userId: userId || user?.uid || 'system',
+            userName: userName || user?.email || 'Unknown User',
+            userRole: 'admin' // Since this is admin side
+        };
+
+        await addDoc(collection(db, 'activityLogs'), logEntry);
+        console.log('Activity logged:', logEntry);
+    } catch (error) {
+        console.error('Error logging activity:', error);
+        throw error; // Propagate error for handling
+    }
 }
 
 // Move this function to the top level for better visibility
@@ -61,60 +86,59 @@ async function checkActivityLogsCollection() {
                 });
             });
         }
-
-        return snapshot;
     } catch (error) {
-        console.error('Error checking activity logs:', error);
-        throw error;
+        console.error('Error checking activity logs collection:', error);
     }
 }
 
-// Rename Vue instance to vueApp instead of app to avoid conflict
-const vueApp = new Vue({
+// Update Vue instance to use PageLogger
+new Vue({
     el: '#app',
     data: {
-        isAuthenticated: false
+        isAuthenticated: false,
+        currentUser: null
+    },
+    async created() {
+        // Check authentication status only
+        auth.onAuthStateChanged((user) => {
+            this.isAuthenticated = !!user;
+            this.currentUser = user;
+        });
     },
     methods: {
         async handleLogout() {
             try {
-                await auth.signOut();
+                await signOut();
                 window.location.href = '../Login/index.html';
             } catch (error) {
-                console.error('Error signing out:', error);
+                console.error('Logout error:', error);
             }
         }
-    },
-    mounted() {
-        // Set up auth state listener
-        auth.onAuthStateChanged(user => {
-            this.isAuthenticated = !!user;
-            if (!user) {
-                window.location.href = '../Login/index.html';
-            }
-        });
     }
 });
 
-// Update the auth state checking
+// Update the auth state checking to remove duplicate navigation logging
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('Activity log page loaded');
     
-    // Set up auth state listener
+    let unsubscribe = null;
+
     auth.onAuthStateChanged(async (user) => {
         try {
             if (!user) {
                 console.log('No user detected, redirecting to login...');
+                if (unsubscribe) unsubscribe();
                 window.location.href = '../Login/index.html';
                 return;
             }
 
-            console.log('User authenticated:', user.email);
-            
+            // Remove the createActivityLog call since PageLogger will handle navigation logging
+
             // Verify admin status
             const userDoc = await getDoc(doc(db, "users", user.uid));
             if (!userDoc.exists() || userDoc.data().role !== 'admin') {
                 console.log('User is not an admin, redirecting...');
+                if (unsubscribe) unsubscribe();
                 window.location.href = '../Login/index.html';
                 return;
             }
@@ -122,116 +146,185 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Initialize filters
             await setupFilters();
 
-            // Add event listeners
-            document.getElementById('userFilter').addEventListener('change', loadActivityLogs);
-            document.getElementById('actionFilter').addEventListener('change', loadActivityLogs);
-            document.getElementById('dateFilter').addEventListener('change', loadActivityLogs);
+            // Setup real-time listener
+            unsubscribe = setupActivityLogListener();
 
-            // Load initial data
-            await loadActivityLogs();
+            // Add filter change event listeners
+            ['userFilter', 'actionFilter', 'dateFilter'].forEach(filterId => {
+                document.getElementById(filterId)?.addEventListener('change', () => {
+                    if (unsubscribe) unsubscribe();
+                    unsubscribe = setupActivityLogListener();
+                });
+            });
 
         } catch (error) {
             console.error('Error in auth state change:', error);
-            const logsContainer = document.getElementById('activityLogTable');
-            if (logsContainer) {
-                logsContainer.innerHTML = `
-                    <tr>
-                        <td colspan="4" class="px-6 py-4 text-center text-red-500">
-                            Error: ${error.message}
-                        </td>
-                    </tr>
-                `;
-            }
         }
+    });
+
+    // Cleanup on page unload
+    window.addEventListener('unload', () => {
+        if (unsubscribe) unsubscribe();
     });
 });
 
 async function setupFilters() {
     try {
-        const usersRef = collection(db, 'users');
-        const usersSnapshot = await getDocs(usersRef);
         const userFilter = document.getElementById('userFilter');
-
-        if (userFilter) {
-            userFilter.innerHTML = '<option value="">All Users</option>';
-            usersSnapshot.forEach(doc => {
-                const userData = doc.data();
-                const option = document.createElement('option');
-                option.value = doc.id;
-                option.textContent = userData.fullname || userData.username;
-                userFilter.appendChild(option);
-            });
-        }
-    } catch (error) {
-        console.error('Error setting up filters:', error);
-    }
-}
-
-// Update loadActivityLogs to use the imported db
-async function loadActivityLogs() {
-    console.log('Loading activity logs...');
-    
-    const logsContainer = document.getElementById('activityLogTable');
-    if (!logsContainer) return;
-
-    try {
-        await verifyAdminAuth();
-
-        // Show loading state
-        logsContainer.innerHTML = `
-            <tr>
-                <td colspan="4" class="px-6 py-4 text-center">
-                    <div class="animate-spin inline-block w-6 h-6 border-t-2 border-b-2 border-blue-500 rounded-full"></div>
-                    <span class="ml-2">Loading logs...</span>
-                </td>
-            </tr>
-        `;
-
-        const logsRef = collection(db, 'activityLogs');
-        const logsQuery = query(logsRef, orderBy('timestamp', 'desc'));
-        const querySnapshot = await getDocs(logsQuery);
-
-        if (querySnapshot.empty) {
-            logsContainer.innerHTML = `
-                <tr>
-                    <td colspan="4" class="px-6 py-4 text-center text-gray-500">
-                        No activity logs found
-                    </td>
-                </tr>
-            `;
+        if (!userFilter) {
+            console.error('User filter element not found');
             return;
         }
 
-        // Generate table rows
-        const logsHtml = [];
-        querySnapshot.forEach(doc => {
-            const log = doc.data();
-            console.log('Processing log:', log); // Debug log
-            
-            const timestamp = log.timestamp?.toDate() || new Date();
-            
-            logsHtml.push(`
-                <tr class="hover:bg-gray-50">
-                    <td class="px-6 py-4">${timestamp.toLocaleString()}</td>
-                    <td class="px-6 py-4">${log.userName || 'Unknown User'}</td>
-                    <td class="px-6 py-4">
-                        <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getActionColor(log.actionType)}">
-                            ${log.actionType?.toUpperCase() || 'UNKNOWN'}
-                        </span>
-                    </td>
-                    <td class="px-6 py-4">${log.details || 'No details'}</td>
-                </tr>
-            `);
+        userFilter.innerHTML = '<option value="">All Users</option>';
+        
+        const usersRef = collection(db, 'users');
+        const usersSnapshot = await getDocs(usersRef);
+        
+        const sortedUsers = [];
+        usersSnapshot.forEach(doc => {
+            const userData = doc.data();
+            sortedUsers.push({
+                id: doc.id,
+                name: userData.fullname || userData.username || 'Unknown User'
+            });
         });
 
-        logsContainer.innerHTML = logsHtml.join('');
+        // Sort users alphabetically
+        sortedUsers.sort((a, b) => a.name.localeCompare(b.name));
+
+        sortedUsers.forEach(user => {
+            const option = document.createElement('option');
+            option.value = user.id;
+            option.textContent = user.name;
+            userFilter.appendChild(option);
+        });
 
     } catch (error) {
-        console.error('Error loading logs:', error);
-        logsContainer.innerHTML = `
+        console.error('Error setting up filters:', error);
+        // Show error in UI if needed
+        const userFilter = document.getElementById('userFilter');
+        if (userFilter) {
+            userFilter.innerHTML = '<option value="">Error loading users</option>';
+        }
+    }
+}
+
+// Replace loadActivityLogs function with real-time listener
+function setupActivityLogListener() {
+    console.log('Setting up real-time activity log listener...');
+    
+    const logsContainer = document.getElementById('activityLogTable');
+    const loadingState = document.getElementById('loadingState');
+    if (!logsContainer || !loadingState) {
+        console.error('Required DOM elements not found');
+        return;
+    }
+
+    try {
+        // Show loading state
+        loadingState.classList.remove('hidden');
+        logsContainer.innerHTML = '';
+
+        const logsRef = collection(db, 'activityLogs');
+        let logsQuery = query(logsRef, orderBy('timestamp', 'desc'));
+
+        // Set up real-time listener with error boundary
+        return onSnapshot(logsQuery, (snapshot) => {
+            try {
+                // Hide loading state
+                loadingState.classList.add('hidden');
+
+                if (snapshot.empty) {
+                    logsContainer.innerHTML = `
+                        <tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">No activity logs found</td></tr>
+                    `;
+                    return;
+                }
+
+                const logsHtml = [];
+                let filteredCount = 0;
+
+                snapshot.forEach(doc => {
+                    try {
+                        const log = doc.data();
+                        const timestamp = log.timestamp?.toDate() || new Date();
+                        
+                        // Improved filter handling
+                        const userFilter = document.getElementById('userFilter')?.value;
+                        const actionFilter = document.getElementById('actionFilter')?.value;
+                        const dateFilter = document.getElementById('dateFilter')?.value;
+
+                        // Debug logging
+                        console.debug('Filtering log:', {
+                            userFilter,
+                            actionFilter,
+                            dateFilter,
+                            logUserId: log.userId,
+                            logUserName: log.userName,
+                            logActionType: log.actionType,
+                            logTimestamp: timestamp
+                        });
+
+                        // Apply filters with null checks
+                        if (userFilter && (log.userId !== userFilter && log.userName !== userFilter)) return;
+                        if (actionFilter && log.actionType?.toLowerCase() !== actionFilter.toLowerCase()) return;
+                        if (dateFilter) {
+                            const logDate = timestamp.toISOString().split('T')[0];
+                            if (logDate !== dateFilter) return;
+                        }
+
+                        filteredCount++;
+                        logsHtml.push(`
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${timestamp.toLocaleString()}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${log.userName || 'Unknown User'}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getActionColor(log.actionType)}">
+                                        ${log.actionType?.toUpperCase() || 'UNKNOWN'}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-500">${log.details || 'No details'}</td>
+                            </tr>
+                        `);
+                    } catch (err) {
+                        console.error('Error processing log entry:', err);
+                    }
+                });
+
+                if (filteredCount === 0) {
+                    logsContainer.innerHTML = `
+                        <tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">No matching logs found</td></tr>
+                    `;
+                } else {
+                    logsContainer.innerHTML = logsHtml.join('');
+                }
+
+                console.log(`Displayed ${filteredCount} logs after filtering`);
+
+            } catch (err) {
+                console.error('Error in snapshot handler:', err);
+                handleError(err, logsContainer, loadingState);
+            }
+        }, (error) => {
+            console.error('Snapshot listener error:', error);
+            handleError(error, logsContainer, loadingState);
+        });
+    } catch (error) {
+        console.error('Setup error:', error);
+        handleError(error, logsContainer, loadingState);
+    }
+}
+
+// Add this helper function for error handling
+function handleError(error, container, loadingState) {
+    loadingState?.classList.add('hidden');
+    if (container) {
+        container.innerHTML = `
             <tr>
                 <td colspan="4" class="px-6 py-4 text-center text-red-500">
                     Error: ${error.message}
+                    ${error.code ? `(Code: ${error.code})` : ''} 
                 </td>
             </tr>
         `;

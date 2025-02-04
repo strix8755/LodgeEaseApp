@@ -1,8 +1,36 @@
-// Import Firebase modules
+// Import Firebase modules using CDN paths
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-import { getAuth, setPersistence, browserLocalPersistence, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, fetchSignInMethodsForEmail } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-import { getFirestore, enableMultiTabIndexedDbPersistence, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, getDoc, setDoc, query, where, Timestamp, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-import { getAnalytics, isSupported } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js';
+import { 
+    getAuth, 
+    setPersistence, 
+    browserLocalPersistence,
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    sendPasswordResetEmail,
+    fetchSignInMethodsForEmail 
+} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+import { 
+    getFirestore,
+    collection,
+    getDocs,
+    addDoc,
+    updateDoc,
+    deleteDoc,
+    doc,
+    getDoc,
+    setDoc,
+    query,
+    where,
+    Timestamp,
+    orderBy,
+    limit,
+    enableMultiTabIndexedDbPersistence,
+    onSnapshot // Add this import
+} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { 
+    getAnalytics,
+    isSupported 
+} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js';
 
 // Firebase configuration
 const firebaseConfig = {
@@ -962,6 +990,7 @@ export {
     Timestamp,
     orderBy,
     limit,
+    onSnapshot, // Add this export
     // Auth functions
     signInWithEmailAndPassword,
     createUserWithEmailAndPassword,

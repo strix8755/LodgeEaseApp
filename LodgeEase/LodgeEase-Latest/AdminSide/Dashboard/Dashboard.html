@@ -6,8 +6,21 @@
     <title>Dashboard - Lodge Ease</title>
     <link rel="icon" type="image/x-icon" href="../images/LodgeEaseLogo.png">
     <!-- Firebase and Auth Check must be first -->
-    <script type="module" src="../firebase.js"></script>
-    <script type="module" src="../AInalysis/auth-check.js"></script>
+    <script type="module">
+        import { initializeFirebase } from '../firebase.js';
+        import { PageLogger } from '../js/pageLogger.js';
+        
+        window.addEventListener('load', async () => {
+            try {
+                await initializeFirebase();
+                console.log('Firebase initialized successfully');
+                // PageLogger will handle logging through auth state change
+            } catch (error) {
+                console.error('Error initializing Firebase:', error);
+            }
+        });
+    </script>
+    <script type="module" src="../js/auth-check.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
     <script type="module" src="chartData.js"></script>
     <script type="module" src="app.js"></script>

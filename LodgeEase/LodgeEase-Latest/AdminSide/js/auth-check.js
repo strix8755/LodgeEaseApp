@@ -1,5 +1,4 @@
-import { auth, db } from '../firebase.js';
-import { collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { auth, checkAdminAuth } from '../firebase.js';
 
 // Check if user is authenticated
 const checkAuth = () => {
@@ -18,21 +17,27 @@ const checkAuth = () => {
     });
 };
 
+async function checkAuthentication() {
+    try {
+        const user = await checkAdminAuth();
+        if (!user) {
+            window.location.href = '../Login/index.html';
+        }
+    } catch (error) {
+        console.error('Authentication check failed:', error);
+        window.location.href = '../Login/index.html';
+    }
+}
+
+// Run authentication check
+checkAuthentication();
+
 // Initialize auth check when DOM is loaded
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         const user = await checkAuth();
-        if (user) {
-            const pageName = document.title || window.location.pathname;
-            try {
-                await addDoc(collection(db, 'pageNavigations'), {
-                    userId: user.uid,
-                    pageName: pageName,
-                    timestamp: serverTimestamp()
-                });
-            } catch (error) {
-                console.error('Error logging navigation:', error);
-            }
+        if (!user) {
+            window.location.href = '../Login/index.html';
         }
     } catch (error) {
         console.error('Auth check error:', error);
@@ -40,4 +45,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-export { checkAuth };
+// Export for use in other modules
+export { checkAuthentication, checkAuth };
