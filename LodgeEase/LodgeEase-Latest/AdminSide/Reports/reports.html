@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
     <div class="app">
@@ -47,74 +48,50 @@
 
         <main class="main-content">
             <header class="page-header">
-                <h1>Reports & Analytics</h1>
+                <h1>Booking Reports</h1>
+                <div class="actions">
+                    <button class="btn btn-primary" @click="exportToExcel">
+                        <i class="fas fa-download"></i> Export to Excel
+                    </button>
+                    <label class="btn btn-secondary">
+                        <i class="fas fa-upload"></i> Import Data
+                        <input type="file" @change="importData" accept=".csv,.xlsx" style="display: none;">
+                    </label>
+                </div>
             </header>
 
-            <section class="filter-section card">
-                <h2>Filters</h2>
-                <div class="filter-controls">
-                    <div class="filter-group">
-                        <label for="report-period">Select Period:</label>
-                        <select id="report-period" class="form-control">
-                            <option value="monthly">Monthly</option>
-                            <option value="quarterly">Quarterly</option>
-                            <option value="yearly">Yearly</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label for="room-type">Room Type:</label>
-                        <select id="room-type" class="form-control">
-                            <option value="all">All</option>
-                            <option value="standard">Standard</option>
-                        </select>
-                    </div>
-                    <button class="btn btn-primary" onclick="applyFilters()">Apply Filters</button>
-                </div>
-            </section>
-
-            <div class="reports-grid">
-                <section class="report-section card">
-                    <h2>Revenue Report</h2>
-                    <div class="chart-container">
-                        <canvas id="revenueChart"></canvas>
-                    </div>
-                    <div class="summary">
-                        <p>Total Revenue: <span id="totalRevenue" class="highlight">$0.00</span></p>
-                    </div>
-                </section>
-
-                <section class="report-section card">
-                    <h2>Peak Occupancy Times</h2>
-                    <div class="chart-container">
-                        <canvas id="occupancyChart"></canvas>
-                    </div>
-                    <div class="summary">
-                        <p>Most Frequented Time: <span id="peakTime" class="highlight">Not Available</span></p>
-                    </div>
-                </section>
-
-                <section class="report-section card">
-                    <h2>Guest Demographics</h2>
-                    <div class="chart-container">
-                        <canvas id="guestChart"></canvas>
-                    </div>
-                    <div class="summary">
-                        <p>Most Common Age Group: <span id="commonAgeGroup" class="highlight">N/A</span></p>
-                    </div>
-                </section>
-            </div>
-
-            <section class="ai-insights-section card">
-                <h2>AI-Powered Insights</h2>
-                <div class="insights-grid">
-                    <div class="insight-item">
-                        <h3>Predicted Busy Period</h3>
-                        <p id="predictedBusyPeriod">N/A</p>
-                    </div>
-                    <div class="insight-item">
-                        <h3>Revenue Optimization</h3>
-                        <p id="optimizationSuggestion">N/A</p>
-                    </div>
+            <section class="table-section">
+                <div class="table-container">
+                    <table class="bookings-table">
+                        <thead>
+                            <tr>
+                                <th>Booking ID</th>
+                                <th>Guest Name</th>
+                                <th>Check In</th>
+                                <th>Check Out</th>
+                                <th>Room Type</th>
+                                <th>Room Number</th>
+                                <th>Total Price</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="booking in bookings" :key="booking.id">
+                                <td>{{booking.id}}</td>
+                                <td>{{booking.guestName || 'N/A'}}</td>
+                                <td>{{formatDate(booking.checkIn)}}</td>
+                                <td>{{formatDate(booking.checkOut)}}</td>
+                                <td>{{booking.propertyDetails?.roomType || 'N/A'}}</td>
+                                <td>{{booking.propertyDetails?.roomNumber || 'N/A'}}</td>
+                                <td>₱{{booking.totalPrice || 0}}</td>
+                                <td>
+                                    <span :class="'status-badge ' + booking.status">
+                                        {{booking.status}}
+                                    </span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </section>
         </main>

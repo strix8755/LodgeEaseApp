@@ -1,59 +1,12 @@
-import { auth } from '../firebase.js';
+import { auth, db, collection, getDocs } from '../firebase.js';
 import { signOut } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-auth.js";
-
-// Sample data for charts
-const revenueData = {
-    labels: ['January', 'February', 'March', 'April'],
-    datasets: [{
-        label: 'Revenue',
-        data: [3000, 5000, 4000, 7000],
-        backgroundColor: [
-            'rgba(54, 162, 235, 0.6)',
-            'rgba(255, 99, 132, 0.6)',
-            'rgba(255, 206, 86, 0.6)',
-            'rgba(75, 192, 192, 0.6)'
-        ],
-    }]
-};
-
-const occupancyData = {
-    labels: ['10 AM', '12 PM', '2 PM', '4 PM'],
-    datasets: [{
-        label: 'Occupancy',
-        data: [10, 30, 20, 50],
-        backgroundColor: [
-            'rgba(153, 102, 255, 0.6)',
-            'rgba(255, 159, 64, 0.6)',
-            'rgba(54, 162, 235, 0.6)',
-            'rgba(255, 206, 86, 0.6)'
-        ],
-    }]
-};
-
-const guestData = {
-    labels: ['Age 18-24', 'Age 25-34', 'Age 35-44', 'Age 45+'],
-    datasets: [{
-        label: 'Guests',
-        data: [40, 35, 25, 10],
-        backgroundColor: [
-            'rgba(255, 99, 132, 0.6)',
-            'rgba(54, 162, 235, 0.6)',
-            'rgba(255, 206, 86, 0.6)',
-            'rgba(75, 192, 192, 0.6)'
-        ],
-    }]
-};
 
 new Vue({
     el: '.app',
     data: {
         isAuthenticated: false,
         loading: true,
-        charts: {
-            revenue: null,
-            occupancy: null,
-            guest: null
-        }
+        bookings: []
     },
     methods: {
         async handleLogout() {
@@ -72,38 +25,80 @@ new Vue({
                 if (!user) {
                     window.location.href = '../Login/index.html';
                 } else {
-                    this.initializeCharts();
+                    this.fetchBookings();
                 }
                 this.loading = false;
             });
         },
 
-        initializeCharts() {
-            // Destroy existing charts if they exist
-            Object.values(this.charts).forEach(chart => {
-                if (chart) chart.destroy();
-            });
+        async fetchBookings() {
+            try {
+                const bookingsRef = collection(db, 'bookings');
+                const snapshot = await getDocs(bookingsRef);
+                this.bookings = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+            } catch (error) {
+                console.error('Error fetching bookings:', error);
+                alert('Error fetching bookings data');
+            }
+        },
 
-            // Initialize Revenue Chart
-            const ctxRevenue = document.getElementById('revenueChart').getContext('2d');
-            this.charts.revenue = new Chart(ctxRevenue, {
-                type: 'bar',
-                data: revenueData,
-            });
+        formatDate(timestamp) {
+            if (!timestamp) return 'N/A';
+            if (timestamp.toDate) {
+                return timestamp.toDate().toLocaleDateString();
+            }
+            return new Date(timestamp).toLocaleDateString();
+        },
 
-            // Initialize Occupancy Chart
-            const ctxOccupancy = document.getElementById('occupancyChart').getContext('2d');
-            this.charts.occupancy = new Chart(ctxOccupancy, {
-                type: 'line',
-                data: occupancyData,
-            });
+        exportToExcel() {
+            try {
+                const exportData = this.bookings.map(booking => ({
+                    'Booking ID': booking.id,
+                    'Guest Name': booking.guestName || 'N/A',
+                    'Check In': this.formatDate(booking.checkIn),
+                    'Check Out': this.formatDate(booking.checkOut),
+                    'Room Type': booking.propertyDetails?.roomType || 'N/A',
+                    'Room Number': booking.propertyDetails?.roomNumber || 'N/A',
+                    'Total Price': booking.totalPrice || 0,
+                    'Status': booking.status || 'N/A'
+                }));
 
-            // Initialize Guest Chart
-            const ctxGuest = document.getElementById('guestChart').getContext('2d');
-            this.charts.guest = new Chart(ctxGuest, {
-                type: 'doughnut',
-                data: guestData,
-            });
+                const ws = XLSX.utils.json_to_sheet(exportData);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Bookings');
+
+                const fileName = `bookings_export_${new Date().toISOString().split('T')[0]}.xlsx`;
+                XLSX.writeFile(wb, fileName);
+            } catch (error) {
+                console.error('Error exporting data:', error);
+                alert('Error exporting data');
+            }
+        },
+
+        async importData(event) {
+            try {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+                    console.log('Imported data:', jsonData);
+                    alert('Data imported successfully. Please refresh to see updates.');
+                };
+                reader.readAsArrayBuffer(file);
+            } catch (error) {
+                console.error('Error importing data:', error);
+                alert('Error importing data');
+            }
         }
     },
     mounted() {
