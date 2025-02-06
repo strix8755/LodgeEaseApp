@@ -8,12 +8,27 @@
     <script type="module" src="../js/auth-check.js"></script>
     <script type="module" src="billing.js"></script>
     <script type="module" src="/LodgeEase/LodgeEase-Latest/AdminSide/Dashboard/transitions.js"></script>
-    <script type="module" src="../js/pageLogger.js"></script>
     <link rel="stylesheet" href="/LodgeEase/LodgeEase-Latest/AdminSide/Dashboard/transitionStyle.css">
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600&family=Roboto:wght@400&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+
+    <!-- Add PageLogger initialization -->
+    <script type="module">
+        import { initializeFirebase } from '../firebase.js';
+        import { PageLogger } from '../js/pageLogger.js';
+        
+        window.addEventListener('load', async () => {
+            try {
+                await initializeFirebase();
+                console.log('Firebase initialized successfully');
+                // PageLogger will handle navigation logging through auth state change
+            } catch (error) {
+                console.error('Error initializing Firebase:', error);
+            }
+        });
+    </script>
 </head>
 <body>
     <div id="app">

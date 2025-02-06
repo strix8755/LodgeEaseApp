@@ -1,11 +1,32 @@
-import { auth, db } from '../firebase.js';
+import { auth, db, collection, addDoc, Timestamp, doc, updateDoc } from '../firebase.js';
+import { PageLogger } from '../js/pageLogger.js';
 import { 
     updatePassword, 
     reauthenticateWithCredential,
     EmailAuthProvider,
     signOut 
 } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-auth.js";
-import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore.js";
+import { getDoc } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore.js";
+
+// Add activity logging function
+async function logSettingsActivity(actionType, details) {
+    try {
+        const user = auth.currentUser;
+        if (!user) return;
+
+        await addDoc(collection(db, 'activityLogs'), {
+            userId: user.uid,
+            userName: user.email,
+            actionType,
+            details,
+            timestamp: Timestamp.now(),
+            userRole: 'admin',
+            module: 'Settings'
+        });
+    } catch (error) {
+        console.error('Error logging settings activity:', error);
+    }
+}
 
 // Initialize Vue instance
 new Vue({
@@ -173,9 +194,12 @@ new Vue({
                 // Reset modified flag
                 this.settingsModified = false;
 
+                await logSettingsActivity('settings_update', 'Updated system settings');
+
             } catch (error) {
                 console.error('Error saving settings:', error);
                 this.showErrorAlert();
+                await logSettingsActivity('settings_error', `Failed to save settings: ${error.message}`);
             }
         },
 
@@ -299,9 +323,11 @@ new Vue({
                 // Reset form
                 this.passwords = { current: '', new: '', confirm: '' };
                 alert('Password updated successfully!');
+                await logSettingsActivity('password_change', 'Changed account password');
             } catch (error) {
                 console.error('Error changing password:', error);
                 alert(error.message);
+                await logSettingsActivity('password_error', `Failed to change password: ${error.message}`);
             } finally {
                 this.loading = false;
             }
@@ -313,8 +339,14 @@ new Vue({
         },
 
         async terminateSession(sessionId) {
-            // Implement session termination functionality
-            alert('Session termination functionality will be implemented soon');
+            try {
+                // Implement session termination functionality
+                alert('Session termination functionality will be implemented soon');
+                await logSettingsActivity('session_terminated', `Terminated session ${sessionId}`);
+            } catch (error) {
+                console.error('Error terminating session:', error);
+                await logSettingsActivity('session_error', `Failed to terminate session: ${error.message}`);
+            }
         },
 
         // Mock function to load active sessions
@@ -369,3 +401,15 @@ new Vue({
         });
     }
 });
+
+// Initialize page logging
+auth.onAuthStateChanged((user) => {
+    if (user) {
+        PageLogger.logNavigation('Settings');
+    }
+});
+
+// Export any necessary functions
+export {
+    logSettingsActivity
+};

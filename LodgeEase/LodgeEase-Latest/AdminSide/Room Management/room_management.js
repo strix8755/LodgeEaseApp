@@ -20,9 +20,30 @@ import {
     getDownloadURL 
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 import { signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { PageLogger } from '../js/pageLogger.js';
 
 // Initialize Firebase Storage with existing app instance
 const storage = getStorage(app);
+
+// Add activity logging function
+async function logRoomActivity(actionType, details) {
+    try {
+        const user = auth.currentUser;
+        if (!user) return;
+
+        await addDoc(collection(db, 'activityLogs'), {
+            userId: user.uid,
+            userName: user.email,
+            actionType,
+            details,
+            timestamp: Timestamp.now(),
+            userRole: 'admin',
+            module: 'Room Management'
+        });
+    } catch (error) {
+        console.error('Error logging room activity:', error);
+    }
+}
 
 new Vue({
     el: '#app',
@@ -367,9 +388,11 @@ new Vue({
                 await this.fetchBookings();
                 
                 alert('Room added successfully!');
+                await logRoomActivity('room_add', `Added new room ${roomData.propertyDetails.roomNumber}`);
             } catch (error) {
                 console.error('Error adding room:', error);
                 alert('Failed to add room: ' + error.message);
+                await logRoomActivity('room_error', `Failed to add room: ${error.message}`);
             } finally {
                 this.loading = false;
             }

@@ -17,6 +17,22 @@
     <meta name="description" content="Manage rooms, reservations, and more with ease at Lodge Ease.">
     <meta name="robots" content="noindex, nofollow">
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+
+    <!-- Update the initialization script to include PageLogger -->
+    <script type="module">
+        import { initializeFirebase } from '../firebase.js';
+        import { PageLogger } from '../js/pageLogger.js';
+        
+        window.addEventListener('load', async () => {
+            try {
+                await initializeFirebase();
+                console.log('Firebase initialized successfully');
+                // PageLogger will handle navigation logging through auth state change
+            } catch (error) {
+                console.error('Error initializing Firebase:', error);
+            }
+        });
+    </script>
 </head>
 
 <body>

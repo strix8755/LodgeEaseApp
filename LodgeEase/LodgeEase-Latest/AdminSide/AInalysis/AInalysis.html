@@ -14,7 +14,23 @@
     <script src="https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.18.0/firebase-auth-compat.js"></script>
     
-    <!-- Application scripts -->
+    <!-- Update script initialization -->
+    <script type="module">
+        import { initializeFirebase } from '../firebase.js';
+        import { PageLogger } from '../js/pageLogger.js';
+        
+        window.addEventListener('load', async () => {
+            try {
+                await initializeFirebase();
+                console.log('Firebase initialized successfully');
+                // PageLogger will handle navigation logging through auth state change
+            } catch (error) {
+                console.error('Error initializing Firebase:', error);
+            }
+        });
+    </script>
+
+    <!-- Keep other module scripts, remove pageLogger.js direct import -->
     <script type="module" src="../firebase.js"></script>
     <script type="module" src="auth-check.js"></script>
     <script type="module" src="suggestionService.js"></script>
@@ -22,7 +38,6 @@
     <script type="module" src="prediction/PredictionFormatter.js"></script>
     <script type="module" src="AInalysis.js"></script>
     <script type="module" src="../Dashboard/transitions.js"></script>
-    <script type="module" src="../js/pageLogger.js"></script>
     
     <!-- Stylesheets -->
     <link rel="stylesheet" href="../Dashboard/transitionStyle.css">

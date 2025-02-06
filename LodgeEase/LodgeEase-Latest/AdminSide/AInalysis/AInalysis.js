@@ -19,12 +19,34 @@ import {
     limit,
     Timestamp,
     doc,
-    getDoc
+    getDoc,
+    addDoc
 } from '../firebase.js';
 import { SuggestionService } from './suggestionService.js';
 import { predictNextMonthOccupancy } from './occupancyPredictor.js';
 import { PredictionFormatter } from './prediction/PredictionFormatter.js';
 import { BusinessReportFormatter } from './utils/BusinessReportFormatter.js';
+import { PageLogger } from '../js/pageLogger.js';
+
+// Add activity logging function
+async function logAIActivity(actionType, details) {
+    try {
+        const user = auth.currentUser;
+        if (!user) return;
+
+        await addDoc(collection(db, 'activityLogs'), {
+            userId: user.uid,
+            userName: user.email,
+            actionType,
+            details,
+            timestamp: Timestamp.now(),
+            userRole: 'admin',
+            module: 'AI Assistant'
+        });
+    } catch (error) {
+        console.error('Error logging AI activity:', error);
+    }
+}
 
 new Vue({
     el: '#app',
@@ -545,8 +567,11 @@ ${this.generateOccupancyInsights(stats)}`;
 
                 // Add follow-up suggestions based on the response
                 this.addSuggestions(response);
+
+                await logAIActivity('ai_query', `User asked: ${this.currentMessage}`);
             } catch (error) {
                 this.handleError(error);
+                await logAIActivity('ai_error', `Failed to process query: ${error.message}`);
             }
         },
 
@@ -626,6 +651,8 @@ How can I assist you today?`, 'bot');
             });
 
             chatContainer.appendChild(suggestionDiv);
+
+            logAIActivity('ai_new_chat', 'Started new conversation');
         },
 
         async fetchInitialData() {
@@ -2365,3 +2392,15 @@ Booking Metrics:
         await this.initializeApp();
     }
 });
+
+// Initialize page logging
+auth.onAuthStateChanged((user) => {
+    if (user) {
+        PageLogger.logNavigation('AI Assistant');
+    }
+});
+
+// Export any necessary functions
+export {
+    logAIActivity
+};

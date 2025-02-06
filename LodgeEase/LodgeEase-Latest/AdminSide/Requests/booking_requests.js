@@ -16,7 +16,8 @@ import {
     doc, 
     Timestamp,
     orderBy,
-    onSnapshot // Add this import
+    onSnapshot, // Add this import
+    addDoc // Add this import
 } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore.js";
 
 // Initialize Firebase with your config
@@ -526,9 +527,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             alert('Modification request approved successfully');
             await loadRequests();
+            await logRequestActivity('request_approve', `Approved modification request for booking ${request.bookingId}`);
         } catch (error) {
             console.error('Error approving modification:', error);
             alert('Failed to approve modification request');
+            await logRequestActivity('request_error', `Failed to approve modification request: ${error.message}`);
         } finally {
             approveBtn.disabled = false;
             approveBtn.textContent = 'Approve';
@@ -558,9 +561,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             alert('Modification request rejected');
             await loadRequests();
+            await logRequestActivity('request_reject', `Rejected modification request for booking ${request.bookingId}`);
         } catch (error) {
             console.error('Error rejecting modification:', error);
             alert('Failed to reject modification request');
+            await logRequestActivity('request_error', `Failed to reject modification request: ${error.message}`);
         }
     };
 
@@ -589,9 +594,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             alert('Cancellation request approved successfully');
             await loadRequests();
+            await logRequestActivity('request_approve', `Approved cancellation request for booking ${request.bookingId}`);
         } catch (error) {
             console.error('Error approving cancellation:', error);
             alert('Failed to approve cancellation request');
+            await logRequestActivity('request_error', `Failed to approve cancellation request: ${error.message}`);
         }
     };
 
@@ -618,9 +625,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             alert('Cancellation request rejected');
             await loadRequests();
+            await logRequestActivity('request_reject', `Rejected cancellation request for booking ${request.bookingId}`);
         } catch (error) {
             console.error('Error rejecting cancellation:', error);
             alert('Failed to reject cancellation request');
+            await logRequestActivity('request_error', `Failed to reject cancellation request: ${error.message}`);
         }
     };
 
@@ -634,6 +643,26 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('Error formatting date:', error);
             return 'Invalid Date';
+        }
+    }
+
+    // Add activity logging function
+    async function logRequestActivity(actionType, details) {
+        try {
+            const user = auth.currentUser;
+            if (!user) return;
+
+            await addDoc(collection(db, 'activityLogs'), {
+                userId: user.uid,
+                userName: user.email,
+                actionType,
+                details,
+                timestamp: Timestamp.now(),
+                userRole: 'admin',
+                module: 'Booking Requests'
+            });
+        } catch (error) {
+            console.error('Error logging request activity:', error);
         }
     }
 });

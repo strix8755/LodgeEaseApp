@@ -1,5 +1,33 @@
-import { auth, db, collection, getDocs } from '../firebase.js';
+import { 
+    auth, 
+    db, 
+    collection,
+    addDoc,
+    Timestamp 
+} from '../firebase.js';
 import { signOut } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-auth.js";
+import { PageLogger } from '../js/pageLogger.js';
+
+// Add activity logging function
+async function logReportActivity(actionType, details) {
+    try {
+        const user = auth.currentUser;
+        if (!user) return;
+
+        await addDoc(collection(db, 'activityLogs'), {
+            userId: user.uid,
+            userName: user.email,
+            actionType,
+            details,
+            timestamp: Timestamp.now(),
+            userRole: 'admin',
+            module: 'Reports'
+        });
+        console.log(`Logged report activity: ${actionType} - ${details}`);
+    } catch (error) {
+        console.error('Error logging report activity:', error);
+    }
+}
 
 new Vue({
     el: '.app',
@@ -53,7 +81,7 @@ new Vue({
             return new Date(timestamp).toLocaleDateString();
         },
 
-        exportToExcel() {
+        async exportToExcel() {
             try {
                 const exportData = this.bookings.map(booking => ({
                     'Booking ID': booking.id,
@@ -72,9 +100,12 @@ new Vue({
 
                 const fileName = `bookings_export_${new Date().toISOString().split('T')[0]}.xlsx`;
                 XLSX.writeFile(wb, fileName);
+
+                await logReportActivity('report_export', 'Exported booking report to Excel');
             } catch (error) {
                 console.error('Error exporting data:', error);
                 alert('Error exporting data');
+                await logReportActivity('report_error', `Failed to export report: ${error.message}`);
             }
         },
 
@@ -95,13 +126,23 @@ new Vue({
                     alert('Data imported successfully. Please refresh to see updates.');
                 };
                 reader.readAsArrayBuffer(file);
+
+                await logReportActivity('report_import', 'Imported data from file');
             } catch (error) {
                 console.error('Error importing data:', error);
                 alert('Error importing data');
+                await logReportActivity('report_error', `Failed to import data: ${error.message}`);
             }
         }
     },
     mounted() {
         this.checkAuthState();
+    }
+});
+
+// Initialize page logging
+auth.onAuthStateChanged((user) => {
+    if (user) {
+        PageLogger.logNavigation('Reports');
     }
 });
