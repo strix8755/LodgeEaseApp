@@ -47,7 +47,8 @@ new Vue({
         },
         aiInsights: [],
         updateInterval: null,
-        forecastInterval: null
+        forecastInterval: null,
+        baguioWebChart: null,  // Add this to data
     },
     methods: {
         async handleLogout() {
@@ -589,39 +590,74 @@ new Vue({
                     }
                 });
 
-                // Add this method to update the web chart
-                async function updateBaguioWebChart() {
-                    try {
-                        const lodgesRef = collection(db, 'lodges');
-                        const snapshot = await getDocs(lodgesRef);
-                        
-                        // Create a map to store lodge counts by area
-                        const areaLodgeCounts = new Map();
-                        
-                        snapshot.forEach(doc => {
-                            const lodge = doc.data();
-                            const area = lodge.area || 'Other';
-                            areaLodgeCounts.set(area, (areaLodgeCounts.get(area) || 0) + 1);
-                        });
-                        
-                        // Update chart data
-                        this.baguioWebChart.data.datasets[0].data = this.baguioWebChart.data.labels.map(
-                            label => areaLodgeCounts.get(label) || 0
-                        );
-                        
-                        this.baguioWebChart.update();
-                    } catch (error) {
-                        console.error('Error updating Baguio web chart:', error);
-                    }
-                }
-
-                // Call update method
-                await updateBaguioWebChart();
+                // Call update method immediately after initialization
+                await this.updateBaguioWebChart();
                 
                 // Initialize with data
                 await this.updateDashboardStats();
             } catch (error) {
                 console.error('Error initializing charts:', error);
+            }
+        },
+
+        // Add this as a method
+        async updateBaguioWebChart() {
+            try {
+                if (!this.baguioWebChart) {
+                    console.warn('Baguio web chart not initialized');
+                    return;
+                }
+
+                const lodgesRef = collection(db, 'lodges');
+                const snapshot = await getDocs(lodgesRef);
+                
+                // Define valid areas that match the chart labels exactly
+                const validAreas = [
+                    'Session Road Area',
+                    'Mines View',
+                    'Burnham Park',
+                    'Camp John Hay',
+                    'Teachers Camp',
+                    'Upper General Luna',
+                    'Military Cut-off',
+                    'Legarda Road',
+                    'Baguio City Market'
+                ];
+                
+                // Initialize counts for all areas
+                const areaLodgeCounts = new Map(validAreas.map(area => [area, 0]));
+                
+                // Count lodges by area with data validation
+                snapshot.forEach(doc => {
+                    const lodge = doc.data();
+                    const area = lodge.area?.trim() || 'Other';
+                    
+                    // Check if the area is in our valid areas list
+                    if (validAreas.includes(area)) {
+                        areaLodgeCounts.set(area, (areaLodgeCounts.get(area) || 0) + 1);
+                    } else {
+                        console.warn(`Invalid area found: ${area}`);
+                    }
+                });
+                
+                // Update chart data ensuring order matches labels
+                const chartData = this.baguioWebChart.data.labels.map(label => 
+                    areaLodgeCounts.get(label) || 0
+                );
+                
+                // Update the chart with new data
+                this.baguioWebChart.data.datasets[0].data = chartData;
+                this.baguioWebChart.update();
+                
+                // Log the data for verification
+                console.log('Baguio Web Chart Data:', {
+                    labels: this.baguioWebChart.data.labels,
+                    data: chartData,
+                    areaCounts: Object.fromEntries(areaLodgeCounts)
+                });
+
+            } catch (error) {
+                console.error('Error updating Baguio web chart:', error);
             }
         },
 

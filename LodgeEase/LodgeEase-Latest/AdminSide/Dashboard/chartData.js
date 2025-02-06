@@ -9,21 +9,19 @@ const formatCurrency = (amount) => {
     }).format(amount);
 };
 
+// Helper function for date parsing
 function parseDate(dateField) {
     if (!dateField) return null;
     
-    // Handle Firestore Timestamp
     if (dateField.toDate && typeof dateField.toDate === 'function') {
         return dateField.toDate();
     }
     
-    // Handle string date
     if (typeof dateField === 'string') {
         const parsedDate = new Date(dateField);
         return isNaN(parsedDate.getTime()) ? null : parsedDate;
     }
     
-    // Handle Date object
     if (dateField instanceof Date) {
         return dateField;
     }
@@ -34,10 +32,11 @@ function parseDate(dateField) {
 export async function getChartData() {
     try {
         // Get all necessary data from Firestore
-        const [bookings, rooms, payments] = await Promise.all([
+        const [bookings, rooms, payments, lodges] = await Promise.all([
             getDocs(query(collection(db, 'bookings'), orderBy('checkIn', 'desc'))),
             getDocs(collection(db, 'rooms')),
-            getDocs(collection(db, 'payments'))
+            getDocs(collection(db, 'payments')),
+            getDocs(collection(db, 'lodges'))
         ]);
 
         const bookingsData = bookings.docs.map(doc => ({
@@ -55,7 +54,12 @@ export async function getChartData() {
             id: doc.id
         }));
 
-        // Calculate last 12 months for better trend analysis
+        const lodgesData = lodges.docs.map(doc => ({
+            ...doc.data(),
+            id: doc.id
+        }));
+
+        // Calculate months for trend analysis
         const months = [];
         const currentDate = new Date();
         for (let i = 11; i >= 0; i--) {
@@ -63,63 +67,24 @@ export async function getChartData() {
             months.push(d.toLocaleString('default', { month: 'short', year: '2-digit' }));
         }
 
-        // Revenue Data - Last 12 months
-        const monthlyRevenue = calculateMonthlyRevenue(bookingsData, paymentsData);
-        const revenueData = {
-            labels: months,
-            datasets: [{
-                label: 'Monthly Revenue (PHP)',
-                data: monthlyRevenue.values,
-                backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                borderColor: 'rgba(54, 162, 235, 1)',
-                borderWidth: 1
-            }]
-        };
+        // Get area-specific data for Baguio web chart
+        const areaData = calculateAreaDistribution(lodgesData);
 
-        // Room Type Distribution
-        const roomTypeData = analyzeRoomTypes(roomsData, bookingsData);
-        
-        // Occupancy Rate Trend
-        const occupancyData = {
-            labels: months,
-            datasets: [{
-                label: 'Occupancy Rate (%)',
-                data: calculateOccupancyTrend(bookingsData, roomsData),
-                backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                borderColor: 'rgba(75, 192, 192, 1)',
-                borderWidth: 1
-            }]
-        };
+        // Calculate all chart data
+        const revenueData = calculateRevenueData(months, bookingsData, paymentsData);
+        const occupancyData = calculateOccupancyData(months, bookingsData, roomsData);
+        const roomTypeData = calculateRoomTypeData(bookingsData);
+        const bookingTrendData = calculateBookingTrends(months, bookingsData);
 
-        // Popular Room Types
-        const popularRoomsData = {
-            labels: roomTypeData.labels,
-            datasets: [{
-                label: 'Bookings by Room Type',
-                data: roomTypeData.values,
-                backgroundColor: [
-                    'rgba(255, 99, 132, 0.2)',
-                    'rgba(54, 162, 235, 0.2)',
-                    'rgba(255, 206, 86, 0.2)',
-                    'rgba(75, 192, 192, 0.2)'
-                ],
-                borderColor: [
-                    'rgba(255, 99, 132, 1)',
-                    'rgba(54, 162, 235, 1)',
-                    'rgba(255, 206, 86, 1)',
-                    'rgba(75, 192, 192, 1)'
-                ],
-                borderWidth: 1
-            }]
-        };
-
-        // Calculate key metrics
-        const metrics = calculateKeyMetrics(bookingsData, paymentsData, roomsData);
+        // Calculate metrics
+        const metrics = calculateMetrics(bookingsData, paymentsData, roomsData);
 
         return {
             revenueData,
             occupancyData,
-            popularRoomsData,
+            roomTypeData,
+            bookingTrendData,
+            areaData,
             metrics,
             todayCheckIns: calculateTodayCheckIns(bookingsData),
             availableRooms: calculateAvailableRooms(bookingsData, roomsData),
@@ -131,7 +96,41 @@ export async function getChartData() {
     }
 }
 
-function calculateMonthlyRevenue(bookings, payments) {
+function calculateAreaDistribution(lodgesData) {
+    const areas = [
+        'Session Road Area',
+        'Mines View',
+        'Burnham Park',
+        'Camp John Hay',
+        'Teachers Camp',
+        'Upper General Luna',
+        'Military Cut-off',
+        'Legarda Road',
+        'Baguio City Market'
+    ];
+
+    const areaCount = new Map(areas.map(area => [area, 0]));
+    
+    lodgesData.forEach(lodge => {
+        const area = lodge.area?.trim() || 'Other';
+        if (areaCount.has(area)) {
+            areaCount.set(area, areaCount.get(area) + 1);
+        }
+    });
+
+    return {
+        labels: areas,
+        datasets: [{
+            label: 'Number of Lodges',
+            data: areas.map(area => areaCount.get(area) || 0),
+            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+            borderColor: 'rgba(54, 162, 235, 1)',
+            borderWidth: 2
+        }]
+    };
+}
+
+function calculateRevenueData(months, bookings, payments) {
     const monthlyRevenue = new Array(12).fill(0);
     const currentDate = new Date();
     
@@ -168,23 +167,7 @@ function calculateMonthlyRevenue(bookings, payments) {
     };
 }
 
-function analyzeRoomTypes(rooms, bookings) {
-    const roomTypes = {};
-    
-    // Count bookings per room type
-    bookings.forEach(booking => {
-        if (booking.roomType) {
-            roomTypes[booking.roomType] = (roomTypes[booking.roomType] || 0) + 1;
-        }
-    });
-    
-    return {
-        labels: Object.keys(roomTypes),
-        values: Object.values(roomTypes)
-    };
-}
-
-function calculateOccupancyTrend(bookings, rooms) {
+function calculateOccupancyData(months, bookings, rooms) {
     const monthlyOccupancy = new Array(12).fill(0);
     const currentDate = new Date();
     const totalRooms = rooms.length || 1; // Prevent division by zero
@@ -236,7 +219,51 @@ function calculateOccupancyTrend(bookings, rooms) {
     });
 }
 
-function calculateKeyMetrics(bookings, payments, rooms) {
+function calculateRoomTypeData(bookings) {
+    const roomTypes = {};
+    
+    // Count bookings per room type
+    bookings.forEach(booking => {
+        if (booking.roomType) {
+            roomTypes[booking.roomType] = (roomTypes[booking.roomType] || 0) + 1;
+        }
+    });
+    
+    return {
+        labels: Object.keys(roomTypes),
+        values: Object.values(roomTypes)
+    };
+}
+
+function calculateBookingTrends(months, bookings) {
+    const monthlyBookings = new Array(12).fill(0);
+    const currentDate = new Date();
+
+    bookings.forEach(booking => {
+        const bookingDate = parseDate(booking.checkIn);
+        if (bookingDate) {
+            const monthDiff = (currentDate.getMonth() + 12 * currentDate.getFullYear()) -
+                            (bookingDate.getMonth() + 12 * bookingDate.getFullYear());
+            if (monthDiff >= 0 && monthDiff < 12) {
+                monthlyBookings[11 - monthDiff]++;
+            }
+        }
+    });
+
+    return {
+        labels: months,
+        datasets: [{
+            label: 'Monthly Bookings',
+            data: monthlyBookings,
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            borderColor: 'rgba(75, 192, 192, 1)',
+            borderWidth: 2,
+            fill: true
+        }]
+    };
+}
+
+function calculateMetrics(bookings, payments, rooms) {
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
     
@@ -274,6 +301,7 @@ function calculateKeyMetrics(bookings, payments, rooms) {
     };
 }
 
+// Helper functions
 function calculateTodayCheckIns(bookings) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
