@@ -6,25 +6,13 @@
     <title>Dashboard - Lodge Ease</title>
     <link rel="icon" type="image/x-icon" href="../images/LodgeEaseLogo.png">
     <!-- Firebase and Auth Check must be first -->
-    <script type="module">
-        import { initializeFirebase } from '../firebase.js';
-        import { PageLogger } from '../js/pageLogger.js';
-        
-        window.addEventListener('load', async () => {
-            try {
-                await initializeFirebase();
-                console.log('Firebase initialized successfully');
-                // PageLogger will handle logging through auth state change
-            } catch (error) {
-                console.error('Error initializing Firebase:', error);
-            }
-        });
-    </script>
-    <script type="module" src="../js/auth-check.js"></script>
+    <script type="module" src="../firebase.js"></script>
+    <script type="module" src="../AInalysis/auth-check.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
     <script type="module" src="chartData.js"></script>
     <script type="module" src="app.js"></script>
     <script type="module" src="transitions.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <!-- Other resources -->
     <link rel="stylesheet" href="styles.css">   
     <link rel="stylesheet" href="transitionStyle.css">
@@ -84,9 +72,13 @@
                 <header class="dashboard-header">
                     <h1>Dashboard Overview</h1>
                     <div class="header-actions">
-                        <button @click="updateDashboardStats" class="refresh-btn">
-                            <i class="fas fa-sync-alt"></i> Refresh Data
-                        </button>
+                        <button 
+                        @click="updateDashboardStats" 
+                        class="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow transition duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50"
+                    >
+                        <i class="fas fa-sync-alt animate-spin-hover"></i>
+                        Refresh Data
+                    </button>
                     </div>
                 </header>
 
