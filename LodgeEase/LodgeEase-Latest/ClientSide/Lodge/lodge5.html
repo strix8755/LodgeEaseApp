@@ -222,6 +222,7 @@
             document.getElementById('totalInitialPayment').textContent = `₱${totalInitialPayment.toLocaleString()}`;
         }
         
+        // Update the proceedToApplication function
         function proceedToApplication() {
             const moveInDate = document.getElementById('moveInDate').value;
             const leaseDuration = document.getElementById('leaseDuration').value;
@@ -241,7 +242,8 @@
             };
             
             localStorage.setItem('rentalApplication', JSON.stringify(applicationDetails));
-            window.location.href = 'rental-application.html';
+            // Update the path to point to the correct location
+            window.location.href = '../paymentProcess/applicationLongTerm.html';
         }
         
         // Initialize and update cost breakdown
@@ -270,4 +272,4 @@
       
           </script>
 </body>
-</html> 
+</html>
