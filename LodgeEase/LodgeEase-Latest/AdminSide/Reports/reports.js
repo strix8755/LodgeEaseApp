@@ -1,12 +1,16 @@
 import { 
     auth, 
-    db, 
-    collection,
-    addDoc,
-    Timestamp 
+    db,
 } from '../firebase.js';
-import { signOut } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-auth.js";
-import { PageLogger } from '../js/pageLogger.js';
+import { 
+    getFirestore,
+    collection, 
+    getDocs, 
+    addDoc, 
+    Timestamp 
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { PageLogger } from "../js/pageLogger.js";
 
 // Add activity logging function
 async function logReportActivity(actionType, details) {
@@ -61,12 +65,21 @@ new Vue({
 
         async fetchBookings() {
             try {
-                const bookingsRef = collection(db, 'bookings');
-                const snapshot = await getDocs(bookingsRef);
-                this.bookings = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
+                // Create a reference to the 'bookings' collection using the imported collection function
+                const bookingsCollection = collection(db, 'bookings');
+                const snapshot = await getDocs(bookingsCollection);
+                
+                this.bookings = snapshot.docs.map(doc => {
+                    const data = doc.data();
+                    return {
+                        id: doc.id,
+                        ...data,
+                        checkIn: data.checkIn?.toDate?.() || data.checkIn,
+                        checkOut: data.checkOut?.toDate?.() || data.checkOut
+                    };
+                });
+                
+                console.log('Fetched bookings:', this.bookings.length);
             } catch (error) {
                 console.error('Error fetching bookings:', error);
                 alert('Error fetching bookings data');
