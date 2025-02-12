@@ -347,15 +347,18 @@ new Vue({
                     return;
                 }
                 
-                // Update charts with null checks
+                // Update all charts with null checks
                 if (this.revenueChart && data.revenueData) {
                     this.updateChart(this.revenueChart, data.revenueData);
                 }
                 if (this.occupancyChart && data.occupancyData) {
                     this.updateChart(this.occupancyChart, data.occupancyData);
                 }
-                if (this.roomTypeChart && data.popularRoomsData) {
-                    this.updateChart(this.roomTypeChart, data.popularRoomsData);
+                if (this.roomTypeChart && data.roomTypeData) {
+                    this.updateChart(this.roomTypeChart, data.roomTypeData);
+                }
+                if (this.bookingTrendChart && data.bookingTrends) {
+                    this.updateChart(this.bookingTrendChart, data.bookingTrends);
                 }
                 
                 // Update metrics with null checks
@@ -387,10 +390,47 @@ new Vue({
                     console.warn('Chart data object is undefined');
                     return;
                 }
+
+                // Special handling for booking trends chart
+                if (chart === this.bookingTrendChart) {
+                    chart.data.labels = newData.labels || [];
+                    chart.data.datasets = newData.datasets || [];
+                    
+                    // Ensure proper dataset structure
+                    if (chart.data.datasets.length === 0) {
+                        chart.data.datasets = [{
+                            label: 'Actual Bookings',
+                            data: [],
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 2,
+                            fill: true
+                        }, {
+                            label: 'Predicted Bookings',
+                            data: [],
+                            backgroundColor: 'rgba(255, 159, 64, 0.2)',
+                            borderColor: 'rgba(255, 159, 64, 1)',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            fill: true
+                        }, {
+                            label: 'Industry Average',
+                            data: [],
+                            backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                            borderColor: 'rgba(153, 102, 255, 1)',
+                            borderWidth: 1,
+                            borderDash: [3, 3],
+                            fill: false
+                        }];
+                    }
+                } else {
+                    // Handle other charts normally
+                    chart.data.labels = newData.labels || [];
+                    chart.data.datasets = newData.datasets || [];
+                }
                 
-                chart.data.labels = newData.labels || [];
-                chart.data.datasets = newData.datasets || [];
                 chart.update();
+                console.log(`Updated chart ${chart.id} with data:`, newData); // Debug log
             } catch (error) {
                 console.error('Error updating chart:', error);
             }
@@ -505,28 +545,72 @@ new Vue({
                     data: {
                         labels: [],
                         datasets: [{
-                            label: 'Monthly Bookings',
+                            label: 'Actual Bookings',
                             data: [],
                             backgroundColor: 'rgba(75, 192, 192, 0.2)',
                             borderColor: 'rgba(75, 192, 192, 1)',
                             borderWidth: 2,
                             fill: true
+                        }, {
+                            label: 'Predicted Bookings',
+                            data: [],
+                            backgroundColor: 'rgba(255, 159, 64, 0.2)',
+                            borderColor: 'rgba(255, 159, 64, 1)',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            fill: true
+                        }, {
+                            label: 'Industry Average',
+                            data: [],
+                            backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                            borderColor: 'rgba(153, 102, 255, 1)',
+                            borderWidth: 1,
+                            borderDash: [3, 3],
+                            fill: false
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        interaction: {
+                            intersect: false,
+                            mode: 'index'
+                        },
                         scales: {
                             y: {
                                 beginAtZero: true,
                                 ticks: {
-                                    precision: 0
+                                    precision: 0,
+                                    callback: function(value) {
+                                        return value + ' bookings';
+                                    }
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Number of Bookings'
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Month'
                                 }
                             }
                         },
                         plugins: {
                             legend: {
-                                position: 'top'
+                                position: 'top',
+                                labels: {
+                                    usePointStyle: true,
+                                    boxWidth: 10
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `${context.dataset.label}: ${context.raw} bookings`;
+                                    }
+                                }
                             }
                         }
                     }

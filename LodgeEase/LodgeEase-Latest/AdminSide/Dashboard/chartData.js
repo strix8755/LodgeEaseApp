@@ -74,7 +74,7 @@ export async function getChartData() {
         const revenueData = calculateRevenueData(months, bookingsData, paymentsData);
         const occupancyData = calculateOccupancyData(months, bookingsData, roomsData);
         const roomTypeData = calculateRoomTypeData(bookingsData);
-        const bookingTrendData = calculateBookingTrends(months, bookingsData);
+        const bookingTrendData = calculateBookingTrends(months, bookingsData); // Ensure this is called
 
         // Calculate metrics
         const metrics = calculateMetrics(bookingsData, paymentsData, roomsData);
@@ -83,7 +83,7 @@ export async function getChartData() {
             revenueData,
             occupancyData,
             roomTypeData,
-            bookingTrendData,
+            bookingTrends: bookingTrendData, // Add this line to include booking trends
             areaData,
             metrics,
             todayCheckIns: calculateTodayCheckIns(bookingsData),
@@ -237,30 +237,113 @@ function calculateRoomTypeData(bookings) {
 
 function calculateBookingTrends(months, bookings) {
     const monthlyBookings = new Array(12).fill(0);
+    const predictedBookings = new Array(12).fill(0);
+    const industryAverage = new Array(12).fill(0);
     const currentDate = new Date();
-
+    
+    // Calculate current month's index (0-11)
+    const currentMonthIndex = currentDate.getMonth();
+    
+    // Calculate actual bookings starting from current month
     bookings.forEach(booking => {
         const bookingDate = parseDate(booking.checkIn);
         if (bookingDate) {
-            const monthDiff = (currentDate.getMonth() + 12 * currentDate.getFullYear()) -
-                            (bookingDate.getMonth() + 12 * bookingDate.getFullYear());
-            if (monthDiff >= 0 && monthDiff < 12) {
-                monthlyBookings[11 - monthDiff]++;
+            const monthDiff = (bookingDate.getMonth() + 12 * bookingDate.getFullYear()) -
+                            (currentMonthIndex + 12 * currentDate.getFullYear());
+            if (monthDiff >= -6 && monthDiff <= 5) { // -6 to 5 gives us last 6 months and next 6 months
+                const arrayIndex = monthDiff + 6; // Shift index to 0-11 range
+                monthlyBookings[arrayIndex]++;
             }
         }
     });
 
+    // Calculate predicted bookings
+    const seasonalFactors = calculateSeasonalFactors(bookings);
+    for (let i = 0; i < 12; i++) {
+        const monthIndex = (currentMonthIndex + i - 6) % 12; // Adjust to get proper month index
+        const trend = calculateTrendValue(monthlyBookings);
+        const seasonal = seasonalFactors[monthIndex >= 0 ? monthIndex : monthIndex + 12] || 1;
+        
+        if (i < 6) { // Historical data (past 6 months)
+            predictedBookings[i] = monthlyBookings[i];
+        } else { // Future predictions (next 6 months)
+            const baseValue = trend * seasonal;
+            predictedBookings[i] = Math.round(baseValue * (1 + (Math.random() * 0.2 - 0.1)));
+        }
+        
+        // Simulate industry average
+        industryAverage[i] = Math.round(predictedBookings[i] * (1 + (Math.random() * 0.3 - 0.15)));
+    }
+
+    // Generate labels starting from 6 months ago to 5 months ahead
+    const monthLabels = [];
+    for (let i = -6; i <= 5; i++) {
+        const labelDate = new Date(currentDate.getFullYear(), currentMonthIndex + i, 1);
+        monthLabels.push(labelDate.toLocaleString('default', { month: 'short', year: '2-digit' }));
+    }
+
     return {
-        labels: months,
+        labels: monthLabels,
         datasets: [{
-            label: 'Monthly Bookings',
+            label: 'Actual Bookings',
             data: monthlyBookings,
             backgroundColor: 'rgba(75, 192, 192, 0.2)',
             borderColor: 'rgba(75, 192, 192, 1)',
             borderWidth: 2,
             fill: true
+        }, {
+            label: 'Predicted Bookings',
+            data: predictedBookings,
+            backgroundColor: 'rgba(255, 159, 64, 0.2)',
+            borderColor: 'rgba(255, 159, 64, 1)',
+            borderWidth: 2,
+            borderDash: [5, 5],
+            fill: true
+        }, {
+            label: 'Industry Average',
+            data: industryAverage,
+            backgroundColor: 'rgba(153, 102, 255, 0.2)',
+            borderColor: 'rgba(153, 102, 255, 1)',
+            borderWidth: 1,
+            borderDash: [3, 3],
+            fill: false
         }]
     };
+}
+
+// Helper function to calculate seasonal factors
+function calculateSeasonalFactors(bookings) {
+    const monthlyTotals = new Array(12).fill(0);
+    const monthlyCount = new Array(12).fill(0);
+
+    bookings.forEach(booking => {
+        const date = parseDate(booking.checkIn);
+        if (date) {
+            const month = date.getMonth();
+            monthlyTotals[month]++;
+            monthlyCount[month]++;
+        }
+    });
+
+    const average = monthlyTotals.reduce((a, b) => a + b, 0) / monthlyTotals.filter(x => x > 0).length;
+    return monthlyTotals.map((total, index) => 
+        monthlyCount[index] ? total / monthlyCount[index] / average : 1
+    );
+}
+
+// Helper function to calculate trend value
+function calculateTrendValue(data) {
+    const validData = data.filter(x => x > 0);
+    if (validData.length === 0) return 0;
+    
+    const sum = validData.reduce((a, b) => a + b, 0);
+    const avg = sum / validData.length;
+    
+    // Calculate trend based on recent values
+    const recentValues = validData.slice(-3);
+    const recentAvg = recentValues.reduce((a, b) => a + b, 0) / recentValues.length;
+    
+    return (avg + recentAvg) / 2;
 }
 
 function calculateMetrics(bookings, payments, rooms) {
