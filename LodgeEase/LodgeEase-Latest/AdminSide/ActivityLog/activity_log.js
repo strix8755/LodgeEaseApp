@@ -13,7 +13,7 @@ import {
     addDoc,
     signOut 
 } from '../firebase.js';
-import ActivityLogger from './activityLogger.js';
+import { ActivityLogger, activityLogger } from './activityLogger.js';
 import { checkAuthentication } from '../js/auth-check.js';
 import { PageLogger } from '../js/pageLogger.js'; // Update import to use PageLogger instead of logPageView
 

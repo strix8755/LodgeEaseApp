@@ -1,83 +1,60 @@
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import { 
-    auth,
-    db,
-    collection,
-    query,
-    where,
-    getDocs,
-    orderBy,
-    Timestamp
-} from '../firebase.js';
+    getFirestore, 
+    collection, 
+    addDoc, 
+    serverTimestamp, 
+    query, 
+    orderBy, 
+    limit, 
+    getDocs 
+} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getAuth } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
-class ActivityLogger {
+export class ActivityLogger {
     constructor() {
-        this.initialized = false;
-        this.init();
+        this.db = getFirestore();
+        this.auth = getAuth();
     }
 
-    async init() {
+    async logActivity(actionType, description) {
         try {
-            this.logsRef = collection(db, 'activityLogs');
-            this.initialized = true;
-            await this.loadLogs();
+            const user = this.auth.currentUser;
+            if (!user) {
+                console.warn('No user logged in, waiting for auth...');
+                // Wait for a short time to see if auth completes
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                const retryUser = this.auth.currentUser;
+                if (!retryUser) {
+                    throw new Error('User not authenticated');
+                }
+            }
+
+            const activityData = {
+                timestamp: serverTimestamp(),
+                userId: user.uid,
+                userEmail: user.email,
+                userName: user.email, // Add this line to ensure userName is set
+                actionType: actionType,
+                details: description  // Keep the description exactly as passed
+            };
+
+            await addDoc(collection(this.db, 'activityLogs'), activityData);
+            console.log('Activity logged successfully:', activityData);
         } catch (error) {
-            console.error('Error initializing ActivityLogger:', error);
-            document.getElementById('errorMessage').textContent = 'Error loading activity logs: ' + error.message;
-            document.getElementById('errorState').classList.remove('hidden');
+            console.error('Error logging activity:', error);
+            throw error; // Propagate error for handling
         }
-    }
-
-    async loadLogs() {
-        if (!this.initialized) return;
-        
-        try {
-            document.getElementById('loadingState').classList.remove('hidden');
-            
-            const q = query(
-                this.logsRef,
-                orderBy('timestamp', 'desc')
-            );
-            
-            const snapshot = await getDocs(q);
-            const logs = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                timestamp: doc.data().timestamp?.toDate()
-            }));
-            
-            this.updateTable(logs);
-        } catch (error) {
-            console.error('Error loading logs:', error);
-            document.getElementById('errorMessage').textContent = 'Error loading logs: ' + error.message;
-            document.getElementById('errorState').classList.remove('hidden');
-        } finally {
-            document.getElementById('loadingState').classList.add('hidden');
-        }
-    }
-
-    updateTable(logs) {
-        const table = document.getElementById('activityLogTable');
-        if (!table) return;
-
-        table.innerHTML = logs.map(log => `
-            <tr class="hover:bg-gray-50">
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    ${log.timestamp ? new Date(log.timestamp).toLocaleString() : 'N/A'}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    ${log.userName || 'Unknown User'}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    ${log.actionType || 'Unknown Action'}
-                </td>
-                <td class="px-6 py-4 text-sm text-gray-500">
-                    ${log.details || 'No details provided'}
-                </td>
-            </tr>
-        `).join('');
     }
 }
 
-// Initialize the activity logger
-const activityLogger = new ActivityLogger();
-export default activityLogger;
+// Create and export singleton instance
+export const activityLogger = new ActivityLogger();
+
+// Export the logActivity function
+export const logActivity = (actionType, description) => {
+    return activityLogger.logActivity(actionType, description);
+};
+
+// Add default export
+export default ActivityLogger;

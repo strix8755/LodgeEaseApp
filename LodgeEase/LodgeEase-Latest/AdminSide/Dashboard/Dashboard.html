@@ -19,6 +19,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600&family=Roboto:wght@400&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script type="module" src="../ActivityLog/activityLogger.js"></script>
 </head>
 <body>
     <div id="app">
@@ -203,5 +204,19 @@
             </div>
         </main>
     </div>
+    <!-- Move the script to end of body and modify it -->
+    <script type="module">
+        import { logActivity } from '../ActivityLog/activityLogger.js';
+        import { getAuth } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+        const auth = getAuth();
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                // Simplify the log message to match the requirement
+                logActivity('navigation', 'Navigated to Dashboard')
+                    .catch(err => console.error('Error logging activity:', err));
+            }
+        });
+    </script>
 </body>
 </html>
