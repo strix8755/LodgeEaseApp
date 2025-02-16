@@ -1,7 +1,7 @@
 // Import Firebase modules
 import { db, auth } from '../firebase.js';
 import { collection, getDocs, query, orderBy, limit, doc, deleteDoc, updateDoc, Timestamp, where, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getAuth, signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 import { getChartData } from './chartData.js';
 
 // Vue app for the dashboard
@@ -48,7 +48,61 @@ new Vue({
         aiInsights: [],
         updateInterval: null,
         forecastInterval: null,
-        baguioWebChart: null,  // Add this to data
+        // Remove this line
+        // baguioWebChart: null,
+        // Add new data properties for revenue and occupancy
+        revenueViewMode: 'monthly',
+        occupancyViewMode: 'monthly',
+        revenueData: {
+            monthly: [],
+            byRoomType: {},
+            byPaymentMethod: {},
+            growth: [],
+            forecast: [],
+            metrics: {
+                totalRevenue: 0,
+                averageRevenue: 0,
+                peakMonth: '',
+                lowestMonth: '',
+                yearOverYearGrowth: 0
+            }
+        },
+        occupancyData: {
+            monthly: [],
+            byRoomType: {},
+            byWeekday: [],
+            forecast: [],
+            metrics: {
+                averageOccupancy: 0,
+                peakOccupancy: 0,
+                lowOccupancy: 100,
+                stabilityIndex: 0
+            }
+        },
+        showingChartInfo: false,
+        chartInfoTitle: '',
+        chartInfoText: '',
+        chartInfo: {
+            revenue: {
+                title: 'Revenue Analysis Chart',
+                text: 'This chart displays the historical and predicted revenue trends. The blue line shows actual revenue, while the orange dashed line shows predicted future revenue. The chart helps identify seasonal patterns, growth trends, and potential future earnings based on historical data and AI predictions.'
+            },
+            occupancy: {
+                title: 'Occupancy Analysis Chart',
+                text: 'The occupancy chart shows room occupancy rates over time. It displays actual occupancy (red line), predicted occupancy (green dashed line), and target occupancy rate (purple dashed line). This helps track capacity utilization and forecast future demand patterns.'
+            },
+            bookings: {
+                title: 'Booking Trends Chart',
+                text: 'This chart combines bar and line representations to show booking patterns. The bars represent actual bookings, while the lines show predictions and historical comparisons. It helps identify peak booking periods and seasonal trends in guest reservations.'
+            },
+            rooms: {
+                title: 'Room Distribution Chart',
+                text: 'The doughnut chart shows the distribution of room types and their relative occupancy. Each segment represents a different room type, with the size indicating the proportion of rooms. Hover over segments to see detailed statistics including revenue generation per room type.'
+            }
+        },
+        showingExplanation: false,
+        explanationTitle: '',
+        explanationText: '',
     },
     methods: {
         async handleLogout() {
@@ -347,21 +401,32 @@ new Vue({
                     return;
                 }
                 
-                // Update all charts with null checks
-                if (this.revenueChart && data.revenueData) {
-                    this.updateChart(this.revenueChart, data.revenueData);
+                // Create default data structure for each chart
+                const defaultChartData = {
+                    labels: [],
+                    datasets: [{
+                        label: 'No Data',
+                        data: [],
+                        borderColor: 'rgba(200, 200, 200, 1)',
+                        backgroundColor: 'rgba(200, 200, 200, 0.2)'
+                    }]
+                };
+
+                // Update charts with data validation
+                if (this.revenueChart) {
+                    this.updateChart(this.revenueChart, data.revenueData || defaultChartData);
                 }
-                if (this.occupancyChart && data.occupancyData) {
-                    this.updateChart(this.occupancyChart, data.occupancyData);
+                if (this.occupancyChart) {
+                    this.updateChart(this.occupancyChart, data.occupancyData || defaultChartData);
                 }
-                if (this.roomTypeChart && data.roomTypeData) {
-                    this.updateChart(this.roomTypeChart, data.roomTypeData);
+                if (this.roomTypeChart) {
+                    this.updateChart(this.roomTypeChart, data.roomTypeData || defaultChartData);
                 }
-                if (this.bookingTrendChart && data.bookingTrends) {
-                    this.updateChart(this.bookingTrendChart, data.bookingTrends);
+                if (this.bookingTrendChart) {
+                    this.updateChart(this.bookingTrendChart, data.bookingTrends || defaultChartData);
                 }
                 
-                // Update metrics with null checks
+                // Update other stats with null checks
                 this.stats = {
                     totalBookings: data.metrics?.totalBookings ?? 0,
                     currentMonthRevenue: data.metrics?.currentMonthRevenue ?? 0,
@@ -369,7 +434,6 @@ new Vue({
                     averageStayDuration: data.metrics?.averageStayDuration ?? 0
                 };
                 
-                // Update other dashboard data with null checks
                 this.todayCheckIns = data.todayCheckIns ?? 0;
                 this.availableRooms = data.availableRooms ?? 0;
                 this.occupiedRooms = data.occupiedRooms ?? 0;
@@ -380,57 +444,77 @@ new Vue({
         },
 
         updateChart(chart, newData) {
-            if (!chart || !newData) {
-                console.warn('Missing chart or data in updateChart');
+            if (!chart) {
+                console.warn('Chart instance is missing');
                 return;
             }
             
             try {
-                if (!chart.data) {
-                    console.warn('Chart data object is undefined');
-                    return;
+                // Ensure newData has the correct structure
+                const defaultData = {
+                    labels: [],
+                    datasets: [{
+                        label: 'No Data',
+                        data: [],
+                        borderColor: 'rgba(200, 200, 200, 1)',
+                        backgroundColor: 'rgba(200, 200, 200, 0.2)'
+                    }]
+                };
+
+                // Merge provided data with defaults
+                const chartData = {
+                    labels: newData?.labels || defaultData.labels,
+                    datasets: newData?.datasets || defaultData.datasets
+                };
+
+                // Ensure each dataset has required properties
+                chartData.datasets = chartData.datasets.map(dataset => ({
+                    label: dataset.label || 'Unnamed Dataset',
+                    data: Array.isArray(dataset.data) ? dataset.data : [],
+                    borderColor: dataset.borderColor || 'rgba(200, 200, 200, 1)',
+                    backgroundColor: dataset.backgroundColor || 'rgba(200, 200, 200, 0.2)',
+                    borderDash: dataset.borderDash || [],
+                    tension: 0.4,
+                    fill: dataset.fill !== undefined ? dataset.fill : true
+                }));
+
+                // Update chart data
+                chart.data.labels = chartData.labels;
+                chart.data.datasets = chartData.datasets;
+
+                // Update chart options
+                if (!chart.options.plugins) {
+                    chart.options.plugins = {};
                 }
 
-                // Special handling for booking trends chart
-                if (chart === this.bookingTrendChart) {
-                    chart.data.labels = newData.labels || [];
-                    chart.data.datasets = newData.datasets || [];
-                    
-                    // Ensure proper dataset structure
-                    if (chart.data.datasets.length === 0) {
-                        chart.data.datasets = [{
-                            label: 'Actual Bookings',
-                            data: [],
-                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                            borderColor: 'rgba(75, 192, 192, 1)',
-                            borderWidth: 2,
-                            fill: true
-                        }, {
-                            label: 'Predicted Bookings',
-                            data: [],
-                            backgroundColor: 'rgba(255, 159, 64, 0.2)',
-                            borderColor: 'rgba(255, 159, 64, 1)',
-                            borderWidth: 2,
-                            borderDash: [5, 5],
-                            fill: true
-                        }, {
-                            label: 'Industry Average',
-                            data: [],
-                            backgroundColor: 'rgba(153, 102, 255, 0.2)',
-                            borderColor: 'rgba(153, 102, 255, 1)',
-                            borderWidth: 1,
-                            borderDash: [3, 3],
-                            fill: false
-                        }];
-                    }
-                } else {
-                    // Handle other charts normally
-                    chart.data.labels = newData.labels || [];
-                    chart.data.datasets = newData.datasets || [];
+                if (!chart.options.plugins.tooltip) {
+                    chart.options.plugins.tooltip = {};
                 }
-                
-                chart.update();
-                console.log(`Updated chart ${chart.id} with data:`, newData); // Debug log
+
+                chart.options.plugins.tooltip.callbacks = {
+                    label: function(context) {
+                        const label = context.dataset.label || '';
+                        const value = context.raw;
+                        
+                        if (value === null || value === undefined) return null;
+                        
+                        if (label.toLowerCase().includes('revenue')) {
+                            return `${label}: ${new Intl.NumberFormat('en-PH', {
+                                style: 'currency',
+                                currency: 'PHP'
+                            }).format(value)}`;
+                        }
+                        
+                        if (label.toLowerCase().includes('occupancy')) {
+                            return `${label}: ${value.toFixed(1)}%`;
+                        }
+                        
+                        return `${label}: ${value}`;
+                    }
+                };
+
+                chart.update('none');
+                console.log(`Updated chart with ${chartData.datasets.length} datasets`);
             } catch (error) {
                 console.error('Error updating chart:', error);
             }
@@ -440,310 +524,403 @@ new Vue({
             try {
                 await this.$nextTick();
                 
-                const revenueCanvas = document.getElementById('revenueChart');
-                const bookingTrendCanvas = document.getElementById('bookingTrendChart');
-                const occupancyCanvas = document.getElementById('occupancyChart');
-                const roomTypeCanvas = document.getElementById('roomTypeChart');
-                const baguioWebCanvas = document.getElementById('baguioWebChart');
-                
-                if (!revenueCanvas || !occupancyCanvas || !roomTypeCanvas) {
-                    console.warn('Chart canvas elements not found. Charts will not be initialized.');
-                    return;
+                const canvasElements = {
+                    revenue: document.getElementById('revenueChart'),
+                    occupancy: document.getElementById('occupancyChart'),
+                    roomType: document.getElementById('roomTypeChart'),
+                    bookingTrend: document.getElementById('bookingTrendChart')
+                };
+
+                // Verify canvas elements exist
+                const missingCanvases = Object.entries(canvasElements)
+                    .filter(([name, element]) => !element)
+                    .map(([name]) => name);
+
+                if (missingCanvases.length > 0) {
+                    console.error('Missing canvas elements:', missingCanvases);
+                    throw new Error(`Canvas elements not found: ${missingCanvases.join(', ')}`);
                 }
 
-                const ctx1 = revenueCanvas.getContext('2d');
-                const ctx2 = occupancyCanvas.getContext('2d');
-                const ctx3 = roomTypeCanvas.getContext('2d');
-
-                this.revenueChart = new Chart(ctx1, {
-                    type: 'line',
-                    data: {
-                        labels: [],
-                        datasets: []
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                ticks: {
-                                    callback: function(value) {
-                                        return '₱' + value.toLocaleString('en-PH');
-                                    }
-                                }
-                            }
+                // Enhanced Revenue Chart
+                if (!this.revenueChart && canvasElements.revenue) {
+                    this.revenueChart = new Chart(canvasElements.revenue.getContext('2d'), {
+                        type: 'line',
+                        data: {
+                            labels: [],
+                            datasets: [{
+                                label: 'Actual Revenue',
+                                data: [],
+                                borderColor: 'rgba(54, 162, 235, 1)',
+                                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                                fill: true,
+                                tension: 0.4
+                            }, {
+                                label: 'Predicted Revenue',
+                                data: [],
+                                borderColor: 'rgba(255, 159, 64, 1)',
+                                backgroundColor: 'rgba(255, 159, 64, 0.1)',
+                                borderDash: [5, 5],
+                                fill: true,
+                                tension: 0.4
+                            }]
                         },
-                        plugins: {
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        return '₱' + context.raw.toLocaleString('en-PH');
-                                    }
-                                }
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: {
+                                intersect: false,
+                                mode: 'index'
                             },
-                            legend: {
-                                position: 'top'
-                            }
-                        }
-                    }
-                });
-
-                this.occupancyChart = new Chart(ctx2, {
-                    type: 'line',
-                    data: {
-                        labels: [],
-                        datasets: []
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                max: 100,
-                                ticks: {
-                                    callback: function(value) {
-                                        return value + '%';
-                                    }
-                                }
-                            }
-                        },
-                        plugins: {
-                            legend: {
-                                position: 'top'
-                            }
-                        }
-                    }
-                });
-
-                this.roomTypeChart = new Chart(ctx3, {
-                    type: 'doughnut',
-                    data: {
-                        labels: [],
-                        datasets: []
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: 'right',
-                                labels: {
-                                    padding: 20,
-                                    usePointStyle: true,
-                                    pointStyle: 'circle'
-                                }
-                            }
-                        }
-                    }
-                });
-
-                // Add booking trend chart initialization
-                this.bookingTrendChart = new Chart(bookingTrendCanvas, {
-                    type: 'line',
-                    data: {
-                        labels: [],
-                        datasets: [{
-                            label: 'Actual Bookings',
-                            data: [],
-                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                            borderColor: 'rgba(75, 192, 192, 1)',
-                            borderWidth: 2,
-                            fill: true
-                        }, {
-                            label: 'Predicted Bookings',
-                            data: [],
-                            backgroundColor: 'rgba(255, 159, 64, 0.2)',
-                            borderColor: 'rgba(255, 159, 64, 1)',
-                            borderWidth: 2,
-                            borderDash: [5, 5],
-                            fill: true
-                        }, {
-                            label: 'Industry Average',
-                            data: [],
-                            backgroundColor: 'rgba(153, 102, 255, 0.2)',
-                            borderColor: 'rgba(153, 102, 255, 1)',
-                            borderWidth: 1,
-                            borderDash: [3, 3],
-                            fill: false
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        interaction: {
-                            intersect: false,
-                            mode: 'index'
-                        },
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                ticks: {
-                                    precision: 0,
-                                    callback: function(value) {
-                                        return value + ' bookings';
+                            plugins: {
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            const label = context.dataset.label || '';
+                                            return `${label}: ${new Intl.NumberFormat('en-PH', {
+                                                style: 'currency',
+                                                currency: 'PHP'
+                                            }).format(context.raw)}`;
+                                        },
+                                        afterLabel: function(context) {
+                                            const actual = context.dataset.data[context.dataIndex];
+                                            const otherDataset = context.chart.data.datasets[1 - context.datasetIndex];
+                                            const predicted = otherDataset.data[context.dataIndex];
+                                            if (actual && predicted) {
+                                                const diff = ((actual - predicted) / predicted * 100).toFixed(1);
+                                                return `Variance: ${diff}%`;
+                                            }
+                                            return '';
+                                        }
                                     }
                                 },
-                                title: {
-                                    display: true,
-                                    text: 'Number of Bookings'
+                                legend: {
+                                    position: 'top',
+                                    labels: {
+                                        usePointStyle: true,
+                                        padding: 15
+                                    }
                                 }
                             },
-                            x: {
-                                title: {
-                                    display: true,
-                                    text: 'Month'
-                                }
-                            }
-                        },
-                        plugins: {
-                            legend: {
-                                position: 'top',
-                                labels: {
-                                    usePointStyle: true,
-                                    boxWidth: 10
-                                }
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        return `${context.dataset.label}: ${context.raw} bookings`;
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        callback: value => '₱' + value.toLocaleString('en-PH')
                                     }
                                 }
                             }
                         }
-                    }
-                });
+                    });
+                }
 
-                // Initialize Baguio Web Chart
-                this.baguioWebChart = new Chart(baguioWebCanvas, {
-                    type: 'radar',
-                    data: {
-                        labels: [
-                            'Session Road Area',
-                            'Mines View',
-                            'Burnham Park',
-                            'Camp John Hay',
-                            'Teachers Camp',
-                            'Upper General Luna',
-                            'Military Cut-off',
-                            'Legarda Road',
-                            'Baguio City Market'
-                        ],
-                        datasets: [{
-                            label: 'Number of Lodges',
-                            data: [], // Will be populated from Firebase
-                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                            borderColor: 'rgba(54, 162, 235, 1)',
-                            borderWidth: 2,
-                            pointBackgroundColor: 'rgba(54, 162, 235, 1)',
-                            pointRadius: 4
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            r: {
-                                beginAtZero: true,
-                                grid: {
-                                    color: 'rgba(0, 0, 0, 0.1)'
-                                },
-                                angleLines: {
-                                    color: 'rgba(0, 0, 0, 0.1)'
-                                },
-                                ticks: {
-                                    stepSize: 1,
-                                    backdropColor: 'transparent'
-                                }
-                            }
+                // Enhanced Occupancy Chart
+                if (!this.occupancyChart && canvasElements.occupancy) {
+                    this.occupancyChart = new Chart(canvasElements.occupancy.getContext('2d'), {
+                        type: 'line',
+                        data: {
+                            labels: [],
+                            datasets: [{
+                                label: 'Actual Occupancy',
+                                data: [],
+                                borderColor: 'rgba(255, 99, 132, 1)',
+                                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                                fill: true,
+                                tension: 0.4
+                            }, {
+                                label: 'Predicted Occupancy',
+                                data: [],
+                                borderColor: 'rgba(75, 192, 192, 1)',
+                                backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                                borderDash: [5, 5],
+                                fill: true,
+                                tension: 0.4
+                            }, {
+                                label: 'Target Rate',
+                                data: [],
+                                borderColor: 'rgba(153, 102, 255, 1)',
+                                borderDash: [3, 3],
+                                fill: false
+                            }]
                         },
-                        plugins: {
-                            legend: {
-                                position: 'top'
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: {
+                                intersect: false,
+                                mode: 'index'
                             },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        return `${context.label}: ${context.raw} lodges`;
+                            plugins: {
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            const label = context.dataset.label || '';
+                                            return `${label}: ${context.raw.toFixed(1)}%`;
+                                        },
+                                        afterLabel: function(context) {
+                                            if (context.datasetIndex < 2) { // Only for actual and predicted
+                                                const actual = context.chart.data.datasets[0].data[context.dataIndex];
+                                                const predicted = context.chart.data.datasets[1].data[context.dataIndex];
+                                                if (actual && predicted) {
+                                                    const diff = (actual - predicted).toFixed(1);
+                                                    return `Variance: ${diff}%`;
+                                                }
+                                            }
+                                            return '';
+                                        }
+                                    }
+                                },
+                                legend: {
+                                    position: 'top',
+                                    labels: {
+                                        usePointStyle: true,
+                                        padding: 15
+                                    }
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    max: 100,
+                                    ticks: {
+                                        callback: value => value + '%'
                                     }
                                 }
                             }
                         }
-                    }
-                });
+                    });
+                }
 
-                // Call update method immediately after initialization
-                await this.updateBaguioWebChart();
-                
-                // Initialize with data
+                // Enhanced Room Type Chart
+                if (!this.roomTypeChart && canvasElements.roomType) {
+                    this.roomTypeChart = new Chart(canvasElements.roomType.getContext('2d'), {
+                        type: 'doughnut',
+                        data: {
+                            labels: [],
+                            datasets: [{
+                                data: [],
+                                backgroundColor: [
+                                    'rgba(54, 162, 235, 0.8)',   // Blue
+                                    'rgba(255, 99, 132, 0.8)',   // Pink
+                                    'rgba(255, 206, 86, 0.8)',   // Yellow
+                                    'rgba(75, 192, 192, 0.8)',   // Teal
+                                    'rgba(153, 102, 255, 0.8)',  // Purple
+                                    'rgba(255, 159, 64, 0.8)'    // Orange
+                                ],
+                                borderColor: [
+                                    'rgba(54, 162, 235, 1)',
+                                    'rgba(255, 99, 132, 1)',
+                                    'rgba(255, 206, 86, 1)',
+                                    'rgba(75, 192, 192, 1)',
+                                    'rgba(153, 102, 255, 1)',
+                                    'rgba(255, 159, 64, 1)'
+                                ],
+                                borderWidth: 2,
+                                hoverOffset: 15
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            cutout: '65%',
+                            layout: {
+                                padding: 20
+                            },
+                            plugins: {
+                                legend: {
+                                    position: 'right',
+                                    labels: {
+                                        padding: 20,
+                                        font: {
+                                            size: 13,
+                                            family: "'Roboto', sans-serif"
+                                        },
+                                        generateLabels: (chart) => {
+                                            const data = chart.data;
+                                            const total = data.datasets[0].data.reduce((sum, value) => sum + value, 0);
+                                            
+                                            return data.labels.map((label, index) => {
+                                                const value = data.datasets[0].data[index];
+                                                const percentage = ((value / total) * 100).toFixed(1);
+                                                return {
+                                                    text: `${label} (${percentage}%)`,
+                                                    fillStyle: data.datasets[0].backgroundColor[index],
+                                                    strokeStyle: data.datasets[0].borderColor[index],
+                                                    lineWidth: 2,
+                                                    hidden: isNaN(value) || value === 0,
+                                                    index: index
+                                                };
+                                            });
+                                        }
+                                    },
+                                    onClick: (evt, legendItem, legend) => {
+                                        const index = legendItem.index;
+                                        const ci = legend.chart;
+                                        ci.toggleDataVisibility(index);
+                                        ci.update();
+                                    }
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            const label = context.label || '';
+                                            const value = context.raw || 0;
+                                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                            const percentage = ((value / total) * 100).toFixed(1);
+                                            const revenue = context.dataset.revenue?.[context.dataIndex] || 0;
+                                            return [
+                                                `${label}: ${value} rooms (${percentage}%)`,
+                                                `Revenue: ${new Intl.NumberFormat('en-PH', {
+                                                    style: 'currency',
+                                                    currency: 'PHP'
+                                                }).format(revenue)}`
+                                            ];
+                                        }
+                                    },
+                                    titleFont: {
+                                        size: 14,
+                                        family: "'Roboto', sans-serif",
+                                        weight: 'bold'
+                                    },
+                                    bodyFont: {
+                                        size: 13,
+                                        family: "'Roboto', sans-serif"
+                                    },
+                                    padding: 12,
+                                    boxPadding: 6
+                                },
+                                datalabels: {
+                                    color: '#fff',
+                                    font: {
+                                        weight: 'bold',
+                                        size: 12
+                                    },
+                                    formatter: (value, ctx) => {
+                                        const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = ((value / total) * 100).toFixed(1);
+                                        return percentage + '%';
+                                    },
+                                    display: function(context) {
+                                        return context.dataset.data[context.dataIndex] > 0;
+                                    }
+                                }
+                            },
+                            animation: {
+                                animateRotate: true,
+                                animateScale: true,
+                                duration: 1000
+                            },
+                            elements: {
+                                arc: {
+                                    borderWidth: 2
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // Enhanced Booking Trend Chart
+                if (!this.bookingTrendChart && canvasElements.bookingTrend) {
+                    this.bookingTrendChart = new Chart(canvasElements.bookingTrend.getContext('2d'), {
+                        type: 'bar',
+                        data: {
+                            labels: [],
+                            datasets: [{
+                                label: 'Actual Bookings',
+                                type: 'bar',
+                                data: [],
+                                backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                                borderColor: 'rgba(75, 192, 192, 1)',
+                                borderWidth: 1,
+                                order: 2
+                            }, {
+                                label: 'Predicted Bookings',
+                                type: 'line',
+                                data: [],
+                                borderColor: 'rgba(255, 159, 64, 1)',
+                                backgroundColor: 'rgba(255, 159, 64, 0.2)',
+                                borderWidth: 2,
+                                borderDash: [5, 5],
+                                fill: false,
+                                tension: 0.4,
+                                order: 1
+                            }, {
+                                label: 'Previous Period',
+                                type: 'line',
+                                data: [],
+                                borderColor: 'rgba(153, 102, 255, 1)',
+                                borderWidth: 1,
+                                borderDash: [3, 3],
+                                fill: false,
+                                tension: 0.4,
+                                order: 0
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: {
+                                intersect: false,
+                                mode: 'index'
+                            },
+                            plugins: {
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            const label = context.dataset.label || '';
+                                            return `${label}: ${context.raw} bookings`;
+                                        },
+                                        afterLabel: function(context) {
+                                            const labels = [];
+                                            if (context.datasetIndex < 2) {
+                                                const actual = context.chart.data.datasets[0].data[context.dataIndex];
+                                                const predicted = context.chart.data.datasets[1].data[context.dataIndex];
+                                                if (actual && predicted) {
+                                                    const variance = ((actual - predicted) / predicted * 100).toFixed(1);
+                                                    labels.push(`Variance: ${variance}%`);
+                                                }
+                                            }
+                                            const revenue = context.dataset.revenue?.[context.dataIndex];
+                                            if (revenue) {
+                                                labels.push(`Revenue: ₱${revenue.toLocaleString('en-PH')}`);
+                                            }
+                                            return labels;
+                                        }
+                                    }
+                                },
+                                legend: {
+                                    position: 'top',
+                                    labels: {
+                                        usePointStyle: true,
+                                        padding: 15
+                                    }
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        stepSize: 1
+                                    },
+                                    title: {
+                                        display: true,
+                                        text: 'Number of Bookings'
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+
                 await this.updateDashboardStats();
+                console.log('Charts initialized successfully');
+
             } catch (error) {
                 console.error('Error initializing charts:', error);
             }
         },
 
-        // Add this as a method
-        async updateBaguioWebChart() {
-            try {
-                if (!this.baguioWebChart) {
-                    console.warn('Baguio web chart not initialized');
-                    return;
-                }
-
-                const lodgesRef = collection(db, 'lodges');
-                const snapshot = await getDocs(lodgesRef);
-                
-                // Define valid areas that match the chart labels exactly
-                const validAreas = [
-                    'Session Road Area',
-                    'Mines View',
-                    'Burnham Park',
-                    'Camp John Hay',
-                    'Teachers Camp',
-                    'Upper General Luna',
-                    'Military Cut-off',
-                    'Legarda Road',
-                    'Baguio City Market'
-                ];
-                
-                // Initialize counts for all areas
-                const areaLodgeCounts = new Map(validAreas.map(area => [area, 0]));
-                
-                // Count lodges by area with data validation
-                snapshot.forEach(doc => {
-                    const lodge = doc.data();
-                    const area = lodge.area?.trim() || 'Other';
-                    
-                    // Check if the area is in our valid areas list
-                    if (validAreas.includes(area)) {
-                        areaLodgeCounts.set(area, (areaLodgeCounts.get(area) || 0) + 1);
-                    } else {
-                        console.warn(`Invalid area found: ${area}`);
-                    }
-                });
-                
-                // Update chart data ensuring order matches labels
-                const chartData = this.baguioWebChart.data.labels.map(label => 
-                    areaLodgeCounts.get(label) || 0
-                );
-                
-                // Update the chart with new data
-                this.baguioWebChart.data.datasets[0].data = chartData;
-                this.baguioWebChart.update();
-                
-                // Log the data for verification
-                console.log('Baguio Web Chart Data:', {
-                    labels: this.baguioWebChart.data.labels,
-                    data: chartData,
-                    areaCounts: Object.fromEntries(areaLodgeCounts)
-                });
-
-            } catch (error) {
-                console.error('Error updating Baguio web chart:', error);
-            }
-        },
+        // Remove the updateBaguioWebChart method
+        // async updateBaguioWebChart() { ... },
 
         async generateAIForecasts() {
             try {
@@ -1091,37 +1268,62 @@ new Vue({
                     return;
                 }
 
-                // Update occupancy chart
-                if (this.occupancyChart) {
-                    const occupancyData = {
-                        labels: dates,
-                        datasets: [{
-                            label: 'Predicted Occupancy Rate',
-                            data: predictions.occupancy.map(p => p.rate || 0),
-                            borderColor: 'rgba(75, 192, 192, 1)',
-                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                            borderWidth: 2,
-                            fill: true
-                        }]
-                    };
-                    this.updateChart(this.occupancyChart, occupancyData);
-                }
-
                 // Update revenue chart
                 if (this.revenueChart) {
+                    const actualRevenue = predictions.revenue.slice(0, -3).map(p => p.amount);  // Last 3 months actual
+                    const predictedRevenue = predictions.revenue.slice(-3).map(p => p.amount);  // Next 3 months predicted
+                    
                     const revenueData = {
                         labels: dates,
                         datasets: [{
-                            label: 'Predicted Revenue',
-                            data: predictions.revenue.map(p => p.amount || 0),
+                            label: 'Actual Revenue',
+                            data: [...actualRevenue, ...Array(3).fill(null)],  // Pad with nulls for future months
                             borderColor: 'rgba(54, 162, 235, 1)',
                             backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                            borderWidth: 2,
+                            fill: true
+                        }, {
+                            label: 'Predicted Revenue',
+                            data: [...Array(actualRevenue.length).fill(null), ...predictedRevenue],  // Pad with nulls for past months
+                            borderColor: 'rgba(255, 159, 64, 1)',
+                            backgroundColor: 'rgba(255, 159, 64, 0.2)',
+                            borderDash: [5, 5],
                             fill: true
                         }]
                     };
                     this.updateChart(this.revenueChart, revenueData);
                 }
+
+                // Update occupancy chart
+                if (this.occupancyChart) {
+                    const actualOccupancy = predictions.occupancy.slice(0, -3).map(p => p.rate);
+                    const predictedOccupancy = predictions.occupancy.slice(-3).map(p => p.rate);
+                    
+                    const occupancyData = {
+                        labels: dates,
+                        datasets: [{
+                            label: 'Actual Occupancy',
+                            data: [...actualOccupancy, ...Array(3).fill(null)],
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            fill: true
+                        }, {
+                            label: 'Predicted Occupancy',
+                            data: [...Array(actualOccupancy.length).fill(null), ...predictedOccupancy],
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            borderDash: [5, 5],
+                            fill: true
+                        }, {
+                            label: 'Target Rate',
+                            data: Array(dates.length).fill(75),  // Example target rate of 75%
+                            borderColor: 'rgba(153, 102, 255, 1)',
+                            borderDash: [3, 3],
+                            fill: false
+                        }]
+                    };
+                    this.updateChart(this.occupancyChart, occupancyData);
+                }
+
             } catch (error) {
                 console.error('Error updating charts with predictions:', error);
             }
@@ -1262,6 +1464,171 @@ new Vue({
                 return { slope: 0, intercept: 0 };
             }
         },
+        // Add formatCurrency method
+        formatCurrency(amount) {
+            return new Intl.NumberFormat('en-PH', {
+                style: 'currency',
+                currency: 'PHP'
+            }).format(amount);
+        },
+        showChartInfo(chartType) {
+            this.chartInfoTitle = this.chartInfo[chartType].title;
+            this.chartInfoText = this.chartInfo[chartType].text;
+            this.showingChartInfo = true;
+        },
+        
+        closeChartInfo() {
+            this.showingChartInfo = false;
+            this.chartInfoTitle = '';
+            this.chartInfoText = '';
+        },
+        async explainChartContent(chartType) {
+            try {
+                let explanation = '';
+                let title = '';
+
+                switch (chartType) {
+                    case 'revenue':
+                        const revenueData = this.revenueChart.data;
+                        const totalRevenue = revenueData.datasets[0].data.reduce((a, b) => a + (b || 0), 0);
+                        const avgRevenue = totalRevenue / revenueData.datasets[0].data.filter(d => d !== null).length;
+                        const growth = this.calculateGrowth(revenueData.datasets[0].data);
+                        
+                        title = 'Revenue Analysis Explanation';
+                        explanation = `
+                            <ul>
+                                <li><span class="highlight">Total Revenue:</span> ${this.formatCurrency(totalRevenue)}</li>
+                                <li><span class="highlight">Average Monthly Revenue:</span> ${this.formatCurrency(avgRevenue)}</li>
+                                <li><span class="highlight">Growth Trend:</span> ${growth.toFixed(1)}% ${growth > 0 ? '📈' : '📉'}</li>
+                                <li><span class="highlight">Peak Month:</span> ${this.findPeakMonth(revenueData)}</li>
+                            </ul>
+                            <p>The blue line shows actual revenue, while the orange dashed line shows predicted future revenue.
+                            ${this.generateRevenueInsight(growth)}</p>
+                        `;
+                        break;
+
+                    case 'occupancy':
+                        const occupancyData = this.occupancyChart.data;
+                        const avgOccupancy = this.calculateAverage(occupancyData.datasets[0].data);
+                        const trend = this.calculateGrowth(occupancyData.datasets[0].data);
+                        
+                        title = 'Occupancy Analysis Explanation';
+                        explanation = `
+                            <ul>
+                                <li><span class="highlight">Current Occupancy Rate:</span> ${this.occupiedRooms}/${this.availableRooms + this.occupiedRooms} rooms (${((this.occupiedRooms / (this.availableRooms + this.occupiedRooms)) * 100).toFixed(1)}%)</li>
+                                <li><span class="highlight">Average Occupancy:</span> ${avgOccupancy.toFixed(1)}%</li>
+                                <li><span class="highlight">Trend:</span> ${trend.toFixed(1)}% ${trend > 0 ? '📈' : '📉'}</li>
+                            </ul>
+                            <p>${this.generateOccupancyInsight(avgOccupancy, trend)}</p>
+                        `;
+                        break;
+
+                    case 'bookings':
+                        const bookingData = this.bookingTrendChart.data;
+                        const totalBookings = bookingData.datasets[0].data.reduce((a, b) => a + (b || 0), 0);
+                        
+                        title = 'Booking Trends Explanation';
+                        explanation = `
+                            <ul>
+                                <li><span class="highlight">Total Bookings:</span> ${totalBookings}</li>
+                                <li><span class="highlight">Average Monthly Bookings:</span> ${Math.round(totalBookings / 12)}</li>
+                                <li><span class="highlight">Peak Booking Period:</span> ${this.findPeakMonth(bookingData)}</li>
+                            </ul>
+                            <p>${this.generateBookingInsight(bookingData)}</p>
+                        `;
+                        break;
+
+                    case 'rooms':
+                        const roomData = this.roomTypeChart.data;
+                        const totalRooms = roomData.datasets[0].data.reduce((a, b) => a + b, 0);
+                        
+                        title = 'Room Distribution Explanation';
+                        explanation = `
+                            <ul>
+                                ${this.generateRoomTypeBreakdown(roomData)}
+                            </ul>
+                            <p>${this.generateRoomDistributionInsight(roomData)}</p>
+                        `;
+                        break;
+                }
+
+                this.explanationTitle = title;
+                this.explanationText = explanation;
+                this.showingExplanation = true;
+            } catch (error) {
+                console.error('Error generating chart explanation:', error);
+                alert('Error generating explanation. Please try again.');
+            }
+        },
+
+        closeExplanation() {
+            this.showingExplanation = false;
+            this.explanationTitle = '';
+            this.explanationText = '';
+        },
+
+        calculateGrowth(data) {
+            const validData = data.filter(d => d !== null);
+            if (validData.length < 2) return 0;
+            const first = validData[0];
+            const last = validData[validData.length - 1];
+            return ((last - first) / first) * 100;
+        },
+
+        calculateAverage(data) {
+            const validData = data.filter(d => d !== null);
+            return validData.reduce((a, b) => a + b, 0) / validData.length;
+        },
+
+        findPeakMonth(data) {
+            const maxValue = Math.max(...data.datasets[0].data.filter(d => d !== null));
+            const peakIndex = data.datasets[0].data.indexOf(maxValue);
+            return data.labels[peakIndex];
+        },
+
+        generateRevenueInsight(growth) {
+            if (growth > 15) return "The revenue shows strong positive growth, suggesting effective pricing and occupancy strategies.";
+            if (growth > 0) return "Revenue is growing steadily, indicating stable business performance.";
+            if (growth > -10) return "Revenue shows slight decline, consider reviewing pricing strategies.";
+            return "Revenue is declining significantly, immediate action may be required.";
+        },
+
+        generateOccupancyInsight(average, trend) {
+            let insight = `Current occupancy patterns show ${average > 70 ? 'healthy' : 'moderate'} utilization. `;
+            if (trend > 0) {
+                insight += "Occupancy is trending upward, suggesting increasing demand.";
+            } else {
+                insight += "Consider promotional strategies to improve occupancy rates.";
+            }
+            return insight;
+        },
+
+        generateBookingInsight(data) {
+            const recent = data.datasets[0].data.slice(-3);
+            const trend = this.calculateGrowth(recent);
+            
+            if (trend > 10) return "Recent booking activity shows strong growth, suggesting increasing market demand.";
+            if (trend > 0) return "Booking patterns are stable with slight positive momentum.";
+            return "Booking activity has decreased recently, consider marketing initiatives.";
+        },
+
+        generateRoomTypeBreakdown(data) {
+            const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
+            return data.labels.map((label, index) => {
+                const count = data.datasets[0].data[index];
+                const percentage = ((count / total) * 100).toFixed(1);
+                const revenue = data.datasets[0].revenue?.[index] || 0;
+                return `<li><span class="highlight">${label}:</span> ${count} rooms (${percentage}%) - Revenue: ${this.formatCurrency(revenue)}</li>`;
+            }).join('');
+        },
+
+        generateRoomDistributionInsight(data) {
+            const mostPopular = data.labels[data.datasets[0].data.indexOf(Math.max(...data.datasets[0].data))];
+            const revenue = data.datasets[0].revenue || [];
+            const highestRevenue = data.labels[revenue.indexOf(Math.max(...revenue))];
+            
+            return `${mostPopular} rooms have the highest count, while ${highestRevenue} rooms generate the most revenue.`;
+        },
     },
     computed: {
         filteredBookings() {
@@ -1274,6 +1641,15 @@ new Vue({
                        roomNumber.includes(query) ||
                        roomType.includes(query);
             });
+        }
+    },
+    watch: {
+        // Add watchers for view mode changes
+        revenueViewMode(newMode) {
+            this.updateRevenueChart(newMode);
+        },
+        occupancyViewMode(newMode) {
+            this.updateOccupancyChart(newMode);
         }
     },
     async mounted() {
