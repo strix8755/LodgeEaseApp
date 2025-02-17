@@ -352,6 +352,50 @@
                     <canvas id="revenuePerRoomChart"></canvas>
                 </div>
             </div>
+
+            <!-- Analysis Modal -->
+            <div v-if="showAnalysisModal" class="analysis-modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Detailed Analysis - {{ selectedPeriod }}</h3>
+                        <button @click="showAnalysisModal = false" class="close-btn">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="analysis-metrics">
+                            <div class="metric">
+                                <h4>Value</h4>
+                                <p>{{ formatMetricValue(selectedValue) }}</p>
+                            </div>
+                            <div class="metric">
+                                <h4>YoY Growth</h4>
+                                <p>{{ calculateGrowth(selectedPeriod) }}%</p>
+                            </div>
+                            <div class="metric">
+                                <h4>Contributing Factors</h4>
+                                <ul>
+                                    <li v-for="factor in getContributingFactors(selectedPeriod)" :key="factor.name">
+                                        {{ factor.name }}: {{ factor.value }}
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="trend-analysis">
+                            <h4>Trend Analysis</h4>
+                            <canvas ref="trendChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart Legend Templates -->
+            <template id="chart-legend-template">
+                <div class="custom-legend">
+                    <div v-for="item in items" :key="item.text" class="legend-item">
+                        <span class="legend-color" :style="{ backgroundColor: item.fillStyle }"></span>
+                        <span class="legend-text">{{ item.text }}</span>
+                    </div>
+                </div>
+            </template>
         </main>
     </div>
     <script type="module" src="business_analytics.js"></script>
