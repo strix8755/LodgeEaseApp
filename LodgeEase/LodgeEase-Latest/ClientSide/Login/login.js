@@ -3,7 +3,9 @@ import {
     getAuth, 
     createUserWithEmailAndPassword, 
     signInWithEmailAndPassword,
-    sendPasswordResetEmail 
+    sendPasswordResetEmail,
+    GoogleAuthProvider,
+    signInWithPopup 
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 import { 
     getFirestore, 
@@ -12,7 +14,8 @@ import {
     collection,
     query,
     where,
-    getDocs 
+    getDocs,
+    getDoc    // Add this import
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 
@@ -27,10 +30,17 @@ const firebaseConfig = {
     measurementId: "G-WRMW9Z8867"
 };
 
-// Initialize Firebase
+// Initialize Firebase with CORS settings
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const googleProvider = new GoogleAuthProvider();
+
+// Configure Google Provider
+googleProvider.setCustomParameters({
+    prompt: 'select_account',
+    display: 'popup'
+});
 
 document.addEventListener('DOMContentLoaded', () => {
     new Vue({
@@ -238,6 +248,62 @@ document.addEventListener('DOMContentLoaded', () => {
                     confirmPassword: '',
                     acceptedTerms: false
                 };
+            },
+
+            async handleGoogleSignIn() {
+                this.loading = true;
+                this.errorMessage = '';
+                
+                try {
+                    const result = await signInWithPopup(auth, googleProvider);
+                    const user = result.user;
+                    
+                    const userDocRef = doc(db, "users", user.uid);
+                    const userDoc = await getDoc(userDocRef);
+                    
+                    if (!userDoc.exists()) {
+                        // Create username from email, removing special characters
+                        const username = user.email
+                            .split('@')[0]
+                            .toLowerCase()
+                            .replace(/[^a-z0-9]/g, '');
+
+                        // Create new user document
+                        await setDoc(userDocRef, {
+                            fullname: user.displayName || '',
+                            email: user.email,
+                            username: username,
+                            role: 'user',
+                            createdAt: new Date(),
+                            status: 'active',
+                            photoURL: user.photoURL || null,
+                            lastLogin: new Date()
+                        });
+                    } else {
+                        // Update last login
+                        await setDoc(userDocRef, {
+                            lastLogin: new Date()
+                        }, { merge: true });
+                    }
+
+                    this.successMessage = 'Login successful! Redirecting...';
+                    
+                    setTimeout(() => {
+                        window.location.href = '../Homepage/rooms.html';
+                    }, 1500);
+
+                } catch (error) {
+                    console.error('Google Sign In Error:', error);
+                    if (error.code === 'auth/popup-closed-by-user') {
+                        this.errorMessage = 'Sign in cancelled';
+                    } else if (error.code === 'auth/popup-blocked') {
+                        this.errorMessage = 'Pop-up blocked by browser. Please allow pop-ups for this site.';
+                    } else {
+                        this.errorMessage = 'An error occurred during Google sign in. Please try again.';
+                    }
+                } finally {
+                    this.loading = false;
+                }
             }
         },
         created() {
