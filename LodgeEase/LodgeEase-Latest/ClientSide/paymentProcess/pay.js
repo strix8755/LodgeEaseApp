@@ -2,9 +2,14 @@ import { auth, db, addBooking } from '../../AdminSide/firebase.js';
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js";
 import { generateEmailTemplate } from './emailTemplate.js';
+import { initializePaymentListeners } from './payment.js';
+import { GCashPayment } from './gcashPayment.js';
 
-const paymentTypeInputs = document.querySelectorAll('input[name="payment_type"]');
-const paymentMethodInputs = document.querySelectorAll('input[name="payment_method"]');
+// Constants
+const NIGHTLY_RATE = 6500;
+const SERVICE_FEE_PERCENTAGE = 0.14;
+
+// Get UI elements
 const confirmButton = document.getElementById('confirm-button');
 const paymentSuccessModal = document.getElementById('payment-success-modal');
 const closeModalBtn = document.getElementById('close-modal-btn');
@@ -15,10 +20,6 @@ const cardExpirationInput = document.getElementById('card-expiration');
 const cardCvvInput = document.getElementById('card-cvv');
 const cardZipInput = document.getElementById('card-zip');
 const cardCountrySelect = document.getElementById('card-country');
-
-// Add constants to match lodge1.js
-const NIGHTLY_RATE = 6500;
-const SERVICE_FEE_PERCENTAGE = 0.14;
 
 // Update verification function to use same constants
 function verifyBookingCosts(bookingData) {
@@ -72,22 +73,10 @@ function checkPaymentSelections() {
   }
 }
 
-paymentTypeInputs.forEach(input => {
-  input.addEventListener('change', checkPaymentSelections);
-});
-
-paymentMethodInputs.forEach(input => {
-  input.addEventListener('change', checkPaymentSelections);
-});
-
-// Add input event listeners for card fields
-[cardNumberInput, cardExpirationInput, cardCvvInput, cardZipInput, cardCountrySelect].forEach(input => {
-  input.addEventListener('input', checkPaymentSelections);
-});
-
 // Show payment success modal on confirm
 confirmButton.addEventListener('click', () => {
-  paymentSuccessModal.classList.remove('hidden');
+    paymentSuccessModal.classList.remove('hidden');
+    handlePaymentSuccess();
 });
 
 // Close modal functionality
@@ -190,14 +179,57 @@ async function handlePaymentSuccess() {
     }
 
     try {
-        // Get booking data
         let bookingData = JSON.parse(localStorage.getItem('bookingData'));
         if (!bookingData) {
             throw new Error('No booking data found');
         }
 
-        // Calculate final costs
         const costs = verifyBookingCosts(bookingData);
+        const selectedPaymentMethod = document.querySelector('input[name="payment_method"]:checked');
+
+        if (selectedPaymentMethod.value === 'gcash') {
+            const gcashPayment = new GCashPayment(costs.totalPrice);
+            
+            // Process GCash payment with user data
+            const paymentResult = await gcashPayment.processPayment({
+                name: user.displayName || 'Guest',
+                email: user.email,
+                phone: bookingData.phone || ''
+            });
+
+            if (!paymentResult.success) {
+                throw new Error('GCash payment failed');
+            }
+
+            // Store payment source ID for verification
+            localStorage.setItem('pendingPaymentSource', paymentResult.sourceId);
+            
+            // Payment is being processed - show waiting message
+            const modalMessage = document.querySelector('#payment-success-modal p');
+            if (modalMessage) {
+                modalMessage.innerHTML = `
+                    Processing your payment...<br>
+                    Please complete the payment in the GCash window.
+                `;
+            }
+
+            // Check payment status periodically
+            const checkPaymentStatus = async () => {
+                const isPaymentComplete = await gcashPayment.verifyPayment(paymentResult.sourceId);
+                if (isPaymentComplete) {
+                    // Complete the booking process
+                    await finalizeBooking(bookingData, costs, paymentResult);
+                    localStorage.removeItem('pendingPaymentSource');
+                } else {
+                    // Check again in 5 seconds
+                    setTimeout(checkPaymentStatus, 5000);
+                }
+            };
+
+            // Start checking payment status
+            checkPaymentStatus();
+        }
+
         const bookingId = `BK${Date.now()}`;
 
         // Create final booking with exact amounts
@@ -240,6 +272,15 @@ async function handlePaymentSuccess() {
         const modalMessage = document.querySelector('#payment-success-modal p');
         if (modalMessage) {
             modalMessage.innerHTML = `Payment of ₱${finalBooking.totalPrice.toLocaleString()} confirmed!<br>Booking ID: ${finalBooking.bookingId}`;
+        }
+        
+        // Update success message to include GCash reference
+        if (modalMessage && bookingData.paymentDetails?.referenceId) {
+            modalMessage.innerHTML = `
+                Payment of ₱${costs.totalPrice.toLocaleString()} confirmed!<br>
+                Booking ID: ${bookingData.bookingId}<br>
+                GCash Reference: ${bookingData.paymentDetails.referenceId}
+            `;
         }
         
     } catch (error) {

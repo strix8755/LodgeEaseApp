@@ -8,6 +8,8 @@
   <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
   <link rel="stylesheet" href="../Homepage/styles.css">
+  <!-- Add PayMongo Scripts -->
+  <script src="https://js.paymongo.com/v2/paymongo.js"></script>
 </head>
 
 <body class="text-gray-800 bg-gray-100">
@@ -17,7 +19,9 @@
           LodgeEase
       </div>
       <ul class="flex space-x-6 items-center text-gray-700">
-          <li><a href="../Login/index.html" class="hover:text-blue-600 transition-colors">Log In</a></li>
+          <li id="loginButton" class="hidden">
+              <a href="../Login/index.html" class="hover:text-blue-600 transition-colors">Log In</a>
+          </li>
           <li><a href="../Homepage/rooms.html" class="hover:text-blue-600 transition-colors">Home</a></li>
           <li>
             <a href="#" id="userIconBtn" class="text-gray-600 hover:text-blue-600 transition-colors">
@@ -163,12 +167,53 @@
 
         <!-- GCash -->
         <div class="border rounded-lg p-4">
-          <label class="flex items-center space-x-4 cursor-pointer">
-            <input type="radio" name="payment_method" class="text-indigo-600 focus:ring-indigo-500" value="gcash">
-            <span class="font-medium text-gray-800">GCash</span>
-            <img src="../components/gcash-logo-png_seeklogo-498022.png" alt="GCash" class="h-8">
-          </label>
+    <label class="flex items-center space-x-4 cursor-pointer">
+        <input type="radio" name="payment_method" class="text-indigo-600 focus:ring-indigo-500" value="gcash">
+        <span class="font-medium text-gray-800">GCash</span>
+        <img src="../components/gcash-logo-png_seeklogo-498022.png" alt="GCash" class="h-8">
+    </label>
+    <div id="gcash-form" class="hidden mt-4">
+        <div class="space-y-4">
+            <!-- Recipient's GCash Information -->
+            <div class="p-4 bg-gray-50 rounded-lg">
+                <h3 class="font-medium text-gray-800 mb-2">Send Payment to:</h3>
+                <div class="space-y-2">
+                    <p class="text-gray-600">Pine Haven Lodge</p>
+                    <p class="text-gray-600">GCash: 0917 123 4567</p>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="copyGcashNumber()" class="text-sm text-blue-600 hover:text-blue-700">
+                            <i class="fas fa-copy mr-1"></i> Copy Number
+                        </button>
+                        <span id="copyMessage" class="text-sm text-green-600 hidden">Copied!</span>
+                    </div>
+                </div>
+            </div>
+            <!-- Reference Number Input -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Reference Number</label>
+                <input type="text" id="gcash-reference" 
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    placeholder="Enter GCash Reference Number"
+                    required>
+                <p class="mt-1 text-sm text-gray-500">Enter the reference number from your GCash payment</p>
+            </div>
+            <div id="gcash-error" class="text-red-500 text-sm hidden"></div>
         </div>
+    </div>
+</div>
+
+<!-- Add this script for the copy functionality -->
+<script>
+function copyGcashNumber() {
+    navigator.clipboard.writeText('09171234567').then(() => {
+        const copyMessage = document.getElementById('copyMessage');
+        copyMessage.classList.remove('hidden');
+        setTimeout(() => {
+            copyMessage.classList.add('hidden');
+        }, 2000);
+    });
+}
+</script>
 
         <!-- PayPal -->
         <div class="border rounded-lg p-4">
@@ -226,5 +271,29 @@
     });
   </script>
   <script type="module" src="./pay.js"></script>
+  <!-- Initialize PayMongo -->
+  <script>
+      const paymongo = new PayMongo('pk_test_wW4PV1iKCFsFs8gj7rHch7wj');
+  </script>
+  <script type="module">
+    import { auth } from '../../AdminSide/firebase.js';
+    import { initializeUserDrawer } from '../components/userDrawer.js';
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        // Initialize user drawer
+        initializeUserDrawer(auth);
+
+        // Handle login button visibility
+        const loginButton = document.getElementById('loginButton');
+        
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                loginButton.classList.add('hidden');
+            } else {
+                loginButton.classList.remove('hidden');
+            }
+        });
+    });
+  </script>
 </body>
 </html>
