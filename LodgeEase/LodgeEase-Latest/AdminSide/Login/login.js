@@ -20,7 +20,10 @@ new Vue({
             isLoginForm: true, // Toggle between login and registration forms
             isAdmin: true, // Set default to true since this is admin registration
             retryCount: 0,
-            maxRetries: 3
+            maxRetries: 3,
+            showModal: false,
+            modalMessage: '',
+            isError: false
         };
     },
     methods: {
@@ -173,7 +176,7 @@ new Vue({
 
             // Validate password confirmation
             if (this.password !== this.confirmPassword) {
-                this.errorMessage = 'Passwords do not match';
+                this.showMessage('Passwords do not match!', true);
                 return;
             }
 
@@ -203,7 +206,7 @@ new Vue({
                         createdAt: new Date()
                     });
 
-                    this.successMessage = 'Admin account created successfully! Please log in.';
+                    this.showMessage('Admin account created successfully! Please log in.', false);
                     setTimeout(() => {
                         this.isLoginForm = true;
                         this.resetForm();
@@ -211,7 +214,7 @@ new Vue({
                 }
             } catch (error) {
                 console.error('Registration error:', error);
-                this.handleAuthError(error);
+                this.showMessage('Error creating account: ' + error.message, true);
             } finally {
                 this.loading = false;
             }
@@ -303,6 +306,23 @@ new Vue({
                 // On error, assume username is available to allow registration attempt
                 return true;
             }
+        },
+
+        showMessage(message, isError = false) {
+            this.modalMessage = message;
+            this.isError = isError;
+            this.showModal = true;
+            
+            // Auto close success messages after 3 seconds
+            if (!isError) {
+                setTimeout(() => {
+                    this.closeModal();
+                }, 3000);
+            }
+        },
+        closeModal() {
+            this.showModal = false;
+            this.modalMessage = '';
         }
     },
     created() {

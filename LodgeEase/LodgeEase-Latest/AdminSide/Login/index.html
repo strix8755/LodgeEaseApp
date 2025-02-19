@@ -115,6 +115,15 @@
         <!-- Error and Success Messages -->
         <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
         <div v-if="successMessage" class="success-message">{{ successMessage }}</div>
+
+        <!-- Modal for Messages -->
+        <div class="modal" v-if="showModal">
+            <div class="modal-content" :class="{ 'error': isError, 'success': !isError }">
+                <span class="close-btn" @click="closeModal">&times;</span>
+                <h3>{{ isError ? 'Error' : 'Success' }}</h3>
+                <p>{{ modalMessage }}</p>
+            </div>
+        </div>
     </div>
 </body>
 </html>
