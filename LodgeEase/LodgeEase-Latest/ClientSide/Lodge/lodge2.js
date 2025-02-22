@@ -1,9 +1,9 @@
 import { db, auth, addBooking } from '../../AdminSide/firebase.js';
 import { doc, getDoc, collection, addDoc, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
-// Constants for pricing
-const NIGHTLY_RATE = 6500; // ₱6,500 per night as shown in the HTML
-const SERVICE_FEE_PERCENTAGE = 0.15; // 15% service fee
+// Constants for pricing - match lodge1
+const NIGHTLY_RATE = 6500; // ₱6,500 per night
+const SERVICE_FEE_PERCENTAGE = 0.14; // 14% service fee
 
 // Calendar Functionality
 const calendarModal = document.getElementById('calendar-modal');
@@ -337,79 +337,88 @@ function validateBookingData(data) {
 export async function handleReserveClick(event) {
     try {
         event.preventDefault();
-        event.stopPropagation();
-        
-        console.log('Starting reservation process...');
-
-        // Get form elements
-        const contactNumberInput = document.getElementById('guest-contact');
-        const guestsSelect = document.getElementById('guests');
-
-        // Basic validation
-        if (!contactNumberInput || !guestsSelect) {
-            console.error('Form elements missing');
-            alert('Please fill in all required fields');
-            return false; // Prevent default and stop propagation
-        }
-
-        if (!selectedCheckIn || !selectedCheckOut) {
-            alert('Please select check-in and check-out dates');
-            return false;
-        }
 
         // Check if user is logged in
         const user = auth.currentUser;
-        if (!user) {
-            console.log('User not logged in, redirecting to login...');
-            window.location.href = '../Login/index.html';
-            return false;
+        
+        // Validate contact number
+        const contactNumber = document.getElementById('guest-contact').value.trim();
+        if (!contactNumber) {
+            alert('Please enter your contact number');
+            return;
+        }
+        if (!/^[0-9]{11}$/.test(contactNumber)) {
+            alert('Please enter a valid 11-digit contact number');
+            return;
         }
 
-        // Calculate booking details
+        // Validate guests
+        const guests = document.getElementById('guests').value;
+        if (!guests || !['1', '2'].includes(guests)) {
+            alert('Please select a valid number of guests');
+            return;
+        }
+
+        // Validate dates
+        if (!selectedCheckIn || !selectedCheckOut) {
+            alert('Please select both check-in and check-out dates');
+            return;
+        }
+
         const nights = Math.round((selectedCheckOut - selectedCheckIn) / (1000 * 60 * 60 * 24));
+        if (nights <= 0) {
+            alert('Check-out date must be after check-in date');
+            return;
+        }
+
+        // If not logged in, save details and redirect
+        if (!user) {
+            const bookingDetails = {
+                checkIn: selectedCheckIn,
+                checkOut: selectedCheckOut,
+                guests: guests,
+                contactNumber: contactNumber
+            };
+            localStorage.setItem('pendingBooking', JSON.stringify(bookingDetails));
+            
+            const returnUrl = encodeURIComponent(window.location.href);
+            window.location.href = `../Login/index.html?redirect=${returnUrl}`;
+            return;
+        }
+
+        // Calculate costs consistently
         const subtotal = NIGHTLY_RATE * nights;
         const serviceFeeAmount = Math.round(subtotal * SERVICE_FEE_PERCENTAGE);
-        const total = subtotal + serviceFeeAmount;
+        const totalPrice = subtotal + serviceFeeAmount;
 
+        // Create booking data object with all necessary details
         const bookingData = {
-            userId: user.uid,
-            userEmail: user.email,
-            guests: parseInt(guestsSelect.value),
-            contactNumber: contactNumberInput.value.trim(),
             checkIn: selectedCheckIn.toISOString(),
             checkOut: selectedCheckOut.toISOString(),
+            guests: Number(guests),
+            contactNumber: contactNumber,
             numberOfNights: nights,
             nightlyRate: NIGHTLY_RATE,
             subtotal: subtotal,
             serviceFee: serviceFeeAmount,
-            total: total,
+            totalPrice: totalPrice,
             propertyDetails: {
                 name: 'Mountain Breeze Lodge',
-                location: 'Baguio City',
+                location: 'Baguio City, Philippines',
                 roomType: 'Deluxe Suite',
-                roomNumber: '304'
-            },
-            status: 'pending',
-            timestamp: new Date().toISOString()
+                roomNumber: "304"
+            }
         };
 
-        console.log('Booking data prepared:', bookingData);
-
-        // Store in sessionStorage
-        sessionStorage.setItem('bookingData', JSON.stringify(bookingData));
-        console.log('Booking data saved to sessionStorage');
+        // Save to localStorage
+        localStorage.setItem('bookingData', JSON.stringify(bookingData));
 
         // Redirect to payment page
-        console.log('Redirecting to payment page...');
-        
-        // Use replace to prevent going back to this page
-        window.location.replace('../paymentProcess/pay.html'); // Changed from /ClientSide/paymentProcess/pay.html
-        return false;
+        window.location.href = '../paymentProcess/pay.html';
 
     } catch (error) {
         console.error('Error in handleReserveClick:', error);
-        alert('An error occurred. Please try again.');
-        return false;
+        alert('An error occurred while processing your reservation. Please try again.');
     }
 }
 

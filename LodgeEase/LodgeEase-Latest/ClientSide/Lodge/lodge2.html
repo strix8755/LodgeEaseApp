@@ -479,54 +479,44 @@
   </div>
 
   <script type="module">
-      import { auth, db } from '../../AdminSide/firebase.js';
-      import { initializeUserDrawer } from '../components/userDrawer.js';
-      
-      // Initialize Firebase and user drawer
-      const initApp = async () => {
-          try {
-              // Wait for auth to initialize
-              await new Promise((resolve) => {
-                  const unsubscribe = auth.onAuthStateChanged((user) => {
-                      unsubscribe();
-                      resolve();
-                  });
-              });
-              
-              console.log('Firebase Auth initialized');
-              initializeUserDrawer(auth, db);
-          } catch (error) {
-              console.error('Error initializing app:', error);
-          }
-      };
-
-      document.addEventListener('DOMContentLoaded', initApp);
-  </script>
-
-  <script type="module">
     import { handleReserveClick } from './lodge2.js';
-    
-    // Make handleReserveClick available globally
-    window.handleReserveClick = async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        console.log('Reserve button clicked');
-        try {
-            await handleReserveClick(e);
-            return false; // Prevent form submission
-        } catch (error) {
-            console.error('Error handling reservation:', error);
-            return false;
-        }
-    };
+    import { initializeUserDrawer } from '../components/userDrawer.js';
+    import { auth, db } from '../../AdminSide/firebase.js';
 
-    // Remove any other event listeners for the reserve button
+    // Initialize user drawer
+    initializeUserDrawer(auth, db);
+
+    // Add event listener to reserve button
     document.addEventListener('DOMContentLoaded', () => {
         const reserveBtn = document.getElementById('reserve-btn');
         if (reserveBtn) {
-            console.log('Reserve button found');
-            // Remove any existing event listeners
-            reserveBtn.replaceWith(reserveBtn.cloneNode(true));
+            reserveBtn.addEventListener('click', handleReserveClick);
+        } else {
+            console.error('Reserve button not found');
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const userIcon = document.getElementById('userIconBtn');
+        const userDrawer = document.getElementById('userDrawer');
+        const closeDrawer = document.getElementById('closeDrawer');
+        const drawerOverlay = document.getElementById('drawerOverlay');
+
+        if (userIcon && userDrawer && closeDrawer && drawerOverlay) {
+            // Open drawer
+            userIcon.addEventListener('click', function() {
+                userDrawer.classList.remove('translate-x-full');
+                drawerOverlay.classList.remove('hidden');
+            });
+        
+            // Close drawer
+            closeDrawer.addEventListener('click', closeUserDrawer);
+            drawerOverlay.addEventListener('click', closeUserDrawer);
+        }
+    
+        function closeUserDrawer() {
+            userDrawer.classList.add('translate-x-full');
+            drawerOverlay.classList.add('hidden');
         }
     });
   </script>
