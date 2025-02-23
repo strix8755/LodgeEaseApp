@@ -29,78 +29,227 @@ function parseDate(dateField) {
     return null;
 }
 
+// Formatting functions - keep these together and remove duplicates
+function formatRevenueData(bookings) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthlyRevenue = new Array(12).fill(0);
+    
+    bookings.forEach(booking => {
+        if (booking.checkIn && booking.totalPrice) {
+            const date = booking.checkIn.toDate();
+            const monthIndex = date.getMonth();
+            monthlyRevenue[monthIndex] += booking.totalPrice;
+        }
+    });
+
+    return {
+        labels: months,
+        datasets: [{
+            label: 'Revenue',
+            data: monthlyRevenue,
+            borderColor: 'rgba(54, 162, 235, 1)',
+            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+            fill: true
+        }]
+    };
+}
+
+function formatOccupancyData(bookings, totalRooms) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const currentMonth = new Date().getMonth();
+    
+    // Calculate occupancy data...
+    const occupancyByMonth = new Array(12).fill(0).map(() => ({ bookings: 0, total: 0 }));
+    
+    bookings.forEach(booking => {
+        if (booking.checkIn && booking.checkOut) {
+            const checkIn = booking.checkIn.toDate();
+            const month = checkIn.getMonth();
+            occupancyByMonth[month].bookings++;
+        }
+    });
+
+    // Reorder months to start from current month
+    const orderedMonths = [...months.slice(currentMonth + 1), ...months.slice(0, currentMonth + 1)];
+    const orderedData = [...occupancyByMonth.slice(currentMonth + 1), ...occupancyByMonth.slice(0, currentMonth + 1)];
+
+    return {
+        labels: orderedMonths,
+        datasets: [{
+            label: 'Occupancy Rate',
+            data: orderedData.map(d => ((d.bookings / totalRooms) * 100).toFixed(1)),
+            borderColor: 'rgba(255, 99, 132, 1)',
+            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+            fill: true
+        }]
+    };
+}
+
+function formatRoomTypeData(bookings) {
+    const roomTypes = {};
+    const revenue = {};
+
+    bookings.forEach(booking => {
+        const roomType = booking.propertyDetails?.roomType;
+        if (roomType) {
+            roomTypes[roomType] = (roomTypes[roomType] || 0) + 1;
+            revenue[roomType] = (revenue[roomType] || 0) + (booking.totalPrice || 0);
+        }
+    });
+
+    return {
+        labels: Object.keys(roomTypes),
+        datasets: [{
+            data: Object.values(roomTypes),
+            backgroundColor: [
+                'rgba(54, 162, 235, 0.8)',
+                'rgba(255, 99, 132, 0.8)',
+                'rgba(255, 206, 86, 0.8)',
+                'rgba(75, 192, 192, 0.8)',
+                'rgba(153, 102, 255, 0.8)'
+            ],
+            revenue: Object.values(revenue)
+        }]
+    };
+}
+
+function formatBookingTrends(bookings) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const currentMonth = new Date().getMonth();
+    
+    const monthlyBookings = new Array(12).fill(0);
+    bookings.forEach(booking => {
+        if (booking.checkIn) {
+            const date = booking.checkIn.toDate();
+            const month = date.getMonth();
+            monthlyBookings[month]++;
+        }
+    });
+
+    const orderedMonths = [...months.slice(currentMonth + 1), ...months.slice(0, currentMonth + 1)];
+    const orderedData = [...monthlyBookings.slice(currentMonth + 1), ...monthlyBookings.slice(0, currentMonth + 1)];
+
+    return {
+        labels: orderedMonths,
+        datasets: [{
+            label: 'Bookings',
+            data: orderedData,
+            backgroundColor: 'rgba(75, 192, 192, 0.6)',
+            borderColor: 'rgba(75, 192, 192, 1)',
+            borderWidth: 1,
+            type: 'bar'
+        }]
+    };
+}
+
 export async function getChartData() {
     try {
-        // Get all necessary data from Firestore
-        const [bookings, rooms, payments, lodges, guests] = await Promise.all([
-            getDocs(query(collection(db, 'bookings'), orderBy('checkIn', 'desc'))),
-            getDocs(collection(db, 'rooms')),
-            getDocs(collection(db, 'payments')),
-            getDocs(collection(db, 'lodges')),
-            getDocs(collection(db, 'guests')) // Add guests collection
+        // Get bookings from the last 12 months
+        const twelveMonthsAgo = new Date();
+        twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+        
+        const bookingsQuery = query(
+            collection(db, 'bookings'),
+            where('checkIn', '>=', Timestamp.fromDate(twelveMonthsAgo)),
+            orderBy('checkIn', 'desc')
+        );
+
+        // Fetch bookings and rooms
+        const [bookingsSnapshot, roomsSnapshot] = await Promise.all([
+            getDocs(bookingsQuery),
+            getDocs(collection(db, 'rooms'))
         ]);
 
-        const bookingsData = bookings.docs.map(doc => ({
-            ...doc.data(),
-            id: doc.id
-        }));
+        // Process bookings with correct field mapping
+        const bookings = bookingsSnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                checkIn: data.checkIn,
+                checkOut: data.checkOut,
+                guests: data.guests || 1,
+                nightlyRate: data.nightlyRate || 0,
+                numberOfNights: data.numberOfNights || 1,
+                propertyDetails: {
+                    location: data.propertyDetails?.location || '',
+                    name: data.propertyDetails?.name || '',
+                    roomNumber: data.propertyDetails?.roomNumber || '',
+                    roomType: data.propertyDetails?.roomType || ''
+                },
+                rating: data.rating || 0,
+                serviceFee: data.serviceFee || 0,
+                status: data.status || 'pending',
+                totalPrice: data.totalPrice || 0,
+                userId: data.userId
+            };
+        });
 
-        const roomsData = rooms.docs.map(doc => ({
-            ...doc.data(),
-            id: doc.id
-        }));
+        // Calculate today's check-ins
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
 
-        const paymentsData = payments.docs.map(doc => ({
-            ...doc.data(),
-            id: doc.id
-        }));
+        const todayCheckIns = bookings.filter(booking => {
+            const checkInDate = booking.checkIn?.toDate();
+            return checkInDate && 
+                   checkInDate >= today && 
+                   checkInDate < tomorrow && 
+                   booking.status === 'confirmed';
+        }).length;
 
-        const lodgesData = lodges.docs.map(doc => ({
-            ...doc.data(),
-            id: doc.id
-        }));
+        // Calculate room occupancy
+        const activeBookings = bookings.filter(booking => {
+            const now = new Date();
+            const checkIn = booking.checkIn?.toDate();
+            const checkOut = booking.checkOut?.toDate();
+            return checkIn && checkOut &&
+                   now >= checkIn && 
+                   now <= checkOut && 
+                   booking.status === 'confirmed';
+        });
 
-        // Calculate months for trend analysis
-        const months = [];
-        const currentDate = new Date();
-        for (let i = 11; i >= 0; i--) {
-            const d = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
-            months.push(d.toLocaleString('default', { month: 'short', year: '2-digit' }));
-        }
+        const totalRooms = roomsSnapshot.size;
+        const occupiedRooms = activeBookings.length;
+        const availableRooms = totalRooms - occupiedRooms;
 
-        // Get area-specific data for Baguio web chart
-        const areaData = calculateAreaDistribution(lodgesData);
+        // Calculate current month metrics
+        const currentMonth = new Date().getMonth();
+        const currentYear = new Date().getFullYear();
+        
+        const currentMonthBookings = bookings.filter(booking => {
+            const checkInDate = booking.checkIn?.toDate();
+            return checkInDate && 
+                   checkInDate.getMonth() === currentMonth && 
+                   checkInDate.getFullYear() === currentYear;
+        });
 
-        // Calculate all chart data
-        const revenueData = calculateRevenueData(months, bookingsData, paymentsData);
-        const occupancyData = calculateOccupancyData(months, bookingsData, roomsData);
-        const roomTypeData = calculateRoomTypeData(bookings.docs.map(doc => ({
-            ...doc.data(),
-            id: doc.id
-        })), rooms.docs.map(doc => ({
-            ...doc.data(),
-            id: doc.id
-        })));
-        const bookingTrendData = calculateBookingTrends(months, bookingsData); // Ensure this is called
+        const totalRevenue = currentMonthBookings.reduce((sum, booking) => 
+            sum + (booking.totalPrice || 0), 0);
 
-        // Calculate metrics
-        const metrics = calculateMetrics(bookingsData, paymentsData, roomsData);
+        // Calculate average stay duration
+        const completedBookings = bookings.filter(booking => 
+            booking.status === 'completed' && booking.numberOfNights);
+
+        const avgStayDuration = completedBookings.length > 0 
+            ? completedBookings.reduce((sum, booking) => 
+                sum + (booking.numberOfNights), 0) / completedBookings.length
+            : 0;
 
         return {
-            revenueData,
-            occupancyData,
-            roomTypeData,
-            bookingTrends: bookingTrendData, // Add this line to include booking trends
-            areaData,
-            metrics,
-            todayCheckIns: calculateTodayCheckIns(bookingsData),
-            availableRooms: calculateAvailableRooms(bookingsData, roomsData),
-            occupiedRooms: calculateOccupiedRooms(bookingsData),
-            seasonalEvents: calculateSeasonalEvents(bookingsData),
-            amenitiesAnalysis: calculateAmenitiesAnalysis(lodgesData),
-            priceTrends: calculatePriceTrends(bookingsData, roomsData),
-            guestDemographics: calculateGuestDemographics(guests.docs.map(doc => ({ ...doc.data(), id: doc.id }))),
-            checkInDistribution: calculateCheckInDistribution(bookingsData)
+            todayCheckIns,
+            availableRooms,
+            occupiedRooms,
+            metrics: {
+                totalBookings: currentMonthBookings.length,
+                currentMonthRevenue: totalRevenue,
+                occupancyRate: ((occupiedRooms / totalRooms) * 100).toFixed(1),
+                averageStayDuration: avgStayDuration.toFixed(1)
+            },
+            revenueData: formatRevenueData(bookings),
+            occupancyData: formatOccupancyData(bookings, totalRooms),
+            roomTypeData: formatRoomTypeData(bookings),
+            bookingTrends: formatBookingTrends(bookings)
         };
     } catch (error) {
         console.error('Error getting chart data:', error);
@@ -108,6 +257,7 @@ export async function getChartData() {
     }
 }
 
+// Rest of the calculation functions
 function calculateAreaDistribution(lodgesData) {
     const areas = {
         'Session Road Area': {
@@ -1077,3 +1227,20 @@ function calculateYearOverYearGrowth(monthlyData) {
 }
 
 // ...rest of existing code...
+
+function calculateAverageStayDuration(bookings) {
+    const completedBookings = bookings.filter(booking => 
+        booking.checkIn && booking.checkOut && booking.status === 'completed'
+    );
+    
+    if (completedBookings.length === 0) return 0;
+
+    const totalDays = completedBookings.reduce((sum, booking) => {
+        const checkIn = booking.checkIn.toDate();
+        const checkOut = booking.checkOut.toDate();
+        const days = (checkOut - checkIn) / (1000 * 60 * 60 * 24);
+        return sum + days;
+    }, 0);
+
+    return (totalDays / completedBookings.length).toFixed(1);
+}

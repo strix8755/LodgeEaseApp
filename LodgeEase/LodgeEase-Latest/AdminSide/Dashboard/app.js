@@ -429,9 +429,9 @@ new Vue({
                 // Update other stats with null checks
                 this.stats = {
                     totalBookings: data.metrics?.totalBookings ?? 0,
-                    currentMonthRevenue: data.metrics?.currentMonthRevenue ?? 0,
+                    currentMonthRevenue: this.formatCurrency(data.metrics.currentMonthRevenue),
                     occupancyRate: data.metrics?.occupancyRate ?? 0,
-                    averageStayDuration: data.metrics?.averageStayDuration ?? 0
+                    averageStayDuration: `${data.metrics.averageStayDuration} days`
                 };
                 
                 this.todayCheckIns = data.todayCheckIns ?? 0;
