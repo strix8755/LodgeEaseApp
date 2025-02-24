@@ -149,20 +149,20 @@
                         <div class="chart-controls">
                             <div class="chart-filters">
                                 <select v-model="revenueViewMode" class="chart-select">
-                                    <option value="monthly">Monthly</option>
+                                    <option value="monthly">Monthly View</option>
                                     <option value="roomType">By Room Type</option>
                                     <option value="payment">By Payment Method</option>
                                 </select>
                                 <div class="chart-metrics">
                                     <div class="metric">
                                         <span>Total Revenue:</span>
-                                        <strong>{{ formatCurrency(revenueData.metrics.totalRevenue) }}</strong>
+                                        <strong>{{ formatCurrency(revenueData?.metrics?.totalRevenue || 0) }}</strong>
                                     </div>
                                     <div class="metric">
                                         <span>Growth:</span>
-                                        <strong :class="{'positive': revenueData.metrics.yearOverYearGrowth > 0, 
-                                                        'negative': revenueData.metrics.yearOverYearGrowth < 0}">
-                                            {{ revenueData.metrics.yearOverYearGrowth.toFixed(1) }}%
+                                        <strong :class="{'positive': (revenueData?.metrics?.yearOverYearGrowth || 0) > 0, 
+                                                        'negative': (revenueData?.metrics?.yearOverYearGrowth || 0) < 0}">
+                                            {{ revenueData?.metrics?.yearOverYearGrowth || 0 }}%
                                         </strong>
                                     </div>
                                 </div>
@@ -198,18 +198,18 @@
                         <div class="chart-controls">
                             <div class="chart-filters">
                                 <select v-model="occupancyViewMode" class="chart-select">
-                                    <option value="monthly">Monthly</option>
+                                    <option value="monthly">Monthly View</option>
                                     <option value="roomType">By Room Type</option>
                                     <option value="weekday">By Day of Week</option>
                                 </select>
                                 <div class="chart-metrics">
                                     <div class="metric">
                                         <span>Average:</span>
-                                        <strong>{{ occupancyData.metrics.averageOccupancy.toFixed(1) }}%</strong>
+                                        <strong>{{ occupancyData.metrics.averageOccupancy }}%</strong>
                                     </div>
                                     <div class="metric">
                                         <span>Stability:</span>
-                                        <strong>{{ occupancyData.metrics.stabilityIndex.toFixed(1) }}%</strong>
+                                        <strong>{{ occupancyData.metrics.stabilityIndex }}%</strong>
                                     </div>
                                 </div>
                             </div>
@@ -341,5 +341,59 @@
             }
         });
     </script>
+    <!-- Add CSS styles for the filters -->
+    <style>
+        .chart-controls {
+            margin: 1rem 0;
+            padding: 0.5rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .chart-filters {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .chart-select {
+            padding: 0.5rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.375rem;
+            background-color: white;
+            font-size: 0.875rem;
+            min-width: 150px;
+            cursor: pointer;
+        }
+
+        .chart-metrics {
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .metric {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .metric span {
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+
+        .metric strong {
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .metric strong.positive {
+            color: #10b981;
+        }
+
+        .metric strong.negative {
+            color: #ef4444;
+        }
+    </style>
 </body>
 </html>

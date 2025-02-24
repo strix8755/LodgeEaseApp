@@ -54,29 +54,29 @@ new Vue({
         revenueViewMode: 'monthly',
         occupancyViewMode: 'monthly',
         revenueData: {
-            monthly: [],
-            byRoomType: {},
-            byPaymentMethod: {},
-            growth: [],
-            forecast: [],
+            labels: [],
+            datasets: {
+                monthly: [],
+                roomType: [],
+                payment: []
+            },
             metrics: {
                 totalRevenue: 0,
                 averageRevenue: 0,
-                peakMonth: '',
-                lowestMonth: '',
-                yearOverYearGrowth: 0
+                monthlyGrowth: 0,
+                yearOverYearGrowth: 0,
+                currentMonthRevenue: 0,
+                previousMonthRevenue: 0,
+                forecast: []
             }
         },
         occupancyData: {
-            monthly: [],
-            byRoomType: {},
-            byWeekday: [],
-            forecast: [],
+            labels: [],
+            datasets: [],
             metrics: {
                 averageOccupancy: 0,
-                peakOccupancy: 0,
-                lowOccupancy: 100,
-                stabilityIndex: 0
+                currentOccupancy: 0,
+                forecast: []
             }
         },
         showingChartInfo: false,
@@ -438,6 +438,28 @@ new Vue({
                 this.availableRooms = data.availableRooms ?? 0;
                 this.occupiedRooms = data.occupiedRooms ?? 0;
                 
+                this.revenueData = {
+                    labels: data.revenueData?.labels || [],
+                    datasets: data.revenueData?.datasets || {
+                        monthly: [],
+                        roomType: [],
+                        payment: []
+                    },
+                    metrics: {
+                        totalRevenue: data.revenueData?.metrics?.totalRevenue || 0,
+                        monthlyGrowth: data.revenueData?.metrics?.monthlyGrowth || 0,
+                        yearOverYearGrowth: data.revenueData?.metrics?.yearOverYearGrowth || 0,
+                        currentMonthRevenue: data.revenueData?.metrics?.currentMonthRevenue || 0,
+                        previousMonthRevenue: data.revenueData?.metrics?.previousMonthRevenue || 0,
+                        forecast: data.revenueData?.metrics?.forecast || []
+                    }
+                };
+                this.occupancyData = data.occupancyData;
+                
+                // Update charts based on current view mode
+                this.updateRevenueChart(this.revenueViewMode);
+                this.updateOccupancyChart(this.occupancyViewMode);
+                
             } catch (error) {
                 console.error('Error updating dashboard:', error);
             }
@@ -450,37 +472,39 @@ new Vue({
             }
             
             try {
-                // Ensure newData has the correct structure
+                // Create default structure
                 const defaultData = {
                     labels: [],
-                    datasets: [{
-                        label: 'No Data',
-                        data: [],
-                        borderColor: 'rgba(200, 200, 200, 1)',
-                        backgroundColor: 'rgba(200, 200, 200, 0.2)'
-                    }]
+                    datasets: []
                 };
+
+                // Handle both array and object-based datasets
+                let datasets = Array.isArray(newData.datasets) ? 
+                    newData.datasets : 
+                    newData.datasets?.[chart.config.type] || defaultData.datasets;
+
+                // Ensure datasets is an array
+                if (!Array.isArray(datasets)) {
+                    console.warn('Invalid datasets structure:', datasets);
+                    datasets = defaultData.datasets;
+                }
 
                 // Merge provided data with defaults
                 const chartData = {
                     labels: newData?.labels || defaultData.labels,
-                    datasets: newData?.datasets || defaultData.datasets
+                    datasets: datasets.map(dataset => ({
+                        label: dataset.label || 'Unnamed Dataset',
+                        data: Array.isArray(dataset.data) ? dataset.data : [],
+                        borderColor: dataset.borderColor || 'rgba(200, 200, 200, 1)',
+                        backgroundColor: dataset.backgroundColor || 'rgba(200, 200, 200, 0.2)',
+                        borderDash: dataset.borderDash || [],
+                        tension: 0.4,
+                        fill: dataset.fill !== undefined ? dataset.fill : true
+                    }))
                 };
 
-                // Ensure each dataset has required properties
-                chartData.datasets = chartData.datasets.map(dataset => ({
-                    label: dataset.label || 'Unnamed Dataset',
-                    data: Array.isArray(dataset.data) ? dataset.data : [],
-                    borderColor: dataset.borderColor || 'rgba(200, 200, 200, 1)',
-                    backgroundColor: dataset.backgroundColor || 'rgba(200, 200, 200, 0.2)',
-                    borderDash: dataset.borderDash || [],
-                    tension: 0.4,
-                    fill: dataset.fill !== undefined ? dataset.fill : true
-                }));
-
                 // Update chart data
-                chart.data.labels = chartData.labels;
-                chart.data.datasets = chartData.datasets;
+                chart.data = chartData;
 
                 // Update chart options
                 if (!chart.options.plugins) {
@@ -1629,6 +1653,77 @@ new Vue({
             
             return `${mostPopular} rooms have the highest count, while ${highestRevenue} rooms generate the most revenue.`;
         },
+        updateRevenueChart(mode) {
+            if (!this.revenueChart) return;
+
+            try {
+                let chartData = {
+                    labels: [],
+                    datasets: []
+                };
+
+                // Get the correct dataset based on mode
+                const datasets = this.revenueData.datasets?.[mode] || [];
+                
+                if (Array.isArray(datasets)) {
+                    chartData = {
+                        labels: this.revenueData.labels || [],
+                        datasets: datasets
+                    };
+                }
+
+                // Update chart type
+                if (mode === 'monthly') {
+                    this.revenueChart.config.type = 'line';
+                } else if (mode === 'roomType') {
+                    this.revenueChart.config.type = 'bar';
+                } else if (mode === 'payment') {
+                    this.revenueChart.config.type = 'doughnut';
+                }
+
+                this.revenueChart.data = chartData;
+                this.revenueChart.update();
+
+            } catch (error) {
+                console.error('Error updating revenue chart:', error);
+            }
+        },
+
+        updateOccupancyChart(mode) {
+            if (!this.occupancyChart) return;
+
+            try {
+                let chartData = {
+                    labels: [],
+                    datasets: []
+                };
+
+                // Get the correct dataset based on mode
+                const datasets = this.occupancyData.datasets?.[mode] || [];
+                
+                if (Array.isArray(datasets)) {
+                    chartData = {
+                        labels: this.occupancyData.labels || [],
+                        datasets: datasets
+                    };
+                }
+
+                // Update chart type
+                if (mode === 'monthly') {
+                    this.occupancyChart.config.type = 'line';
+                } else if (mode === 'roomType') {
+                    this.occupancyChart.config.type = 'pie';
+                } else if (mode === 'weekday') {
+                    this.occupancyChart.config.type = 'bar';
+                }
+
+                this.occupancyChart.data = chartData;
+                this.occupancyChart.update();
+
+            } catch (error) {
+                console.error('Error updating occupancy chart:', error);
+            }
+        }
     },
     computed: {
         filteredBookings() {
