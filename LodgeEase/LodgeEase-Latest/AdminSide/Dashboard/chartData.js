@@ -121,7 +121,8 @@ function formatRevenueData(bookings) {
                 'rgba(255, 206, 86, 0.6)',
                 'rgba(75, 192, 192, 0.6)'
             ],
-            labels: Object.keys(roomTypeRevenue)
+            labels: Object.keys(roomTypeRevenue),
+            total: Object.values(roomTypeRevenue).reduce((a, b) => a + b, 0)
         }],
         payment: [{
             label: 'Revenue by Payment Method',
@@ -131,11 +132,61 @@ function formatRevenueData(bookings) {
                 'rgba(255, 99, 132, 0.6)',
                 'rgba(255, 206, 86, 0.6)'
             ],
-            labels: Object.keys(paymentMethodRevenue)
+            labels: Object.keys(paymentMethodRevenue),
+            total: Object.values(paymentMethodRevenue).reduce((a, b) => a + b, 0)
         }]
     };
 
-    return result;
+    return {
+        labels: months,
+        datasets: {
+            monthly: [{
+                label: 'Actual Revenue',
+                data: monthlyRevenue,
+                borderColor: 'rgba(54, 162, 235, 1)',
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                fill: true
+            }, {
+                label: 'Forecast',
+                data: [...new Array(9).fill(null), ...forecastData],
+                borderColor: 'rgba(255, 159, 64, 1)',
+                backgroundColor: 'rgba(255, 159, 64, 0.2)',
+                borderDash: [5, 5],
+                fill: true
+            }],
+            roomType: [{
+                label: 'Revenue by Room Type',
+                data: Object.values(roomTypeRevenue),
+                backgroundColor: [
+                    'rgba(54, 162, 235, 0.6)',
+                    'rgba(255, 99, 132, 0.6)',
+                    'rgba(255, 206, 86, 0.6)',
+                    'rgba(75, 192, 192, 0.6)'
+                ],
+                labels: Object.keys(roomTypeRevenue),
+                total: Object.values(roomTypeRevenue).reduce((a, b) => a + b, 0)
+            }],
+            payment: [{
+                label: 'Revenue by Payment Method',
+                data: Object.values(paymentMethodRevenue),
+                backgroundColor: [
+                    'rgba(54, 162, 235, 0.6)',
+                    'rgba(255, 99, 132, 0.6)',
+                    'rgba(255, 206, 86, 0.6)'
+                ],
+                labels: Object.keys(paymentMethodRevenue),
+                total: Object.values(paymentMethodRevenue).reduce((a, b) => a + b, 0)
+            }]
+        },
+        metrics: {
+            totalRevenue: monthlyRevenue.reduce((a, b) => a + b, 0),
+            monthlyGrowth,
+            yearOverYearGrowth,
+            currentMonthRevenue,
+            previousMonthRevenue,
+            forecast: forecastData
+        }
+    };
 }
 
 function formatOccupancyData(bookings, totalRooms) {
@@ -1361,15 +1412,25 @@ function calculateAge(birthDate) {
 
 // Helper function for year-over-year growth calculation
 function calculateYearOverYearGrowth(monthlyData) {
-    const currentYear = monthlyData.slice(-12);
-    const previousYear = monthlyData.slice(-24, -12);
-    
-    if (previousYear.length === 0) return 0;
-    
-    const currentTotal = currentYear.reduce((a, b) => a + b, 0);
-    const previousTotal = previousYear.reduce((a, b) => a + b, 0);
-    
-    return previousTotal ? ((currentTotal - previousTotal) / previousTotal) * 100 : 0;
+    try {
+        // Get last 12 months and previous 12 months
+        const currentYear = monthlyData.slice(-12);
+        const previousYear = monthlyData.slice(-24, -12);
+        
+        // Calculate totals for non-zero values only
+        const currentTotal = currentYear.reduce((a, b) => a + (b || 0), 0);
+        const previousTotal = previousYear.reduce((a, b) => a + (b || 0), 0);
+        
+        // Calculate growth percentage
+        if (previousTotal <= 0) return 0;
+        const growth = ((currentTotal - previousTotal) / previousTotal) * 100;
+        
+        // Return rounded value
+        return Number(growth.toFixed(1));
+    } catch (error) {
+        console.error('Error calculating year-over-year growth:', error);
+        return 0;
+    }
 }
 
 // ...rest of existing code...
