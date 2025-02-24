@@ -1,49 +1,30 @@
-import { auth, checkAdminAuth } from '../firebase.js';
+import { auth } from '../firebase.js';
 
-// Check if user is authenticated
-const checkAuth = () => {
-    return new Promise((resolve) => {
-        const unsubscribe = auth.onAuthStateChanged((user) => {
-            unsubscribe();
-            if (!user) {
-                if (!window.location.href.includes('Login/index.html')) {
-                    window.location.href = '../Login/index.html';
-                }
-                resolve(false);
-            } else {
-                resolve(user);
-            }
-        });
-    });
-};
+let redirectInProgress = false;
 
 async function checkAuthentication() {
+    if (redirectInProgress) return;
+    
     try {
-        const user = await checkAdminAuth();
-        if (!user) {
+        const user = auth.currentUser;
+        if (!user && !window.location.href.includes('Login/index.html')) {
+            redirectInProgress = true;
             window.location.href = '../Login/index.html';
         }
     } catch (error) {
         console.error('Authentication check failed:', error);
-        window.location.href = '../Login/index.html';
     }
 }
 
-// Run authentication check
-checkAuthentication();
-
-// Initialize auth check when DOM is loaded
-document.addEventListener('DOMContentLoaded', async () => {
-    try {
-        const user = await checkAuth();
-        if (!user) {
-            window.location.href = '../Login/index.html';
-        }
-    } catch (error) {
-        console.error('Auth check error:', error);
+// Listen for auth state changes
+auth.onAuthStateChanged((user) => {
+    if (!user && !window.location.href.includes('Login/index.html') && !redirectInProgress) {
+        redirectInProgress = true;
         window.location.href = '../Login/index.html';
     }
 });
 
-// Export for use in other modules
-export { checkAuthentication, checkAuth };
+// Run initial auth check after a slight delay to allow Firebase to initialize
+setTimeout(checkAuthentication, 1000);
+
+export { checkAuthentication };

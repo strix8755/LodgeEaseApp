@@ -248,8 +248,9 @@ h1, h2, h3, h4 {
     padding: 25px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
     transition: all 0.3s ease;
-    height: 400px;
+    height: 420px;
     position: relative;
+    overflow: hidden;
 }
 
 .chart-container::before {
@@ -286,6 +287,33 @@ h1, h2, h3, h4 {
     height: 16px;
     background: #1e3c72;
     border-radius: 2px;
+}
+
+.chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    padding: 10px;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 8px;
+    margin-top: 10px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: #666;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.legend-item:hover {
+    background-color: rgba(0, 0, 0, 0.05);
 }
 
 /* Top Performers Section */
@@ -328,7 +356,7 @@ h1, h2, h3, h4 {
     margin-bottom: 1rem;
 }
 
-.performer-header h4 {
+performer-header h4 {
     color: #1e3c72;
     font-size: 1.125rem;
     margin: 0;

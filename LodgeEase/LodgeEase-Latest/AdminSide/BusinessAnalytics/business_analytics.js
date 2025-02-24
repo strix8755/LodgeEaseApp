@@ -140,6 +140,51 @@ const chartConfig = {
     }
 };
 
+// Update the chart configuration to enhance the trend charts
+const trendChartConfig = {
+    ...chartConfig,
+    plugins: {
+        ...chartConfig.plugins,
+        annotation: {
+            annotations: {
+                trendLine: {
+                    type: 'line',
+                    borderColor: 'rgba(75, 192, 192, 0.5)',
+                    borderDash: [5, 5],
+                    borderWidth: 1,
+                    label: {
+                        enabled: true,
+                        content: 'Trend',
+                        position: 'start'
+                    }
+                }
+            }
+        },
+        datalabels: {
+            ...chartConfig.plugins.datalabels,
+            formatter: (value, context) => {
+                const datasetLabel = context.dataset.label.toLowerCase();
+                if (datasetLabel.includes('revenue')) {
+                    return '₱' + value.toLocaleString();
+                } else if (datasetLabel.includes('rate') || datasetLabel.includes('occupancy')) {
+                    return value.toFixed(1) + '%';
+                }
+                return value.toLocaleString();
+            }
+        }
+    },
+    scales: {
+        ...chartConfig.scales,
+        y: {
+            ...chartConfig.scales.y,
+            grid: {
+                color: 'rgba(0, 0, 0, 0.05)',
+                drawBorder: false
+            }
+        }
+    }
+};
+
 // Ensure user is authenticated before mounting Vue app
 checkAuth().then(user => {
     if (!user) {
@@ -333,6 +378,11 @@ checkAuth().then(user => {
             initializeOccupancyChart(ctx, data) {
                 const continuousData = ensureContinuousData(data);
                 const movingAverage = this.calculateMovingAverage(continuousData.map(d => d.rate), 3);
+                const targetLine = Array(continuousData.length).fill(80); // Target occupancy line at 80%
+                
+                // Calculate trend line
+                const trendline = this.calculateTrendLine(continuousData.map(d => d.rate));
+                const trendData = continuousData.map((_, i) => trendline.slope * i + trendline.intercept);
                 
                 return new Chart(ctx, {
                     type: 'line',
@@ -342,52 +392,70 @@ checkAuth().then(user => {
                             label: 'Occupancy Rate',
                             data: continuousData.map(item => item.rate),
                             borderColor: '#4CAF50',
-                            tension: 0.4,
-                            fill: true,
                             backgroundColor: 'rgba(76, 175, 80, 0.1)',
-                            spanGaps: true
+                            fill: true,
+                            tension: 0.4,
+                            pointStyle: 'circle',
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            order: 2
                         }, {
-                            label: '3-Month Moving Average',
+                            label: 'Moving Average',
                             data: movingAverage,
                             borderColor: '#2196F3',
                             borderDash: [5, 5],
                             tension: 0.4,
                             fill: false,
-                            spanGaps: true
+                            pointStyle: 'triangle',
+                            pointRadius: 4,
+                            order: 1
+                        }, {
+                            label: 'Target Occupancy',
+                            data: targetLine,
+                            borderColor: '#FF9800',
+                            borderDash: [2, 2],
+                            pointStyle: false,
+                            fill: false,
+                            order: 0
                         }]
                     },
                     options: {
-                        ...chartConfig,
+                        ...trendChartConfig,
                         scales: {
                             x: {
-                                ...chartConfig.scales.x,
                                 grid: {
                                     display: false
                                 }
                             },
                             y: {
-                                ...chartConfig.scales.y,
-                                suggestedMin: 0,
-                                suggestedMax: 100,
+                                min: 0,
+                                max: 100,
                                 ticks: {
                                     stepSize: 20,
                                     callback: value => value + '%'
+                                },
+                                grid: {
+                                    color: 'rgba(0, 0, 0, 0.05)'
                                 }
                             }
                         },
                         plugins: {
-                            ...chartConfig.plugins,
+                            ...trendChartConfig.plugins,
                             tooltip: {
-                                ...chartConfig.plugins.tooltip,
+                                ...trendChartConfig.plugins.tooltip,
                                 callbacks: {
-                                    afterLabel: (context) => {
-                                        const dataset = context.dataset;
-                                        const value = context.raw;
-                                        if (dataset.label === 'Occupancy Rate') {
-                                            const targetOccupancy = 75;
-                                            const variance = value - targetOccupancy;
-                                            return `Variance from target: ${variance.toFixed(1)}%`;
+                                    label: function(context) {
+                                        const datasetLabel = context.dataset.label;
+                                        const value = context.parsed.y;
+                                        const item = continuousData[context.dataIndex];
+                                        if (datasetLabel === 'Occupancy Rate') {
+                                            return [
+                                                `${datasetLabel}: ${value.toFixed(1)}%`,
+                                                `Occupied Rooms: ${item.occupiedRooms}/${item.totalRooms}`,
+                                                `Vacancy Rate: ${(100 - value).toFixed(1)}%`
+                                            ];
                                         }
+                                        return `${datasetLabel}: ${value.toFixed(1)}%`;
                                     }
                                 }
                             }
@@ -398,6 +466,9 @@ checkAuth().then(user => {
 
             initializeRevenueChart(ctx, data) {
                 const continuousData = ensureContinuousData(data);
+                const movingAverage = this.calculateMovingAverage(continuousData.map(d => d.amount), 3);
+                const yearlyAverage = this.calculateYearlyAverage(continuousData);
+                
                 const gradientFill = ctx.createLinearGradient(0, 0, 0, 400);
                 gradientFill.addColorStop(0, 'rgba(33, 150, 243, 0.3)');
                 gradientFill.addColorStop(1, 'rgba(33, 150, 243, 0.0)');
@@ -413,49 +484,66 @@ checkAuth().then(user => {
                             backgroundColor: gradientFill,
                             fill: true,
                             tension: 0.4,
-                            parsing: {
-                                yAxisKey: 'amount'
-                            },
-                            spanGaps: true
+                            pointStyle: 'circle',
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            datalabels: {
+                                display: false // Disable default datalabels
+                            }
                         }, {
-                            label: 'Projected Revenue',
-                            data: this.calculateRevenueProjection(continuousData),
-                            borderColor: '#FF9800',
+                            label: '3-Month Moving Average',
+                            data: movingAverage,
+                            borderColor: '#4CAF50',
                             borderDash: [5, 5],
-                            fill: false,
                             tension: 0.4,
-                            spanGaps: true
+                            fill: false,
+                            pointStyle: 'triangle',
+                            pointRadius: 4,
+                            datalabels: {
+                                display: false // Disable default datalabels
+                            }
+                        }, {
+                            label: 'Yearly Average',
+                            data: Array(continuousData.length).fill(yearlyAverage),
+                            borderColor: '#FF9800',
+                            borderDash: [10, 5],
+                            borderWidth: 2,
+                            pointStyle: false,
+                            fill: false,
+                            datalabels: {
+                                display: false // Disable default datalabels
+                            }
                         }]
                     },
                     options: {
-                        ...chartConfig,
-                        scales: {
-                            x: {
-                                ...chartConfig.scales.x,
-                                grid: {
-                                    display: false
-                                }
+                        ...trendChartConfig,
+                        plugins: {
+                            ...trendChartConfig.plugins,
+                            datalabels: {
+                                display: false // Disable datalabels globally for this chart
                             },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                callbacks: {
+                                    label: function(context) {
+                                        return `${context.dataset.label}: ₱${context.parsed.y.toLocaleString()}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            ...trendChartConfig.scales,
                             y: {
-                                ...chartConfig.scales.y,
-                                suggestedMin: 0,
+                                ...trendChartConfig.scales.y,
                                 ticks: {
-                                    maxTicksLimit: 8,
                                     callback: value => '₱' + value.toLocaleString()
                                 }
                             }
                         },
-                        plugins: {
-                            ...chartConfig.plugins,
-                            tooltip: {
-                                ...chartConfig.plugins.tooltip,
-                                callbacks: {
-                                    label: function(context) {
-                                        const value = context.raw;
-                                        return `${context.dataset.label}: ₱${value.toLocaleString()}`;
-                                    }
-                                }
-                            }
+                        hover: {
+                            mode: 'nearest',
+                            intersect: false
                         }
                     }
                 });
@@ -463,6 +551,9 @@ checkAuth().then(user => {
 
             initializeBookingsChart(ctx, data) {
                 const continuousData = ensureContinuousData(data);
+                const maxBookings = Math.max(...continuousData.map(item => item.count));
+                const stepSize = Math.ceil(maxBookings / 5); // Show roughly 5 steps on y-axis
+                
                 return new Chart(ctx, {
                     type: 'line',
                     data: {
@@ -471,18 +562,107 @@ checkAuth().then(user => {
                             label: 'Number of Bookings',
                             data: continuousData.map(item => item.count),
                             borderColor: '#FF9800',
+                            backgroundColor: 'rgba(255, 152, 0, 0.1)',
+                            fill: true,
                             tension: 0.4,
-                            spanGaps: true
+                            pointStyle: 'circle',
+                            pointRadius: 5,
+                            pointHoverRadius: 8,
+                            pointBackgroundColor: '#fff',
+                            pointBorderColor: '#FF9800',
+                            pointBorderWidth: 2
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
                         scales: {
+                            x: {
+                                grid: {
+                                    display: false
+                                },
+                                ticks: {
+                                    maxRotation: 45,
+                                    minRotation: 45,
+                                    padding: 10,
+                                    font: {
+                                        size: 11,
+                                        weight: 'bold'
+                                    },
+                                    color: '#666'
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Time Period',
+                                    font: {
+                                        size: 12,
+                                        weight: 'bold'
+                                    },
+                                    padding: {top: 20}
+                                }
+                            },
                             y: {
                                 beginAtZero: true,
+                                suggestedMax: maxBookings + stepSize,
                                 ticks: {
-                                    stepSize: 1
+                                    stepSize: stepSize,
+                                    padding: 10,
+                                    font: {
+                                        size: 11,
+                                        weight: 'bold'
+                                    },
+                                    color: '#666',
+                                    callback: function(value) {
+                                        return value + ' bookings';
+                                    }
+                                },
+                                grid: {
+                                    color: 'rgba(0, 0, 0, 0.05)',
+                                    drawBorder: false
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Number of Bookings',
+                                    font: {
+                                        size: 12,
+                                        weight: 'bold'
+                                    },
+                                    padding: {bottom: 20}
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                titleFont: {
+                                    size: 13,
+                                    weight: 'bold'
+                                },
+                                bodyFont: {
+                                    size: 12
+                                },
+                                padding: 15,
+                                callbacks: {
+                                    label: function(context) {
+                                        return `Bookings: ${context.raw}`;
+                                    },
+                                    afterLabel: function(context) {
+                                        const data = context.dataset.data;
+                                        const index = context.dataIndex;
+                                        let change = '';
+                                        
+                                        if (index > 0) {
+                                            const currentValue = data[index];
+                                            const previousValue = data[index - 1];
+                                            const percentChange = ((currentValue - previousValue) / previousValue * 100).toFixed(1);
+                                            change = `Change from previous: ${percentChange}%`;
+                                        }
+                                        
+                                        return change;
+                                    }
                                 }
                             }
                         }
@@ -492,28 +672,54 @@ checkAuth().then(user => {
 
             initializeSeasonalTrendsChart(ctx, data) {
                 const continuousData = ensureContinuousData(data);
+                const seasonalityScore = this.calculateSeasonalityScore(continuousData);
+                const peakMonths = this.identifyPeakMonths(continuousData);
+                
                 return new Chart(ctx, {
                     type: 'line',
                     data: {
                         labels: continuousData.map(item => item.month),
                         datasets: [{
-                            label: 'Seasonal Trend',
+                            label: 'Seasonal Pattern',
                             data: continuousData.map(item => item.value),
                             borderColor: '#9C27B0',
-                            tension: 0.4,
-                            fill: true,
                             backgroundColor: 'rgba(156, 39, 176, 0.1)',
-                            spanGaps: true
+                            fill: true,
+                            tension: 0.4,
+                            pointBackgroundColor: context => {
+                                const index = context.dataIndex;
+                                return peakMonths.includes(index) ? '#FF4081' : '#9C27B0';
+                            },
+                            pointRadius: context => {
+                                const index = context.dataIndex;
+                                return peakMonths.includes(index) ? 6 : 4;
+                            },
+                            pointHoverRadius: 8
                         }]
                     },
                     options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
+                        ...trendChartConfig,
                         scales: {
+                            x: {
+                                grid: { display: false }
+                            },
                             y: {
                                 beginAtZero: true,
                                 ticks: {
                                     callback: value => value + '%'
+                                }
+                            }
+                        },
+                        plugins: {
+                            ...trendChartConfig.plugins,
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `Occupancy: ${context.parsed.y.toFixed(1)}%`;
+                                    },
+                                    afterBody: function() {
+                                        return `\nSeasonality Score: ${seasonalityScore.toFixed(1)}`;
+                                    }
                                 }
                             }
                         }
@@ -562,33 +768,68 @@ checkAuth().then(user => {
             },
 
             initializeRevenuePerRoomChart(ctx, data) {
+                if (!data || data.length === 0) {
+                    data = [{ roomType: 'No Data', revenue: 0 }];
+                }
+            
+                // Sort data by revenue in descending order
+                const sortedData = [...data].sort((a, b) => b.revenue - a.revenue);
+                const colors = ['#2196F3', '#4CAF50', '#FFC107', '#9C27B0', '#F44336', '#00BCD4'];
+                
+                // Calculate percentage of total for each room type
+                const totalRevenue = sortedData.reduce((sum, item) => sum + item.revenue, 0);
+                const dataWithPercentages = sortedData.map(item => ({
+                    ...item,
+                    percentage: (item.revenue / totalRevenue) * 100
+                }));
+
                 return new Chart(ctx, {
                     type: 'bar',
                     data: {
-                        labels: data.map(item => item.roomType),
+                        labels: dataWithPercentages.map(item => item.roomType),
                         datasets: [{
-                            label: 'Revenue per Room Type (₱)',
-                            data: data.map(item => item.revenue),
-                            backgroundColor: '#F44336'
+                            label: 'Revenue per Room Type',
+                            data: dataWithPercentages.map(item => item.revenue),
+                            backgroundColor: dataWithPercentages.map((_, i) => colors[i % colors.length]),
+                            borderColor: 'rgba(255, 255, 255, 0.8)',
+                            borderWidth: 1
                         }]
                     },
                     options: {
+                        indexAxis: 'y',
                         responsive: true,
                         maintainAspectRatio: false,
                         scales: {
-                            y: {
+                            x: {
                                 beginAtZero: true,
+                                grid: { display: false },
                                 ticks: {
-                                    callback: value => '₱' + this.formatCurrency(value)
+                                    callback: value => '₱' + value.toLocaleString()
                                 }
+                            },
+                            y: {
+                                grid: { display: false }
                             }
                         },
                         plugins: {
+                            legend: { display: false },
                             tooltip: {
                                 callbacks: {
                                     label: (context) => {
-                                        return 'Revenue: ₱' + this.formatCurrency(context.raw);
+                                        const item = dataWithPercentages[context.dataIndex];
+                                        return [
+                                            `Revenue: ₱${context.raw.toLocaleString()}`,
+                                            `Share: ${item.percentage.toFixed(1)}%`
+                                        ];
                                     }
+                                }
+                            },
+                            datalabels: {
+                                color: '#fff',
+                                font: { weight: 'bold' },
+                                formatter: (value, context) => {
+                                    const item = dataWithPercentages[context.dataIndex];
+                                    return `₱${value.toLocaleString()} (${item.percentage.toFixed(1)}%)`;
                                 }
                             }
                         }
@@ -622,14 +863,18 @@ checkAuth().then(user => {
 
             calculateTrendLine(values) {
                 const n = values.length;
-                const xSum = (n * (n - 1)) / 2;
-                const ySum = values.reduce((sum, val) => sum + val, 0);
-                const xySum = values.reduce((sum, val, i) => sum + (val * i), 0);
-                const x2Sum = (n * (n - 1) * (2 * n - 1)) / 6;
-                
-                const slope = (n * xySum - xSum * ySum) / (n * x2Sum - xSum * xSum);
-                const intercept = (ySum - slope * xSum) / n;
-                
+                if (n < 2) return { slope: 0, intercept: values[0] || 0 };
+
+                const xValues = Array.from({ length: n }, (_, i) => i);
+                const xMean = xValues.reduce((a, b) => a + b) / n;
+                const yMean = values.reduce((a, b) => a + b) / n;
+
+                const numerator = xValues.reduce((sum, x, i) => sum + (x - xMean) * (values[i] - yMean), 0);
+                const denominator = xValues.reduce((sum, x) => sum + Math.pow(x - xMean, 2), 0);
+
+                const slope = numerator / denominator;
+                const intercept = yMean - slope * xMean;
+
                 return { slope, intercept };
             },
 
@@ -803,6 +1048,49 @@ checkAuth().then(user => {
                 const [month, year] = monthStr.split(' ');
                 const monthIndex = new Date(Date.parse(month + " 1, " + year)).getMonth();
                 return new Date(year, monthIndex + 1, 0).getDate();
+            },
+
+            calculateYearlyAverage(data) {
+                if (!data || data.length === 0) return 0;
+                const total = data.reduce((sum, item) => sum + (item.amount || 0), 0);
+                return total / data.length;
+            },
+
+            // Add helper method for yearly averages by month
+            calculateMonthlyAverages(data) {
+                const monthlyTotals = {};
+                const monthlyCounts = {};
+                
+                data.forEach(item => {
+                    const month = item.month.split(' ')[0]; // Get just the month name
+                    if (!monthlyTotals[month]) {
+                        monthlyTotals[month] = 0;
+                        monthlyCounts[month] = 0;
+                    }
+                    monthlyTotals[month] += item.amount || 0;
+                    monthlyCounts[month]++;
+                });
+
+                return Object.keys(monthlyTotals).map(month => ({
+                    month,
+                    average: monthlyTotals[month] / monthlyCounts[month]
+                }));
+            },
+
+            calculateSeasonalityScore(data) {
+                if (!data || data.length === 0) return 0;
+                const values = data.map(d => d.value);
+                const mean = values.reduce((a, b) => a + b, 0) / values.length;
+                const variance = values.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / values.length;
+                return Math.sqrt(variance);
+            },
+
+            identifyPeakMonths(data) {
+                if (!data || data.length === 0) return [];
+                const values = data.map(d => d.value);
+                const mean = values.reduce((a, b) => a + b, 0) / values.length;
+                const threshold = mean * 1.15; // 15% above average
+                return values.map((v, i) => v > threshold ? i : -1).filter(i => i !== -1);
             }
         },
         watch: {
@@ -851,159 +1139,214 @@ async function fetchAnalyticsData(establishment, dateRange) {
                 startDate.setFullYear(now.getFullYear() - 1);
                 break;
             default:
-                startDate.setMonth(now.getMonth() - 1); // Default to last month
+                startDate.setMonth(now.getMonth() - 1);
         }
 
-        // Create Firestore timestamp
-        const startTimestamp = Timestamp.fromDate(startDate);
-        
-        // Use simple queries and handle filtering in memory to avoid index requirements
+        // Fetch all bookings and rooms
         const [bookingsSnapshot, roomsSnapshot] = await Promise.all([
             getDocs(query(bookingsRef)),
             getDocs(query(roomsRef))
         ]);
 
-        // Process bookings with client-side filtering
+        // Process rooms first to get establishment-specific room counts
+        const rooms = [];
+        const establishmentRooms = new Map(); // Track rooms per establishment
+        
+        roomsSnapshot.forEach(doc => {
+            const data = doc.data();
+            const establishmentName = data.propertyDetails?.name;
+            if (establishmentName) {
+                rooms.push({
+                    id: doc.id,
+                    roomType: data.propertyDetails?.roomType || 'Standard',
+                    status: data.status || 'unknown',
+                    price: data.price || 0,
+                    establishment: establishmentName
+                });
+                
+                // Count rooms per establishment
+                const count = establishmentRooms.get(establishmentName) || 0;
+                establishmentRooms.set(establishmentName, count + 1);
+            }
+        });
+
+        // Get total rooms for the selected establishment
+        const totalRooms = establishment ? 
+            (establishmentRooms.get(establishment) || 1) : 
+            rooms.length || 1;
+
+        // Process bookings with enhanced filtering
         const bookings = [];
+        const monthlyData = new Map();
+        
         bookingsSnapshot.forEach(doc => {
             const data = doc.data();
             if (data.checkIn && data.checkIn instanceof Timestamp) {
                 const checkInDate = data.checkIn.toDate();
+                const establishmentName = data.propertyDetails?.name;
                 
-                // Client-side filtering for date range and establishment
+                // Filter by date range and establishment
                 if (checkInDate >= startDate && 
-                    (!establishment || data.propertyDetails?.name === establishment)) {
+                    (!establishment || establishmentName === establishment)) {
+                    
                     const booking = {
                         id: doc.id,
                         checkIn: checkInDate,
                         checkOut: data.checkOut instanceof Timestamp ? data.checkOut.toDate() : null,
-                        createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : null,
-                        updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : null,
                         totalPrice: data.totalPrice || 0,
                         status: data.status || 'unknown',
-                        roomType: data.propertyDetails?.roomType || 'unknown'
+                        roomType: data.propertyDetails?.roomType || 'unknown',
+                        establishment: establishmentName
                     };
+                    
                     bookings.push(booking);
+                    
+                    // Process monthly data
+                    const monthKey = checkInDate.toLocaleString('default', { month: 'short', year: 'numeric' });
+                    if (!monthlyData.has(monthKey)) {
+                        monthlyData.set(monthKey, {
+                            month: monthKey,
+                            bookingCount: 0,
+                            revenue: 0,
+                            occupiedRooms: 0,
+                            occupancyRate: 0
+                        });
+                    }
+                    
+                    const monthData = monthlyData.get(monthKey);
+                    if (booking.status !== 'cancelled') {
+                        monthData.bookingCount++;
+                        monthData.revenue += booking.totalPrice;
+                        monthData.occupiedRooms++;
+                        monthData.occupancyRate = (monthData.occupiedRooms / totalRooms) * 100;
+                    }
                 }
             }
         });
 
-        // Process rooms with client-side filtering
-        const rooms = [];
-        roomsSnapshot.forEach(doc => {
-            const data = doc.data();
-            if (!establishment || data.propertyDetails?.name === establishment) {
-                const room = {
-                    id: doc.id,
-                    roomType: data.propertyDetails?.roomType || 'unknown',
-                    status: data.status || 'unknown',
-                    price: data.price || 0
-                };
-                rooms.push(room);
-            }
-        });
-
-        // Calculate monthly data
-        const monthsMap = {};
-        let monthIterator = new Date(startDate);
-        while (monthIterator <= now) {
-            const monthKey = monthIterator.toLocaleString('default', { month: 'short', year: 'numeric' });
-            monthsMap[monthKey] = {
-                month: monthKey,
-                bookingCount: 0,
-                revenue: 0,
-                occupiedRooms: 0,
-                occupancyRate: 0
-            };
-            monthIterator.setMonth(monthIterator.getMonth() + 1);
-        }
-
-        // Process bookings for monthly data
-        bookings.forEach(booking => {
-            if (!booking.checkIn || booking.status === 'cancelled') return;
-            
-            const monthKey = booking.checkIn.toLocaleString('default', { month: 'short', year: 'numeric' });
-            if (monthsMap[monthKey]) {
-                monthsMap[monthKey].bookingCount++;
-                monthsMap[monthKey].revenue += booking.totalPrice;
-            }
-        });
-
-        // Calculate room type distribution
-        const roomTypes = rooms.reduce((acc, room) => {
-            const type = room.roomType;
-            acc[type] = (acc[type] || 0) + 1;
-            return acc;
-        }, {});
-
-        // Calculate occupancy rates
-        const totalRooms = rooms.length || 1;
-        Object.keys(monthsMap).forEach(monthKey => {
-            const monthStart = new Date(monthKey);
-            const monthEnd = new Date(monthStart);
-            monthEnd.setMonth(monthEnd.getMonth() + 1);
-
-            const occupiedRooms = bookings.filter(booking => {
-                if (!booking.checkIn || booking.status === 'cancelled') return false;
-                return booking.checkIn >= monthStart && booking.checkIn < monthEnd;
-            }).length;
-
-            monthsMap[monthKey].occupiedRooms = occupiedRooms;
-            monthsMap[monthKey].occupancyRate = (occupiedRooms / totalRooms) * 100;
-        });
+        // Convert monthly data to sorted array
+        const sortedMonthlyData = Array.from(monthlyData.values())
+            .sort((a, b) => new Date(a.month) - new Date(b.month));
 
         // Calculate revenue per room type
-        const revenuePerRoom = Object.keys(roomTypes).map(type => ({
-            roomType: type,
-            revenue: bookings
-                .filter(b => b.roomType === type && b.status !== 'cancelled')
-                .reduce((sum, b) => sum + b.totalPrice, 0)
-        }));
+        const revenuePerRoom = Object.entries(
+            bookings.reduce((acc, booking) => {
+                if (booking.status !== 'cancelled' && booking.roomType) {
+                    acc[booking.roomType] = (acc[booking.roomType] || 0) + (booking.totalPrice || 0);
+                }
+                return acc;
+            }, {})
+        ).map(([roomType, revenue]) => ({
+            roomType: roomType || 'Unknown',
+            revenue: revenue || 0
+        })).sort((a, b) => b.revenue - a.revenue);
 
-        // Convert to arrays for charts
-        const monthlyData = Object.values(monthsMap).sort((a, b) => {
-            const dateA = new Date(a.month);
-            const dateB = new Date(b.month);
-            return dateA - dateB;
-        });
+        // Enhanced occupancy calculation with daily tracking
+        const calculateOccupancyStats = (bookings, rooms, startDate, endDate) => {
+            const dailyOccupancy = new Map();
+            const currentDate = new Date(startDate);
+            const totalRooms = rooms.length;
 
-        const ensureMonthlyData = (data) => ensureContinuousData(data);
+            while (currentDate <= endDate) {
+                const dateKey = currentDate.toISOString().split('T')[0];
+                const occupiedRooms = bookings.filter(booking => {
+                    const checkIn = booking.checkIn.toDate();
+                    const checkOut = booking.checkOut?.toDate() || new Date(checkIn);
+                    const currentDateTime = new Date(currentDate);
+                    
+                    return (
+                        booking.status === 'Confirmed' &&
+                        checkIn <= currentDateTime &&
+                        checkOut >= currentDateTime &&
+                        (!establishment || booking.propertyDetails?.name === establishment)
+                    );
+                }).length;
 
+                dailyOccupancy.set(dateKey, {
+                    occupied: occupiedRooms,
+                    total: totalRooms,
+                    rate: (occupiedRooms / totalRooms) * 100
+                });
+
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+            return dailyOccupancy;
+        };
+
+        // Group occupancy data by month with accurate calculations
+        const getMonthlyOccupancy = (dailyOccupancy) => {
+            const monthlyData = new Map();
+            
+            for (const [date, stats] of dailyOccupancy) {
+                const monthKey = new Date(date).toLocaleString('default', { month: 'short', year: 'numeric' });
+                if (!monthlyData.has(monthKey)) {
+                    monthlyData.set(monthKey, {
+                        totalOccupied: 0,
+                        totalRooms: 0,
+                        days: 0
+                    });
+                }
+                
+                const monthStats = monthlyData.get(monthKey);
+                monthStats.totalOccupied += stats.occupied;
+                monthStats.totalRooms += stats.total;
+                monthStats.days += 1;
+            }
+
+            return Array.from(monthlyData.entries()).map(([month, stats]) => ({
+                month,
+                occupiedRooms: Math.round(stats.totalOccupied / stats.days),
+                totalRooms: stats.totalRooms / stats.days,
+                rate: (stats.totalOccupied / stats.totalRooms) * 100
+            }));
+        };
+
+        // Calculate establishment-specific room count
+        const establishmentRooms = rooms.filter(room => 
+            !establishment || room.propertyDetails?.name === establishment
+        );
+
+        // Calculate occupancy statistics
+        const occupancyStats = calculateOccupancyStats(
+            bookings,
+            establishmentRooms,
+            startDate,
+            now
+        );
+
+        const monthlyOccupancy = getMonthlyOccupancy(occupancyStats);
+
+        // Return processed data with corrected occupancy metrics
         return {
-            occupancy: ensureMonthlyData(monthlyData.map(m => ({
+            occupancy: monthlyOccupancy.map(m => ({
                 month: m.month,
-                rate: m.occupancyRate
-            }))),
-            revenue: ensureMonthlyData(monthlyData.map(m => ({
+                rate: Math.min(Math.round(m.rate * 10) / 10, 100),
+                occupiedRooms: m.occupiedRooms,
+                totalRooms: Math.round(m.totalRooms)
+            })),
+            revenue: ensureContinuousData(sortedMonthlyData.map(m => ({
                 month: m.month,
                 amount: m.revenue
-            }))),
-            bookings: ensureMonthlyData(monthlyData.map(m => ({
+            }))), 
+            bookings: ensureContinuousData(sortedMonthlyData.map(m => ({
                 month: m.month,
                 count: m.bookingCount
-            }))),
-            seasonalTrends: ensureMonthlyData(monthlyData.map(m => ({
+            }))), 
+            seasonalTrends: ensureContinuousData(sortedMonthlyData.map(m => ({
                 month: m.month,
                 value: m.occupancyRate
-            }))),
-            roomTypes,
+            }))), 
+            roomTypes: rooms.reduce((acc, room) => {
+                if (room.roomType) {
+                    acc[room.roomType] = (acc[room.roomType] || 0) + 1;
+                }
+                return acc;
+            }, {}), 
             revenuePerRoom
         };
+
     } catch (error) {
         console.error('Error fetching analytics data:', error);
-        // Add user-friendly error message
-        if (error.message?.includes('requires an index')) {
-            console.warn('Indexes not yet ready, using client-side filtering');
-            // Continue with empty data rather than throwing
-            return {
-                occupancy: [],
-                revenue: [],
-                bookings: [],
-                seasonalTrends: [],
-                roomTypes: {},
-                revenuePerRoom: []
-            };
-        }
         throw error;
     }
 }
