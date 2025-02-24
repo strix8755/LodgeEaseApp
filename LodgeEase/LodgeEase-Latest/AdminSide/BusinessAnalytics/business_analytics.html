@@ -145,17 +145,61 @@
         /* Analytics Specific Styles */
         .metrics-summary {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.5rem;
             margin-bottom: 2rem;
         }
 
         .metric-card {
             background: white;
             padding: 1.5rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            text-align: center;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .metric-card.primary { border-top: 4px solid #2196F3; }
+        .metric-card.success { border-top: 4px solid #4CAF50; }
+        .metric-card.info { border-top: 4px solid #00BCD4; }
+        .metric-card.warning { border-top: 4px solid #FFC107; }
+        .metric-card.secondary { border-top: 4px solid #9C27B0; }
+
+        .metric-card h3 {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-card .value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin: 0.5rem 0;
+        }
+
+        .metric-card .trend {
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .trend.positive { color: #4CAF50; }
+        .trend.negative { color: #F44336; }
+
+        .score-gauge {
+            width: 100%;
+            max-width: 150px;
+            margin: 0 auto;
+        }
+
+        .subtext {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 0.5rem;
         }
 
         .charts-grid {
@@ -306,23 +350,53 @@
                 </div>
             </div>
 
-            <!-- Metrics Summary -->
+            <!-- Enhanced Metrics Summary -->
             <div class="metrics-summary">
-                <div class="metric-card">
+                <div class="metric-card primary">
                     <h3>Total Revenue</h3>
-                    <p>₱{{ formatCurrency(metrics.totalRevenue) }}</p>
+                    <p class="value">₱{{ formatCurrency(metrics.totalRevenue || 0) }}</p>
+                    <p class="trend" :class="{ positive: (metrics.revenueGrowth || 0) > 0, negative: (metrics.revenueGrowth || 0) < 0 }">
+                        {{ (metrics.revenueGrowth || 0) > 0 ? '▲' : '▼' }} {{ Math.abs(metrics.revenueGrowth || 0).toFixed(1) }}%
+                    </p>
                 </div>
-                <div class="metric-card">
+                <div class="metric-card success">
                     <h3>Average Occupancy</h3>
-                    <p>{{ metrics.averageOccupancy.toFixed(1) }}%</p>
+                    <p class="value">{{ metrics.averageOccupancy.toFixed(1) }}%</p>
+                    <p class="subtext">Target: 80%</p>
                 </div>
-                <div class="metric-card">
-                    <h3>Total Bookings</h3>
-                    <p>{{ metrics.totalBookings }}</p>
+                <div class="metric-card info">
+                    <h3>RevPAR</h3>
+                    <p class="value">₱{{ formatCurrency(metrics.revPAR) }}</p>
+                    <p class="trend" :class="{ positive: metrics.revPARGrowth > 0 }">
+                        {{ metrics.revPARGrowth > 0 ? '▲' : '▼' }} {{ Math.abs(metrics.revPARGrowth).toFixed(1) }}%
+                    </p>
                 </div>
-                <div class="metric-card">
-                    <h3>Seasonality Index</h3>
-                    <p>{{ metrics.seasonalityIndex.toFixed(2) }}</p>
+                <div class="metric-card warning">
+                    <h3>Booking Efficiency</h3>
+                    <p class="value">{{ metrics.bookingEfficiency.toFixed(1) }}%</p>
+                    <p class="subtext">Conversion Rate</p>
+                </div>
+                <div class="metric-card secondary">
+                    <h3>Performance Score</h3>
+                    <div class="score-gauge">
+                        <svg viewBox="0 0 100 60">
+                            <path d="M10,50 A40,40 0 1,1 90,50" fill="none" stroke="#ddd" stroke-width="10"/>
+                            <path :d="getScoreArc(metrics.performanceScore)" fill="none" :stroke="getScoreColor(metrics.performanceScore)" stroke-width="10"/>
+                            <text x="50" y="45" text-anchor="middle" font-size="20">{{ metrics.performanceScore.toFixed(0) }}</text>
+                        </svg>
+                    </div>
+                </div>
+                <div class="metric-card info">
+                    <h3>Growth Index</h3>
+                    <p class="value">{{ (metrics.growthIndex || 0).toFixed(1) }}%</p>
+                    <p class="trend" :class="{ positive: (metrics.growthIndex || 0) > 0 }">
+                        {{ (metrics.growthIndex || 0) > 0 ? '▲' : '▼' }} Year-over-Year
+                    </p>
+                </div>
+                <div class="metric-card warning">
+                    <h3>Stability Score</h3>
+                    <p class="value">{{ (metrics.stabilityScore || 0).toFixed(1) }}</p>
+                    <p class="subtext">Volatility: {{ (metrics.volatilityIndex || 0).toFixed(1) }}%</p>
                 </div>
             </div>
 
