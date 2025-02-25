@@ -1150,7 +1150,7 @@ async function fetchAnalyticsData(establishment, dateRange) {
 
         // Process rooms first to get establishment-specific room counts
         const rooms = [];
-        const establishmentRooms = new Map(); // Track rooms per establishment
+        const roomsByEstablishment = new Map(); // Renamed from establishmentRooms
         
         roomsSnapshot.forEach(doc => {
             const data = doc.data();
@@ -1165,14 +1165,19 @@ async function fetchAnalyticsData(establishment, dateRange) {
                 });
                 
                 // Count rooms per establishment
-                const count = establishmentRooms.get(establishmentName) || 0;
-                establishmentRooms.set(establishmentName, count + 1);
+                const count = roomsByEstablishment.get(establishmentName) || 0;
+                roomsByEstablishment.set(establishmentName, count + 1);
             }
         });
 
+        // Filter rooms for specific establishment if specified
+        const filteredRooms = establishment ? 
+            rooms.filter(room => room.establishment === establishment) : 
+            rooms;
+
         // Get total rooms for the selected establishment
         const totalRooms = establishment ? 
-            (establishmentRooms.get(establishment) || 1) : 
+            (roomsByEstablishment.get(establishment) || 1) : 
             rooms.length || 1;
 
         // Process bookings with enhanced filtering
@@ -1246,28 +1251,41 @@ async function fetchAnalyticsData(establishment, dateRange) {
             const dailyOccupancy = new Map();
             const currentDate = new Date(startDate);
             const totalRooms = rooms.length;
-
+        
             while (currentDate <= endDate) {
                 const dateKey = currentDate.toISOString().split('T')[0];
                 const occupiedRooms = bookings.filter(booking => {
-                    const checkIn = booking.checkIn.toDate();
-                    const checkOut = booking.checkOut?.toDate() || new Date(checkIn);
-                    const currentDateTime = new Date(currentDate);
-                    
-                    return (
-                        booking.status === 'Confirmed' &&
-                        checkIn <= currentDateTime &&
-                        checkOut >= currentDateTime &&
-                        (!establishment || booking.propertyDetails?.name === establishment)
-                    );
+                    try {
+                        // Safely convert checkIn to Date object
+                        const checkIn = booking.checkIn instanceof Timestamp ? 
+                            booking.checkIn.toDate() : 
+                            new Date(booking.checkIn);
+        
+                        // Safely convert checkOut to Date object
+                        const checkOut = booking.checkOut instanceof Timestamp ? 
+                            booking.checkOut.toDate() : 
+                            new Date(booking.checkOut || checkIn); // Fallback to checkIn if checkOut is missing
+        
+                        const currentDateTime = new Date(currentDate);
+                        
+                        return (
+                            booking.status?.toLowerCase() === 'confirmed' &&
+                            checkIn <= currentDateTime &&
+                            checkOut >= currentDateTime &&
+                            (!establishment || booking.propertyDetails?.name === establishment)
+                        );
+                    } catch (error) {
+                        console.warn('Error processing booking dates:', error);
+                        return false;
+                    }
                 }).length;
-
+        
                 dailyOccupancy.set(dateKey, {
                     occupied: occupiedRooms,
                     total: totalRooms,
                     rate: (occupiedRooms / totalRooms) * 100
                 });
-
+        
                 currentDate.setDate(currentDate.getDate() + 1);
             }
             return dailyOccupancy;
@@ -1301,15 +1319,10 @@ async function fetchAnalyticsData(establishment, dateRange) {
             }));
         };
 
-        // Calculate establishment-specific room count
-        const establishmentRooms = rooms.filter(room => 
-            !establishment || room.propertyDetails?.name === establishment
-        );
-
-        // Calculate occupancy statistics
+        // Calculate occupancy statistics with filtered rooms
         const occupancyStats = calculateOccupancyStats(
             bookings,
-            establishmentRooms,
+            filteredRooms, // Use filteredRooms instead of establishmentRooms
             startDate,
             now
         );
