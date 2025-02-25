@@ -40,6 +40,24 @@ new Vue({
         loading: true,
         bookings: []
     },
+    async created() {
+        try {
+            // Listen for auth state changes
+            auth.onAuthStateChanged(async (user) => {
+                this.loading = true;
+                if (user) {
+                    this.isAuthenticated = true;
+                    await this.fetchBookings();
+                } else {
+                    this.isAuthenticated = false;
+                }
+                this.loading = false;
+            });
+        } catch (error) {
+            console.error('Auth error:', error);
+            this.loading = false;
+        }
+    },
     methods: {
         async handleLogout() {
             try {
@@ -49,18 +67,6 @@ new Vue({
                 console.error('Error signing out:', error);
                 alert('Error signing out. Please try again.');
             }
-        },
-
-        checkAuthState() {
-            auth.onAuthStateChanged(user => {
-                this.isAuthenticated = !!user;
-                if (!user) {
-                    window.location.href = '../Login/index.html';
-                } else {
-                    this.fetchBookings();
-                }
-                this.loading = false;
-            });
         },
 
         async fetchBookings() {
@@ -147,9 +153,6 @@ new Vue({
                 await logReportActivity('report_error', `Failed to import data: ${error.message}`);
             }
         }
-    },
-    mounted() {
-        this.checkAuthState();
     }
 });
 
