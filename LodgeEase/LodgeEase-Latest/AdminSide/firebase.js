@@ -972,6 +972,24 @@ async function initializeFirebase() {
     }
 }
 
+// Add error handling utility function
+export async function executeFirebaseOperation(operation, errorMessage) {
+    try {
+        return await operation();
+    } catch (error) {
+        console.error(`${errorMessage}:`, error);
+        
+        // Handle common Firebase errors
+        if (error.code === 'permission-denied') {
+            throw new Error('You do not have permission to perform this action');
+        } else if (error.code === 'failed-precondition') {
+            throw new Error('Operation cannot be performed in the current state');
+        }
+        
+        throw error;
+    }
+}
+
 // Export everything needed
 export {
     app,

@@ -44,146 +44,69 @@ function getDefaultDataset() {
 
 function formatRevenueData(bookings) {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const result = getDefaultDataset();
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+
+    // Initialize arrays
     const monthlyRevenue = new Array(12).fill(0);
-    const forecastData = new Array(3).fill(0);
     const roomTypeRevenue = {};
-    const paymentMethodRevenue = {};
-    
-    // Calculate monthly and categorized revenue
+
+    // Process bookings
     bookings.forEach(booking => {
-        if (booking.checkIn && booking.totalPrice) {
-            const date = booking.checkIn.toDate();
-            const monthIndex = date.getMonth();
-            const amount = parseFloat(booking.totalPrice || 0);
-            
-            // Monthly revenue
-            monthlyRevenue[monthIndex] += amount;
-            
-            // Room type revenue
-            const roomType = booking.propertyDetails?.roomType;
-            if (roomType) {
+        if (!booking.checkIn || !booking.totalPrice) return;
+        
+        try {
+            const checkInDate = booking.checkIn.toDate();
+            // Only process current year's bookings
+            if (checkInDate.getFullYear() === currentYear) {
+                const monthIndex = checkInDate.getMonth();
+                const amount = parseFloat(booking.totalPrice);
+                monthlyRevenue[monthIndex] += amount;
+
+                // Track room type revenue
+                const roomType = booking.propertyDetails?.roomType || 'Standard';
                 roomTypeRevenue[roomType] = (roomTypeRevenue[roomType] || 0) + amount;
             }
-            
-            // Payment method revenue
-            const paymentMethod = booking.paymentMethod || 'Unknown';
-            paymentMethodRevenue[paymentMethod] = (paymentMethodRevenue[paymentMethod] || 0) + amount;
+        } catch (error) {
+            console.error('Error processing booking:', error);
         }
     });
 
-    // Calculate metrics
-    const currentMonth = new Date().getMonth();
-    const previousMonth = (currentMonth - 1 + 12) % 12;
-    const currentMonthRevenue = monthlyRevenue[currentMonth] || 0;
-    const previousMonthRevenue = monthlyRevenue[previousMonth] || 0;
-    
-    const monthlyGrowth = previousMonthRevenue > 0 
-        ? ((currentMonthRevenue - previousMonthRevenue) / previousMonthRevenue * 100)
-        : 0;
-    
-    // Calculate year-over-year growth
-    const sameMonthLastYear = monthlyRevenue[(currentMonth + 12 - 12) % 12] || 0;
-    const yearOverYearGrowth = sameMonthLastYear > 0
-        ? ((currentMonthRevenue - sameMonthLastYear) / sameMonthLastYear * 100)
-        : 0;
-
-    // Calculate forecast
-    const alpha = 0.3;
-    let lastActual = monthlyRevenue[currentMonth];
-    forecastData[0] = lastActual * (1 + monthlyGrowth/100);
-    forecastData[1] = forecastData[0] * (1 + monthlyGrowth/100);
-    forecastData[2] = forecastData[1] * (1 + monthlyGrowth/100);
-
-    // Format datasets for each view mode
-    result.labels = months;
-    result.datasets = {
-        monthly: [{
-            label: 'Actual Revenue',
-            data: monthlyRevenue,
-            borderColor: 'rgba(54, 162, 235, 1)',
-            backgroundColor: 'rgba(54, 162, 235, 0.2)',
-            fill: true
-        }, {
-            label: 'Forecast',
-            data: [...new Array(9).fill(null), ...forecastData],
-            borderColor: 'rgba(255, 159, 64, 1)',
-            backgroundColor: 'rgba(255, 159, 64, 0.2)',
-            borderDash: [5, 5],
-            fill: true
-        }],
-        roomType: [{
-            label: 'Revenue by Room Type',
-            data: Object.values(roomTypeRevenue),
-            backgroundColor: [
-                'rgba(54, 162, 235, 0.6)',
-                'rgba(255, 99, 132, 0.6)',
-                'rgba(255, 206, 86, 0.6)',
-                'rgba(75, 192, 192, 0.6)'
-            ],
-            labels: Object.keys(roomTypeRevenue),
-            total: Object.values(roomTypeRevenue).reduce((a, b) => a + b, 0)
-        }],
-        payment: [{
-            label: 'Revenue by Payment Method',
-            data: Object.values(paymentMethodRevenue),
-            backgroundColor: [
-                'rgba(54, 162, 235, 0.6)',
-                'rgba(255, 99, 132, 0.6)',
-                'rgba(255, 206, 86, 0.6)'
-            ],
-            labels: Object.keys(paymentMethodRevenue),
-            total: Object.values(paymentMethodRevenue).reduce((a, b) => a + b, 0)
-        }]
-    };
+    // Simple forecast based on last 3 months
+    const last3Months = monthlyRevenue.slice(Math.max(0, currentMonth - 3), currentMonth);
+    const avgRevenue = last3Months.reduce((a, b) => a + b, 0) / last3Months.length;
+    const forecastData = Array(3).fill(avgRevenue).map((val, i) => val * (1 + (i * 0.1)));
 
     return {
         labels: months,
         datasets: {
             monthly: [{
-                label: 'Actual Revenue',
+                label: 'Monthly Revenue',
                 data: monthlyRevenue,
                 borderColor: 'rgba(54, 162, 235, 1)',
                 backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                fill: true
+                fill: true,
+                tension: 0.4
             }, {
-                label: 'Forecast',
+                label: 'Revenue Forecast',
                 data: [...new Array(9).fill(null), ...forecastData],
                 borderColor: 'rgba(255, 159, 64, 1)',
                 backgroundColor: 'rgba(255, 159, 64, 0.2)',
                 borderDash: [5, 5],
-                fill: true
+                fill: true,
+                tension: 0.4
             }],
             roomType: [{
                 label: 'Revenue by Room Type',
                 data: Object.values(roomTypeRevenue),
-                backgroundColor: [
-                    'rgba(54, 162, 235, 0.6)',
-                    'rgba(255, 99, 132, 0.6)',
-                    'rgba(255, 206, 86, 0.6)',
-                    'rgba(75, 192, 192, 0.6)'
-                ],
-                labels: Object.keys(roomTypeRevenue),
-                total: Object.values(roomTypeRevenue).reduce((a, b) => a + b, 0)
-            }],
-            payment: [{
-                label: 'Revenue by Payment Method',
-                data: Object.values(paymentMethodRevenue),
-                backgroundColor: [
-                    'rgba(54, 162, 235, 0.6)',
-                    'rgba(255, 99, 132, 0.6)',
-                    'rgba(255, 206, 86, 0.6)'
-                ],
-                labels: Object.keys(paymentMethodRevenue),
-                total: Object.values(paymentMethodRevenue).reduce((a, b) => a + b, 0)
+                backgroundColor: generateColors(Object.keys(roomTypeRevenue).length),
+                labels: Object.keys(roomTypeRevenue)
             }]
         },
         metrics: {
             totalRevenue: monthlyRevenue.reduce((a, b) => a + b, 0),
-            monthlyGrowth,
-            yearOverYearGrowth,
-            currentMonthRevenue,
-            previousMonthRevenue,
+            currentMonthRevenue: monthlyRevenue[currentMonth],
             forecast: forecastData
         }
     };
@@ -191,91 +114,150 @@ function formatRevenueData(bookings) {
 
 function formatOccupancyData(bookings, totalRooms) {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const monthlyRates = new Array(12).fill(0);
-    const roomTypeOccupancy = {};
-    const weekdayOccupancy = new Array(7).fill(0);
-    const forecastData = new Array(3).fill(0);
-    
-    // Calculate occupancy rates
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+
+    // Initialize arrays
+    const dailyBookings = new Map(); // Track daily bookings
+    const roomTypeBookings = {};
+    const weekdayBookings = new Array(7).fill(0);
+
+    // Process bookings
     bookings.forEach(booking => {
-        if (booking.checkIn && booking.checkOut) {
+        if (!booking.checkIn || !booking.checkOut) return;
+        
+        try {
             const checkIn = booking.checkIn.toDate();
             const checkOut = booking.checkOut.toDate();
-            const monthIndex = checkIn.getMonth();
-            monthlyRates[monthIndex]++;
             
-            // Room type occupancy
-            const roomType = booking.propertyDetails?.roomType;
-            if (roomType) {
-                roomTypeOccupancy[roomType] = (roomTypeOccupancy[roomType] || 0) + 1;
+            if (checkIn.getFullYear() === currentYear) {
+                // Track daily occupancy
+                let currentDay = new Date(checkIn);
+                while (currentDay < checkOut) {
+                    const dateKey = currentDay.toISOString().split('T')[0];
+                    const monthIndex = currentDay.getMonth();
+                    dailyBookings.set(dateKey, (dailyBookings.get(dateKey) || 0) + 1);
+                    
+                    // Track weekday distribution
+                    weekdayBookings[currentDay.getDay()]++;
+                    
+                    currentDay.setDate(currentDay.getDate() + 1);
+                }
+
+                // Track room type bookings
+                const roomType = booking.propertyDetails?.roomType || 'Standard';
+                roomTypeBookings[roomType] = (roomTypeBookings[roomType] || 0) + 1;
             }
-            
-            // Weekday occupancy
-            weekdayOccupancy[checkIn.getDay()]++;
+        } catch (error) {
+            console.error('Error processing booking:', error);
         }
     });
 
-    // Calculate percentages
-    const monthlyPercentages = monthlyRates.map(rate => 
-        Math.min(100, (rate / totalRooms) * 100)
-    );
+    // Calculate monthly occupancy rates
+    const monthlyRates = new Array(12).fill(0);
+    dailyBookings.forEach((bookings, dateStr) => {
+        const date = new Date(dateStr);
+        const monthIndex = date.getMonth();
+        monthlyRates[monthIndex] = Math.max(monthlyRates[monthIndex], 
+            Math.min(100, (bookings / totalRooms) * 100));
+    });
 
-    // Calculate forecast
-    const currentMonth = new Date().getMonth();
-    const trend = calculateTrend(monthlyPercentages);
-    forecastData[0] = Math.min(100, Math.max(0, monthlyPercentages[currentMonth] + trend));
-    forecastData[1] = Math.min(100, Math.max(0, forecastData[0] + trend));
-    forecastData[2] = Math.min(100, Math.max(0, forecastData[1] + trend));
+    // Generate forecast
+    const last3Months = monthlyRates.slice(Math.max(0, currentMonth - 3), currentMonth);
+    const avgOccupancy = last3Months.reduce((a, b) => a + b, 0) / last3Months.length;
+    const forecastData = Array(3).fill(avgOccupancy).map((val, i) => 
+        Math.min(100, val * (1 + (i * 0.05))));
 
     return {
         labels: months,
         datasets: {
             monthly: [{
-                label: 'Actual Occupancy',
-                data: monthlyPercentages,
+                label: 'Monthly Occupancy',
+                data: monthlyRates,
                 borderColor: 'rgba(255, 99, 132, 1)',
                 backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                fill: true
+                fill: true,
+                tension: 0.4
             }, {
-                label: 'Forecast',
+                label: 'Occupancy Forecast',
                 data: [...new Array(9).fill(null), ...forecastData],
                 borderColor: 'rgba(75, 192, 192, 1)',
                 backgroundColor: 'rgba(75, 192, 192, 0.2)',
                 borderDash: [5, 5],
-                fill: true
+                fill: true,
+                tension: 0.4
             }],
             roomType: [{
-                label: 'Occupancy by Room Type',
-                data: Object.values(roomTypeOccupancy),
-                backgroundColor: [
-                    'rgba(255, 99, 132, 0.6)',
-                    'rgba(54, 162, 235, 0.6)',
-                    'rgba(255, 206, 86, 0.6)',
-                    'rgba(75, 192, 192, 0.6)'
-                ],
-                labels: Object.keys(roomTypeOccupancy)
+                label: 'Bookings by Room Type',
+                data: Object.values(roomTypeBookings),
+                backgroundColor: generateColors(Object.keys(roomTypeBookings).length),
+                labels: Object.keys(roomTypeBookings)
             }],
             weekday: [{
-                label: 'Occupancy by Day of Week',
-                data: weekdayOccupancy,
+                label: 'Bookings by Day of Week',
+                data: weekdayBookings,
                 backgroundColor: 'rgba(75, 192, 192, 0.6)',
-                borderColor: 'rgba(75, 192, 192, 1)',
-                borderWidth: 1,
-                labels: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+                labels: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
             }]
         },
         metrics: {
-            averageOccupancy: (monthlyPercentages.reduce((a, b) => a + b, 0) / 12).toFixed(1),
-            currentOccupancy: monthlyPercentages[currentMonth].toFixed(1),
+            averageOccupancy: (monthlyRates.reduce((a, b) => a + b, 0) / 12).toFixed(1),
+            currentOccupancy: monthlyRates[currentMonth].toFixed(1),
             forecast: forecastData.map(v => v.toFixed(1))
         }
     };
 }
 
-// Helper function to calculate trend
-function calculateTrend(data) {
-    const recent = data.slice(-3);
-    return (recent[2] - recent[0]) / 2;
+// Helper function to generate forecast data
+function generateRevenueForecast(monthlyData, growth) {
+    const alpha = 0.3; // smoothing factor
+    const forecastMonths = 3;
+    const forecast = [];
+    
+    let lastValue = monthlyData[monthlyData.length - 1];
+    for (let i = 0; i < forecastMonths; i++) {
+        lastValue = lastValue * (1 + (growth / 100));
+        forecast.push(Math.round(lastValue));
+    }
+    
+    return forecast;
+}
+
+function generateOccupancyForecast(monthlyData, currentOccupancy) {
+    const forecastMonths = 3;
+    const forecast = [];
+    
+    // Calculate trend from last 3 months
+    const recentMonths = monthlyData.slice(-3);
+    const trend = recentMonths[2] - recentMonths[0];
+    const trendFactor = trend / 2; // Dampen the trend
+    
+    let lastValue = currentOccupancy;
+    for (let i = 0; i < forecastMonths; i++) {
+        lastValue = Math.min(100, Math.max(0, lastValue + trendFactor));
+        forecast.push(lastValue);
+    }
+    
+    return forecast;
+}
+
+// Helper function to generate chart colors
+function generateColors(count) {
+    const baseColors = [
+        'rgba(54, 162, 235, 0.8)',   // blue
+        'rgba(255, 99, 132, 0.8)',   // red
+        'rgba(255, 206, 86, 0.8)',   // yellow
+        'rgba(75, 192, 192, 0.8)',   // green
+        'rgba(153, 102, 255, 0.8)',  // purple
+        'rgba(255, 159, 64, 0.8)'    // orange
+    ];
+    
+    const colors = [];
+    for (let i = 0; i < count; i++) {
+        colors.push(baseColors[i % baseColors.length]);
+    }
+    return colors;
 }
 
 function formatRoomTypeData(bookings) {
