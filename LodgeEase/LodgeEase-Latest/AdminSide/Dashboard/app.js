@@ -10,7 +10,6 @@ new Vue({
     data: {
         todayCheckIns: 0,
         availableRooms: 10,
-        occupiedRooms: 0,
         searchQuery: '',
         bookings: [],
         analysisFeedback: '',
@@ -22,8 +21,7 @@ new Vue({
         stats: {
             totalBookings: 0,
             currentMonthRevenue: '₱0.00',
-            occupancyRate: '0.0',
-            averageStayDuration: '0 days'
+            occupancyRate: '0.0'
         },
         chartData: {
             revenue: {
@@ -256,12 +254,10 @@ new Vue({
                     return checkInDate >= todayStart && checkInDate < new Date(todayStart.getTime() + 86400000);
                 }).length;
                 
-                // Calculate occupied rooms
-                this.occupiedRooms = this.bookings.filter(b => b.status === 'occupied').length;
-                
                 // Calculate available rooms
                 const totalRooms = 10; // Adjust based on your total room count
-                this.availableRooms = Math.max(0, totalRooms - this.occupiedRooms);
+                const occupiedRooms = this.bookings.filter(b => b.status === 'occupied').length;
+                this.availableRooms = Math.max(0, totalRooms - occupiedRooms);
                 
                 // Update dashboard with calculated metrics
                 await this.updateDashboardStats();
@@ -477,8 +473,7 @@ new Vue({
                 this.stats = {
                     totalBookings: parseInt(metrics.totalBookings || 0, 10),
                     currentMonthRevenue: this.formatCurrency(parseFloat(metrics.currentMonthRevenue || 0)),
-                    occupancyRate: parseFloat(metrics.occupancyRate || 0).toFixed(1),
-                    averageStayDuration: `${parseFloat(metrics.averageStayDuration || 0).toFixed(1)} days`
+                    occupancyRate: parseFloat(metrics.occupancyRate || 0).toFixed(1)
                 };
                 
             } catch (error) {
@@ -525,17 +520,15 @@ new Vue({
                     }
                 }).length;
                 
-                // Calculate occupied rooms
-                this.occupiedRooms = this.bookings.filter(b => 
-                    b.status && b.status.toLowerCase() === 'occupied'
-                ).length;
-                
                 // Calculate available rooms (assuming 10 total rooms)
                 const totalRooms = 10;
-                this.availableRooms = Math.max(0, totalRooms - this.occupiedRooms);
+                const occupiedRooms = this.bookings.filter(b => 
+                    b.status && b.status.toLowerCase() === 'occupied'
+                ).length;
+                this.availableRooms = Math.max(0, totalRooms - occupiedRooms);
                 
                 // Calculate occupancy rate
-                const occupancyRate = (this.occupiedRooms / totalRooms) * 100;
+                const occupancyRate = (occupiedRooms / totalRooms) * 100;
                 
                 // Calculate total bookings this month
                 const currentMonthBookings = this.bookings.filter(booking => {
@@ -559,46 +552,6 @@ new Vue({
                     }
                 });
                 
-                // Calculate average stay duration
-                let totalDuration = 0;
-                let validBookingsCount = 0;
-                
-                currentMonthBookings.forEach(booking => {
-                    try {
-                        if (!booking.checkIn || !booking.checkOut) return;
-                        
-                        let checkInDate, checkOutDate;
-                        
-                        if (booking.checkIn.toDate && typeof booking.checkIn.toDate === 'function') {
-                            checkInDate = booking.checkIn.toDate();
-                        } else if (booking.checkIn instanceof Date) {
-                            checkInDate = booking.checkIn;
-                        } else {
-                            return;
-                        }
-                        
-                        if (booking.checkOut.toDate && typeof booking.checkOut.toDate === 'function') {
-                            checkOutDate = booking.checkOut.toDate();
-                        } else if (booking.checkOut instanceof Date) {
-                            checkOutDate = booking.checkOut;
-                        } else {
-                            return;
-                        }
-                        
-                        const durationMs = checkOutDate.getTime() - checkInDate.getTime();
-                        const durationDays = durationMs / (1000 * 60 * 60 * 24);
-                        
-                        if (durationDays > 0) {
-                            totalDuration += durationDays;
-                            validBookingsCount++;
-                        }
-                    } catch (err) {
-                        console.error('Error calculating duration:', err);
-                    }
-                });
-                
-                const averageStayDuration = validBookingsCount > 0 ? totalDuration / validBookingsCount : 0;
-                
                 // Calculate monthly revenue
                 const currentMonthRevenue = currentMonthBookings.reduce((sum, booking) => {
                     const amount = parseFloat(booking.totalAmount || booking.totalPrice || 0);
@@ -609,19 +562,23 @@ new Vue({
                 this.stats = {
                     totalBookings: currentMonthBookings.length,
                     currentMonthRevenue: this.formatCurrency(currentMonthRevenue),
-                    occupancyRate: occupancyRate.toFixed(1),
-                    averageStayDuration: `${averageStayDuration.toFixed(1)} days`
+                    occupancyRate: occupancyRate.toFixed(1)
                 };
                 
                 console.log('Calculated metrics:', {
                     todayCheckIns: this.todayCheckIns,
-                    occupiedRooms: this.occupiedRooms,
                     availableRooms: this.availableRooms,
                     stats: this.stats
                 });
                 
             } catch (error) {
                 console.error('Error calculating dashboard metrics:', error);
+                // Set fallback values
+                this.stats = {
+                    totalBookings: 0,
+                    currentMonthRevenue: this.formatCurrency(0),
+                    occupancyRate: '0.0'
+                };
             }
         },
 
