@@ -89,18 +89,20 @@ new Vue({
     },
     methods: {
         // Add this new method
-        addMessage(text, type = 'bot') {
+        addMessage(text, type = 'bot', visualData = null) {
             const message = {
                 id: Date.now(),
                 text: text,
                 type: type,
-                timestamp: new Date()
+                timestamp: new Date(),
+                visualData: visualData
             };
             
             const chatContainer = document.getElementById('chatContainer');
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${type}`;
-            messageDiv.innerHTML = `
+            
+            let messageContent = `
                 <div class="message-avatar ${type}">
                     <i class="fas ${type === 'bot' ? 'fa-robot' : 'fa-user'}"></i>
                 </div>
@@ -109,10 +111,36 @@ new Vue({
                 </div>
             `;
             
+            messageDiv.innerHTML = messageContent;
             chatContainer.appendChild(messageDiv);
+            
+            // Add visualization if provided
+            if (visualData && type === 'bot') {
+                this.addVisualization(messageDiv, visualData);
+            }
+            
             chatContainer.scrollTop = chatContainer.scrollHeight;
             
             this.messages.push(message);
+        },
+
+        addVisualization(messageDiv, visualData) {
+            // Create container for the chart
+            const chartContainer = document.createElement('div');
+            chartContainer.className = 'chart-container';
+            
+            // Add canvas for chart.js
+            const canvas = document.createElement('canvas');
+            canvas.id = `chart-${Date.now()}`;
+            canvas.width = 500;
+            canvas.height = 300;
+            chartContainer.appendChild(canvas);
+            
+            // Add chart container to the message
+            messageDiv.querySelector('.message-content').appendChild(chartContainer);
+            
+            // Initialize chart.js
+            new Chart(canvas, visualData);
         },
 
         // Keep only chat-related methods
@@ -243,6 +271,9 @@ ${this.generateOccupancyInsights(stats)}`;
                     const bookingStats = await this.calculateCurrentBookings(data.bookings);
                     response = this.generateBookingAnalysisResponse(bookingStats);
 
+                } else if (lowerMessage.includes('compare') && 
+                          (lowerMessage.includes('month') || lowerMessage.includes('monthly'))) {
+                    response = await this.generateMonthlyComparisonReport(data);
                 } else if (lowerMessage.includes('performance') || lowerMessage.includes('report')) {
                     response = await this.generateLivePerformanceReport(data);
                 } else {
@@ -785,13 +816,14 @@ Here are some questions you might want to ask:
 
 How can I assist you today?`, 'bot');
 
-            // Add initial suggestions with proper event handling
+            // Add diverse initial suggestions using the SuggestionService
+            const suggestionService = new SuggestionService();
+            // Generate suggestions from multiple contexts for diversity
             const initialSuggestions = [
-                'Show me our current occupancy rate',
-                'What is our revenue performance this month?',
-                'Show me peak booking hours',
-                'Give me a full business performance report',
-                'What is our customer satisfaction rate?'
+                ...suggestionService.contextMap.occupancy.slice(0, 1),
+                ...suggestionService.contextMap.revenue.slice(0, 1),
+                ...suggestionService.contextMap.bookings.slice(0, 1),
+                ...suggestionService.contextMap.analytics.slice(0, 1)
             ];
 
             const suggestionDiv = document.createElement('div');
@@ -1755,6 +1787,7 @@ ${this.generateRevPARRecommendations(trends)}`;
         },
 
         addSuggestions(response) {
+            // Get suggestions based on response context
             const suggestions = new SuggestionService().getSuggestionsByResponse(response);
             const suggestionDiv = document.createElement('div');
             suggestionDiv.className = 'message-suggestions';
@@ -1788,20 +1821,17 @@ ${this.generateRevPARRecommendations(trends)}`;
         },
 
         addOffTopicSuggestions() {
-            const suggestions = [
-                'Show our occupancy rate',
-                'Analyze revenue performance',
-                'What are our booking trends?',
-                'Generate a business performance report',
-                'Predict next month\'s revenue'
-            ];
+            // Create diverse suggestions that cover different hotel management aspects
+            const suggestionService = new SuggestionService();
+            // Force 'off-topic' context to get diverse, on-topic suggestions
+            const suggestions = suggestionService.generateSuggestions('off-topic');
             
             const suggestionDiv = document.createElement('div');
             suggestionDiv.className = 'message-suggestions';
             suggestionDiv.innerHTML = `
                 <div class="chat-suggestions">
-                    ${suggestions.map(text => {
-                        const sanitizedText = this.sanitizeHtml(text);
+                    ${suggestions.map(s => {
+                        const sanitizedText = this.sanitizeHtml(s.text);
                         return `
                             <div class="suggestion-chip" 
                                  data-suggestion="${sanitizedText}"
@@ -2596,6 +2626,472 @@ Booking Metrics:
                 .reduce((sum, r) => sum + (r.amount || 0), 0);
 
             return historicalRevenue;
+        },
+
+        async generateMonthlyComparisonReport(data) {
+            try {
+                // Get current and previous month data
+                const now = new Date();
+                const currentMonthName = now.toLocaleString('default', { month: 'long' });
+                const currentMonthShort = now.toLocaleString('default', { month: 'short' });
+                const currentYear = now.getFullYear();
+                
+                // Calculate previous month
+                const prevMonth = new Date(now);
+                prevMonth.setMonth(now.getMonth() - 1);
+                const prevMonthName = prevMonth.toLocaleString('default', { month: 'long' });
+                const prevMonthShort = prevMonth.toLocaleString('default', { month: 'short' });
+                const prevMonthYear = prevMonth.getFullYear();
+                
+                // Log period boundaries for debugging
+                console.log('Generating comparison for:', {
+                    currentMonth: currentMonthName,
+                    currentYear,
+                    prevMonth: prevMonthName,
+                    prevMonthYear
+                });
+                
+                // Calculate metrics for current month
+                const currentMonthMetrics = await this.calculateMonthMetrics(data, currentMonthShort, currentYear);
+                
+                // Calculate metrics for previous month
+                const prevMonthMetrics = await this.calculateMonthMetrics(data, prevMonthShort, prevMonthYear);
+                
+                // Calculate percentage changes
+                const changes = {
+                    occupancy: this.calculateChange(prevMonthMetrics.occupancy, currentMonthMetrics.occupancy),
+                    revenue: this.calculateChange(prevMonthMetrics.revenue, currentMonthMetrics.revenue),
+                    adr: this.calculateChange(prevMonthMetrics.adr, currentMonthMetrics.adr),
+                    revpar: this.calculateChange(prevMonthMetrics.revpar, currentMonthMetrics.revpar),
+                    bookingCount: this.calculateChange(prevMonthMetrics.bookings.count, currentMonthMetrics.bookings.count),
+                    cancelRate: this.calculateChange(prevMonthMetrics.bookings.cancelRate, currentMonthMetrics.bookings.cancelRate),
+                    avgStay: this.calculateChange(prevMonthMetrics.bookings.avgStayLength, currentMonthMetrics.bookings.avgStayLength)
+                };
+                
+                // Generate performance indicators
+                const indicators = {
+                    overall: this.determineOverallPerformance(changes),
+                    occupancy: this.getChangeIndicator(changes.occupancy),
+                    revenue: this.getChangeIndicator(changes.revenue),
+                    adr: this.getChangeIndicator(changes.adr),
+                    revpar: this.getChangeIndicator(changes.revpar),
+                    bookings: this.getChangeIndicator(changes.bookingCount),
+                    cancelRate: this.getChangeIndicator(-changes.cancelRate) // Reverse indicator for cancellation rate
+                };
+                
+                // Generate insights based on changes
+                const insights = this.generateComparisonInsights(currentMonthMetrics, prevMonthMetrics, changes);
+                
+                // Generate recommendations
+                const recommendations = this.generateMonthlyComparisonRecommendations(changes, currentMonthMetrics);
+                
+                // Format the response
+                return `Monthly Performance Comparison: ${prevMonthName} vs ${currentMonthName} ${indicators.overall}\n
+Overall Performance Summary:
+• ${this.formatPerformanceStatus(indicators.overall, changes)}
+
+Occupancy Metrics ${indicators.occupancy}:
+• Current Month: ${currentMonthMetrics.occupancy.toFixed(1)}% occupancy
+• Previous Month: ${prevMonthMetrics.occupancy.toFixed(1)}% occupancy
+• Change: ${this.formatChange(changes.occupancy)}% ${this.getChangeDescription(changes.occupancy, "occupancy")}
+
+Revenue Performance ${indicators.revenue}:
+• Current Month: $${this.formatNumber(currentMonthMetrics.revenue)}
+• Previous Month: $${this.formatNumber(prevMonthMetrics.revenue)}
+• Change: ${this.formatChange(changes.revenue)}% (${this.formatCurrencyDifference(currentMonthMetrics.revenue - prevMonthMetrics.revenue)})
+
+Key Performance Indicators:
+• ADR: $${currentMonthMetrics.adr.toFixed(2)} ${this.formatChange(changes.adr, true)}%
+• RevPAR: $${currentMonthMetrics.revpar.toFixed(2)} ${this.formatChange(changes.revpar, true)}%
+• Booking Volume: ${currentMonthMetrics.bookings.count} bookings ${this.formatChange(changes.bookingCount, true)}%
+• Cancellation Rate: ${currentMonthMetrics.bookings.cancelRate.toFixed(1)}% ${this.formatChange(-changes.cancelRate, true)}%
+• Average Stay Length: ${currentMonthMetrics.bookings.avgStayLength.toFixed(1)} days ${this.formatChange(changes.avgStay, true)}%
+
+Room Type Performance:
+${this.formatRoomTypeComparison(currentMonthMetrics.roomTypes, prevMonthMetrics.roomTypes)}
+
+Channel Distribution:
+${this.formatChannelComparison(currentMonthMetrics.channels, prevMonthMetrics.channels)}
+
+${insights}
+
+${recommendations}
+
+${this.generateMarketComparisonNote(currentMonthMetrics, changes)}`;
+            } catch (error) {
+                console.error('Error generating monthly comparison report:', error);
+                return "I apologize, but I encountered an issue generating the monthly comparison report. Please try again later.";
+            }
+        },
+
+        async calculateMonthMetrics(data, monthShort, year) {
+            // Filter data for the specified month
+            const monthBookings = data.bookings.filter(booking => {
+                const bookingDate = new Date(booking.checkIn?.toDate?.() || booking.checkIn);
+                return bookingDate.toLocaleString('default', { month: 'short' }) === monthShort && 
+                       bookingDate.getFullYear() === year;
+            });
+            
+            const confirmedBookings = monthBookings.filter(b => 
+                b.status?.toLowerCase() === 'confirmed' || b.status?.toLowerCase() === 'completed'
+            );
+            
+            const cancelledBookings = monthBookings.filter(b => 
+                b.status?.toLowerCase() === 'cancelled'
+            );
+            
+            // Calculate room occupancy
+            const occupancyRate = data.rooms.length ? 
+                (confirmedBookings.length / data.rooms.length) * 100 : 0;
+            
+            // Calculate revenue
+            const totalRevenue = confirmedBookings.reduce((sum, booking) => 
+                sum + (booking.totalPrice || booking.totalAmount || 0), 0);
+            
+            // Calculate ADR (Average Daily Rate)
+            const totalRoomNights = confirmedBookings.reduce((sum, booking) => {
+                const checkIn = new Date(booking.checkIn?.toDate?.() || booking.checkIn);
+                const checkOut = new Date(booking.checkOut?.toDate?.() || booking.checkOut);
+                const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
+                return sum + nights;
+            }, 0);
+            
+            const adr = totalRoomNights ? totalRevenue / totalRoomNights : 0;
+            
+            // Calculate RevPAR (Revenue Per Available Room)
+            const totalRooms = data.rooms.length;
+            const daysInMonth = new Date(year, monthShort === 'Feb' ? 2 : (new Date().getMonth() + 1), 0).getDate();
+            const totalRoomNightsAvailable = totalRooms * daysInMonth;
+            
+            const revpar = totalRoomNightsAvailable ? totalRevenue / totalRoomNightsAvailable : 0;
+            
+            // Calculate average stay length
+            const avgStayLength = confirmedBookings.length ? totalRoomNights / confirmedBookings.length : 0;
+            
+            // Calculate room type distribution
+            const roomTypes = this.calculateRoomTypeDistribution(confirmedBookings);
+            
+            // Calculate booking channel distribution
+            const channels = this.calculateChannelDistribution(confirmedBookings);
+            
+            // Calculate cancellation rate
+            const cancelRate = monthBookings.length ? 
+                (cancelledBookings.length / monthBookings.length) * 100 : 0;
+            
+            return {
+                occupancy: occupancyRate,
+                revenue: totalRevenue,
+                adr: adr,
+                revpar: revpar,
+                bookings: {
+                    count: confirmedBookings.length,
+                    cancelled: cancelledBookings.length,
+                    cancelRate: cancelRate,
+                    avgStayLength: avgStayLength
+                },
+                roomTypes: roomTypes,
+                channels: channels
+            };
+        },
+
+        calculateChannelDistribution(bookings) {
+            // Default channels
+            const channels = {
+                'Direct': 0,
+                'OTA': 0,
+                'Corporate': 0,
+                'Travel Agent': 0,
+                'Other': 0
+            };
+            
+            bookings.forEach(booking => {
+                const channel = booking.bookingChannel || booking.bookingSource || 'Other';
+                
+                if (channels.hasOwnProperty(channel)) {
+                    channels[channel]++;
+                } else if (channel.includes('book') || channel.includes('expedia') || 
+                          channel.includes('airbnb') || channel.includes('trip') ||
+                          channel.includes('hotels') || channel.includes('travel')) {
+                    channels['OTA']++;
+                } else if (channel.includes('corp') || channel.includes('business')) {
+                    channels['Corporate']++;
+                } else if (channel.includes('agent') || channel.includes('agency')) {
+                    channels['Travel Agent']++;
+                } else {
+                    channels['Other']++;
+                }
+            });
+            
+            // Calculate percentages
+            const total = Object.values(channels).reduce((sum, count) => sum + count, 0);
+            
+            if (total > 0) {
+                Object.keys(channels).forEach(key => {
+                    channels[key] = {
+                        count: channels[key],
+                        percentage: (channels[key] / total * 100)
+                    };
+                });
+            } else {
+                Object.keys(channels).forEach(key => {
+                    channels[key] = {
+                        count: 0,
+                        percentage: 0
+                    };
+                });
+            }
+            
+            return channels;
+        },
+
+        calculateChange(prevValue, currentValue) {
+            if (prevValue === 0) {
+                return currentValue > 0 ? 100 : 0;
+            }
+            
+            return ((currentValue - prevValue) / Math.abs(prevValue)) * 100;
+        },
+
+        getChangeIndicator(change) {
+            if (change > 15) return '📈';
+            if (change > 5) return '⬆️';
+            if (change > -5) return '↔️';
+            if (change > -15) return '⬇️';
+            return '📉';
+        },
+
+        formatChange(change, withSymbol = false) {
+            const formatted = Math.abs(change).toFixed(1);
+            if (withSymbol) {
+                return change >= 0 ? `+${formatted}` : `-${formatted}`;
+            }
+            return formatted;
+        },
+
+        formatCurrencyDifference(difference) {
+            const prefix = difference >= 0 ? '+$' : '-$';
+            return `${prefix}${Math.abs(difference).toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
+        },
+
+        getChangeDescription(change, metric) {
+            if (change > 15) return `significant increase in ${metric}`;
+            if (change > 5) return `moderate increase in ${metric}`;
+            if (change > -5 && change < 5) return `stable ${metric}`;
+            if (change > -15) return `moderate decrease in ${metric}`;
+            return `significant decrease in ${metric}`;
+        },
+
+        determineOverallPerformance(changes) {
+            // Weight the KPIs
+            const weightedScore = 
+                (changes.revenue * 0.35) + 
+                (changes.occupancy * 0.25) + 
+                (changes.revpar * 0.2) + 
+                (changes.adr * 0.1) + 
+                (changes.bookingCount * 0.1) - 
+                (changes.cancelRate * 0.05);  // Cancellation rate is inverse
+            
+            if (weightedScore > 15) return '🌟';
+            if (weightedScore > 5) return '📈';
+            if (weightedScore > -5) return '📊';
+            if (weightedScore > -15) return '📉';
+            return '⚠️';
+        },
+
+        formatPerformanceStatus(indicator, changes) {
+            const revenueStatus = changes.revenue > 0 ? "increased" : "decreased";
+            const occupancyStatus = changes.occupancy > 0 ? "higher" : "lower";
+            
+            switch(indicator) {
+                case '🌟':
+                    return `Outstanding performance with ${Math.abs(changes.revenue).toFixed(1)}% ${revenueStatus} revenue and ${Math.abs(changes.occupancy).toFixed(1)}% ${occupancyStatus} occupancy`;
+                case '📈':
+                    return `Strong performance with ${Math.abs(changes.revenue).toFixed(1)}% ${revenueStatus} revenue and ${Math.abs(changes.occupancy).toFixed(1)}% ${occupancyStatus} occupancy`;
+                case '📊':
+                    return `Stable performance with ${Math.abs(changes.revenue).toFixed(1)}% ${revenueStatus} revenue and ${Math.abs(changes.occupancy).toFixed(1)}% ${occupancyStatus} occupancy`;
+                case '📉':
+                    return `Declining performance with ${Math.abs(changes.revenue).toFixed(1)}% ${revenueStatus} revenue and ${Math.abs(changes.occupancy).toFixed(1)}% ${occupancyStatus} occupancy`;
+                case '⚠️':
+                    return `Significant decline with ${Math.abs(changes.revenue).toFixed(1)}% ${revenueStatus} revenue and ${Math.abs(changes.occupancy).toFixed(1)}% ${occupancyStatus} occupancy`;
+                default:
+                    return `Performance changed with ${Math.abs(changes.revenue).toFixed(1)}% ${revenueStatus} revenue and ${Math.abs(changes.occupancy).toFixed(1)}% ${occupancyStatus} occupancy`;
+            }
+        },
+
+        formatRoomTypeComparison(current, previous) {
+            const lines = [];
+            
+            // Merge all room types from current and previous
+            const allRoomTypes = new Set([...Object.keys(current), ...Object.keys(previous)]);
+            
+            allRoomTypes.forEach(roomType => {
+                const currentData = current[roomType] || { count: 0, percentage: 0 };
+                const prevData = previous[roomType] || { count: 0, percentage: 0 };
+                const change = this.calculateChange(prevData.percentage, currentData.percentage);
+                const indicator = this.getChangeIndicator(change);
+                
+                lines.push(`• ${roomType}: ${currentData.percentage.toFixed(1)}% of bookings ${indicator} (${this.formatChange(change, true)}%)`);
+            });
+            
+            return lines.join('\n');
+        },
+
+        formatChannelComparison(current, previous) {
+            const lines = [];
+            
+            // Show only top channels with changes
+            const topChannels = Object.keys(current)
+                .sort((a, b) => current[b].count - current[a].count)
+                .slice(0, 3);
+            
+            topChannels.forEach(channel => {
+                const currentData = current[channel];
+                const prevData = previous[channel] || { count: 0, percentage: 0 };
+                const change = this.calculateChange(prevData.percentage, currentData.percentage);
+                const indicator = this.getChangeIndicator(change);
+                
+                lines.push(`• ${channel}: ${currentData.percentage.toFixed(1)}% of bookings ${indicator} (${this.formatChange(change, true)}%)`);
+            });
+            
+            return lines.join('\n');
+        },
+
+        generateComparisonInsights(current, previous, changes) {
+            const insights = [];
+            
+            // RevPAR vs Occupancy analysis
+            if (changes.revpar > 0 && changes.occupancy < 0) {
+                insights.push("• Revenue per room has increased despite lower occupancy, indicating successful rate optimization");
+            } else if (changes.revpar < 0 && changes.occupancy > 0) {
+                insights.push("• Despite higher occupancy, revenue per room has decreased, suggesting potential rate strategy issues");
+            }
+            
+            // ADR analysis
+            if (changes.adr > 10) {
+                insights.push("• Significant increase in average daily rate suggests successful premium pricing or shift to higher-value room types");
+            } else if (changes.adr < -10) {
+                insights.push("• Notable decrease in average daily rate may indicate pricing pressure or competitive market conditions");
+            }
+            
+            // Cancellation analysis
+            if (changes.cancelRate > 15) {
+                insights.push("• Rising cancellation rate deserves attention - consider reviewing booking policies or pre-arrival communications");
+            } else if (changes.cancelRate < -15) {
+                insights.push("• Improved cancellation rate indicates more committed bookings - policy changes or guest communications are working well");
+            }
+            
+            // Length of stay analysis
+            if (changes.avgStay > 10) {
+                insights.push("• Increased average stay length is improving operational efficiency and reducing turnover costs");
+            } else if (changes.avgStay < -10) {
+                insights.push("• Shorter average stays are increasing operational demands and turnover costs");
+            }
+            
+            // Channel mix analysis
+            const directChannel = current.channels['Direct'];
+            const prevDirectChannel = previous.channels['Direct'] || { percentage: 0 };
+            if (directChannel && prevDirectChannel) {
+                const directChange = this.calculateChange(prevDirectChannel.percentage, directChannel.percentage);
+                if (directChange > 10) {
+                    insights.push("• Direct bookings have increased significantly, reducing commission costs and improving margins");
+                } else if (directChange < -10) {
+                    insights.push("• Decrease in direct bookings is increasing reliance on third-party channels and related commissions");
+                }
+            }
+            
+            // Add seasonal context if appropriate
+            const now = new Date();
+            const currentMonth = now.getMonth();
+            if ((currentMonth === 11 || currentMonth === 0) && changes.occupancy < 0) {
+                insights.push("• Seasonal fluctuations may be affecting current performance metrics during this holiday period");
+            } else if ((currentMonth === 5 || currentMonth === 6) && changes.occupancy > 0) {
+                insights.push("• Current performance is benefiting from peak summer travel season");
+            }
+            
+            if (insights.length === 0) {
+                insights.push("• Performance metrics are showing stability across key indicators");
+                insights.push("• No significant anomalies or trends requiring immediate attention");
+            }
+            
+            return `Key Insights:\n${insights.join('\n')}`;
+        },
+
+        generateMonthlyComparisonRecommendations(changes, currentMetrics) {
+            const recommendations = [];
+            
+            // Occupancy-based recommendations
+            if (changes.occupancy < -10) {
+                recommendations.push("• Implement targeted promotions or packages to boost occupancy for remaining days this month");
+                recommendations.push("• Review competitor pricing and adjust rate strategy if market conditions have shifted");
+            } else if (changes.occupancy > 15) {
+                recommendations.push("• Consider opportunities to increase rates during high-demand periods");
+                recommendations.push("• Analyze high-occupancy patterns to optimize staffing and operational efficiency");
+            }
+            
+            // Revenue-based recommendations
+            if (changes.revenue < -10) {
+                recommendations.push("• Evaluate ancillary revenue opportunities to offset room revenue declines");
+                recommendations.push("• Consider length-of-stay incentives to maximize total guest value");
+            } else if (changes.revenue > 15 && changes.occupancy < 5) {
+                recommendations.push("• Current pricing strategy is effective - continue optimizing rates based on demand patterns");
+            }
+            
+            // Room type recommendations
+            const roomTypes = Object.entries(currentMetrics.roomTypes)
+                .sort((a, b) => a[1].percentage - b[1].percentage);
+            
+            if (roomTypes.length > 0) {
+                const leastPopular = roomTypes[0];
+                if (leastPopular[1].percentage < 10) {
+                    recommendations.push(`• Review pricing and positioning of ${leastPopular[0]} rooms which are underperforming in the mix`);
+                }
+            }
+            
+            // Channel recommendations
+            const direct = currentMetrics.channels['Direct'];
+            if (direct && direct.percentage < 20) {
+                recommendations.push("• Focus on enhancing direct booking incentives to reduce commission costs and improve margins");
+            }
+            
+            // Seasonal recommendations
+            const now = new Date();
+            const currentMonth = now.getMonth();
+            const lookingTowardsPeak = (currentMonth >= 2 && currentMonth <= 4) || (currentMonth >= 9 && currentMonth <= 10);
+            if (lookingTowardsPeak) {
+                recommendations.push("• Begin advance planning for upcoming peak season with anticipatory rate strategies");
+            }
+            
+            if (recommendations.length === 0) {
+                recommendations.push("• Continue monitoring current performance trends");
+                recommendations.push("• Maintain successful pricing and distribution strategies");
+            }
+            
+            return `Strategic Recommendations:\n${recommendations.join('\n')}`;
+        },
+
+        generateMarketComparisonNote(currentMetrics, changes) {
+            // This could be enhanced with actual market data when available
+            const marketOccupancy = 62.5; // Example industry average
+            const marketADR = 124.75;     // Example industry average
+            
+            const occupancyDiff = currentMetrics.occupancy - marketOccupancy;
+            const adrDiff = currentMetrics.adr - marketADR;
+            
+            let note = "Market Position:\n";
+            
+            if (occupancyDiff > 5 && adrDiff > 5) {
+                note += "• Outperforming market in both occupancy and rate - maintaining premium position";
+            } else if (occupancyDiff > 5 && adrDiff < 0) {
+                note += "• Higher than market occupancy but lower rates - potential opportunity for rate optimization";
+            } else if (occupancyDiff < 0 && adrDiff > 5) {
+                note += "• Maintaining premium rates with lower occupancy compared to market averages";
+            } else if (occupancyDiff < -5 && adrDiff < -5) {
+                note += "• Currently below market performance in both occupancy and rate - review competitive positioning";
+            } else {
+                note += "• Performance generally aligned with estimated market averages";
+            }
+            
+            return note;
         }
     },
     async mounted() {
