@@ -107,219 +107,118 @@
             return;
         }
         
-        // Clear existing cards
-        container.innerHTML = '';
-        
-        lodgeData.forEach((lodge, index) => {
-            console.log(`Creating card ${index + 1} for ${lodge.name}`);
-            const card = document.createElement('article');
-            card.className = 'lodge-card';
-            card.style.opacity = '1'; // Ensure visibility
-            card.style.display = 'block'; // Ensure display
-            card.dataset.propertyType = lodge.propertyType || 'hotel';
-            card.dataset.barangay = lodge.barangay;
-            
-            card.innerHTML = `
-                <img src="${lodge.image}" alt="${lodge.name}" class="lodge-image">
-                <button class="favorite-btn" aria-label="Add to favorites">
-                    <i class="ri-heart-line"></i>
-                </button>
-                <div class="content">
-                    <div class="flex justify-between items-start">
-                        <h2>${lodge.name}</h2>
-                        <div class="rating">
-                            <i class="ri-star-fill"></i>
-                            <span>${lodge.rating}</span>
-                        </div>
-                    </div>
-                    <div class="location">
-                        <i class="ri-map-pin-line"></i>
-                        <span>${lodge.location}</span>
-                    </div>
-                    <div class="amenities">
-                        ${lodge.amenities.map(amenity => 
-                            `<span class="amenity-tag">${amenity}</span>`
-                        ).join('')}
-                    </div>
-                    <div class="price">
-                        ₱${lodge.price.toLocaleString()}
-                        <span>/night</span>
-                    </div>
+        // Show loading state
+        container.innerHTML = `
+            <div class="loading-state p-4 text-center">
+                <div class="animate-spin h-8 w-8 mx-auto mb-4">
+                    <i class="ri-loader-4-line text-2xl text-blue-600"></i>
                 </div>
-            `;
-            
-            // Add click event listener to open lodge details
-            card.addEventListener('click', (e) => {
-                if (!e.target.closest('.favorite-btn')) {
-                    showLodgeDetails(lodge);
+                <p class="text-gray-600">Loading available rooms...</p>
+            </div>
+        `;
+
+        // Fetch rooms from Firestore
+        const fetchRooms = async () => {
+            try {
+                // Import Firebase modules
+                const { collection, getDocs, query, where } = await import('../../AdminSide/firebase.js');
+                const { db } = await import('../../AdminSide/firebase.js');
+
+                // Only fetch available rooms
+                const roomsRef = collection(db, 'rooms');
+                const roomsQuery = query(roomsRef, where('status', '==', 'Available'));
+                const roomsSnapshot = await getDocs(roomsQuery);
+                
+                // Clear loading state
+                container.innerHTML = '';
+
+                if (roomsSnapshot.empty) {
+                    container.innerHTML = `
+                        <div class="no-rooms p-4 text-center">
+                            <i class="ri-hotel-bed-line text-4xl text-gray-400 mb-2"></i>
+                            <p class="text-gray-600">No rooms available at the moment.</p>
+                        </div>
+                    `;
+                    return;
                 }
-            });
-            
-            container.appendChild(card);
-            
-            // Force a reflow to ensure the card is visible
-            void card.offsetHeight;
-        });
-        
-        console.log('All lodge cards created successfully');
-        updateResultsCount();
+
+                const rooms = roomsSnapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+
+                rooms.forEach(lodge => {
+                    const card = document.createElement('article');
+                    card.className = 'lodge-card';
+                    card.style.opacity = '1';
+                    card.style.display = 'block';
+                    card.dataset.propertyType = lodge.propertyType || 'hotel';
+                    card.dataset.barangay = lodge.barangay;
+                    
+                    card.innerHTML = `
+                        <img src="${lodge.image || '../components/default-room.jpg'}" alt="${lodge.name}" class="lodge-image">
+                        <button class="favorite-btn" aria-label="Add to favorites">
+                            <i class="ri-heart-line"></i>
+                        </button>
+                        <div class="content">
+                            <div class="flex justify-between items-start">
+                                <h2>${lodge.name}</h2>
+                                <div class="rating">
+                                    <i class="ri-star-fill"></i>
+                                    <span>${lodge.rating || '0.0'}</span>
+                                </div>
+                            </div>
+                            <div class="location">
+                                <i class="ri-map-pin-line"></i>
+                                <span>${lodge.location}</span>
+                            </div>
+                            <div class="amenities">
+                                ${(lodge.amenities || []).map(amenity => 
+                                    `<span class="amenity-tag">${amenity}</span>`
+                                ).join('')}
+                            </div>
+                            <div class="price">
+                                ₱${lodge.price.toLocaleString()}
+                                <span>/night</span>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Add click event listener to open lodge details
+                    card.addEventListener('click', (e) => {
+                        if (!e.target.closest('.favorite-btn')) {
+                            showLodgeDetails(lodge);
+                        }
+                    });
+                    
+                    container.appendChild(card);
+                    void card.offsetHeight;
+                });
+
+                console.log('All lodge cards created successfully');
+                updateResultsCount(rooms.length);
+
+                // Update markers on map if it exists
+                if (window.map && window.markers) {
+                    addMarkers(rooms);
+                }
+
+            } catch (error) {
+                console.error('Error fetching rooms:', error);
+                container.innerHTML = `
+                    <div class="error-state p-4 text-center">
+                        <i class="ri-error-warning-line text-4xl text-red-500 mb-2"></i>
+                        <p class="text-red-600">Error loading rooms. Please try again later.</p>
+                        <button onclick="createLodgeCards()" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                            Retry
+                        </button>
+                    </div>
+                `;
+            }
+        };
+
+        fetchRooms();
     }
-
-    // Lodge data
-    const lodgeData = [
-        {
-            id: 1,
-            name: "Pine Haven Lodge",
-            location: "Camp John Hay, Baguio City",
-            barangay: "Camp 7",
-            image: "../components/pinehaven.jpg",
-            price: 6500,
-            amenities: ["Mountain View", "Fireplace", "WiFi"],
-            rating: 4.8,
-            propertyType: "hotel",
-            coordinates: {
-                lat: 16.4096,
-                lng: 120.6010
-            }
-        },
-        {
-            id: 2,
-            name: "Mountain Breeze Lodge",
-            location: "Session Road Area, Baguio City",
-            barangay: "Session Road",
-            image: "../components/6.jpg",
-            price: 3200,
-            amenities: ["City View", "Kitchen", "Parking"],
-            rating: 4.5,
-            propertyType: "resort",
-            coordinates: {
-                lat: 16.4145,
-                lng: 120.5960
-            }
-        },
-        {
-            id: 3,
-            name: "Baguio Hillside Retreat",
-            location: "Burnham Park, Baguio City",
-            barangay: "Burnham-Legarda",
-            image: "../components/3.jpg",
-            price: 4800,
-            amenities: ["Mountain View", "Kitchen", "WiFi", "Parking"],
-            rating: 4.7,
-            propertyType: "vacation-home",
-            coordinates: {
-                lat: 16.4123,
-                lng: 120.5925
-            }
-        },
-        {
-            id: 5,
-            name: "Super Apartment - Room 6",
-            location: "City Center, Baguio City",
-            barangay: "City Camp Central",
-            image: "../components/SuperApartmentRoom6.jpg",
-            price: 3200,
-            amenities: ["City View", "WiFi", "Kitchen"],
-            rating: 4.4,
-            propertyType: "apartment",
-            coordinates: {
-                lat: 16.4123,
-                lng: 120.5960
-            }
-        },
-
-        {
-            id: 4,
-            name: "The Forest Lodge",
-            location: "Session Road Area, Baguio City",
-            barangay: "Session Road",
-            image: "../components/4.jpg",
-            price: 2800,
-            amenities: ["City View", "WiFi", "Restaurant"],
-            rating: 4.3,
-            propertyType: "hotel",
-            coordinates: {
-                lat: 16.4156,
-                lng: 120.5964
-            }
-        },
-        {
-            id: 6,
-            name: "Wright Park Manor",
-            location: "Wright Park, Baguio City",
-            barangay: "Kisad",
-            image: "../components/7.jpg",
-            price: 5200,
-            amenities: ["Mountain View", "Kitchen", "Parking", "Pet Friendly"],
-            rating: 4.6,
-            propertyType: "bed-breakfast",
-            coordinates: {
-                lat: 16.4105,
-                lng: 120.6287
-            }
-        },
-        {
-            id: 7,
-            name: "Highland Haven",
-            location: "Burnham Park, Baguio City",
-            barangay: "Burnham-Legarda",
-            image: "../components/8.jpg",
-            price: 4100,
-            amenities: ["City View", "WiFi", "Fitness Center"],
-            rating: 4.4,
-            propertyType: "hotel",
-            coordinates: {
-                lat: 16.4115,
-                lng: 120.5932
-            }
-        },
-        {
-            id: 8,
-            name: "Sunset View Villa",
-            location: "Camp John Hay, Baguio City",
-            barangay: "Camp 7",
-            image: "../components/9.jpg",
-            price: 8900,
-            amenities: ["Mountain View", "Pool", "Kitchen", "Fireplace"],
-            rating: 4.9,
-            propertyType: "vacation-home",
-            coordinates: {
-                lat: 16.4089,
-                lng: 120.6015
-            }
-        },
-        {
-            id: 9,
-            name: "Cozy Corner B&B",
-            location: "Wright Park, Baguio City",
-            barangay: "Kisad",
-            image: "../components/10.jpg",
-            price: 3500,
-            amenities: ["Garden View", "Free Breakfast", "WiFi"],
-            rating: 4.5,
-            propertyType: "bed-breakfast",
-            coordinates: {
-                lat: 16.4112,
-                lng: 120.6291
-            }
-        },
-        {
-            id: 10,
-            name: "The Manor Hotel",
-            location: "Camp John Hay, Baguio City",
-            barangay: "Camp 7",
-            image: "../components/11.jpg",
-            price: 9500,
-            amenities: ["Mountain View", "Spa", "Restaurant", "Room Service"],
-            rating: 4.8,
-            propertyType: "hotel",
-            coordinates: {
-                lat: 16.4098,
-                lng: 120.6018
-            }
-        },
-
-    ];
 
     // Barangay data
     const barangays = [

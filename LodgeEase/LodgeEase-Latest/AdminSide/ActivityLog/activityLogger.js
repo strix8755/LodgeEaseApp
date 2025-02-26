@@ -17,34 +17,39 @@ export class ActivityLogger {
         this.auth = getAuth();
     }
 
-    async logActivity(actionType, description) {
+    async logActivity(actionType, description, module = '') {
         try {
             const user = this.auth.currentUser;
             if (!user) {
-                console.warn('No user logged in, waiting for auth...');
-                // Wait for a short time to see if auth completes
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                const retryUser = this.auth.currentUser;
-                if (!retryUser) {
-                    throw new Error('User not authenticated');
-                }
+                throw new Error('User not authenticated');
             }
 
             const activityData = {
                 timestamp: serverTimestamp(),
                 userId: user.uid,
                 userEmail: user.email,
-                userName: user.email, // Add this line to ensure userName is set
+                userName: user.email,
                 actionType: actionType,
-                details: description  // Keep the description exactly as passed
+                details: description,
+                module: module,
+                createdAt: serverTimestamp()
             };
 
-            await addDoc(collection(this.db, 'activityLogs'), activityData);
-            console.log('Activity logged successfully:', activityData);
+            const docRef = await addDoc(collection(this.db, 'activityLogs'), activityData);
+            console.log('Activity logged successfully:', {
+                docId: docRef.id,
+                ...activityData
+            });
+            return docRef;
         } catch (error) {
             console.error('Error logging activity:', error);
-            throw error; // Propagate error for handling
+            throw error;
         }
+    }
+
+    // Specific method for room deletions
+    async logRoomDeletion(roomDetails, module = 'Room Management') {
+        return this.logActivity('room_deletion', `Room deleted: ${roomDetails}`, module);
     }
 }
 

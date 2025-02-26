@@ -166,6 +166,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.addEventListener('unload', () => {
         if (unsubscribe) unsubscribe();
     });
+
+    // Update the action filter options in activity_log.html
+    const actionFilter = document.getElementById('actionFilter');
+    if (actionFilter) {
+        const roomOption = document.createElement('option');
+        roomOption.value = 'room_deletion';
+        roomOption.textContent = 'Room Deletions';
+        actionFilter.appendChild(roomOption);
+    }
 });
 
 async function setupFilters() {
@@ -210,108 +219,104 @@ async function setupFilters() {
     }
 }
 
-// Replace loadActivityLogs function with real-time listener
+// Update the setupActivityLogListener function to include room deletions
 function setupActivityLogListener() {
-    console.log('Setting up real-time activity log listener...');
-    
     const logsContainer = document.getElementById('activityLogTable');
     const loadingState = document.getElementById('loadingState');
+    
     if (!logsContainer || !loadingState) {
         console.error('Required DOM elements not found');
         return;
     }
 
     try {
-        // Show loading state
         loadingState.classList.remove('hidden');
-        logsContainer.innerHTML = '';
-
+        
         const logsRef = collection(db, 'activityLogs');
-        let logsQuery = query(logsRef, orderBy('timestamp', 'desc'));
+        // Create base query
+        let baseQuery = [orderBy('timestamp', 'desc')];
 
-        // Set up real-time listener with error boundary
+        // Add filters
+        const userFilter = document.getElementById('userFilter')?.value;
+        const actionFilter = document.getElementById('actionFilter')?.value;
+        const dateFilter = document.getElementById('dateFilter')?.value;
+
+        if (userFilter) {
+            baseQuery.push(where('userId', '==', userFilter));
+        }
+
+        if (actionFilter) {
+            baseQuery.push(where('actionType', '==', actionFilter));
+        }
+
+        // Create the query with all conditions
+        let logsQuery = query(logsRef, ...baseQuery);
+
         return onSnapshot(logsQuery, (snapshot) => {
-            try {
-                // Hide loading state
-                loadingState.classList.add('hidden');
-
-                if (snapshot.empty) {
-                    logsContainer.innerHTML = `
-                        <tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">No activity logs found</td></tr>
-                    `;
-                    return;
-                }
-
-                const logsHtml = [];
-                let filteredCount = 0;
-
-                snapshot.forEach(doc => {
-                    try {
-                        const log = doc.data();
-                        const timestamp = log.timestamp?.toDate() || new Date();
-                        
-                        // Improved filter handling
-                        const userFilter = document.getElementById('userFilter')?.value;
-                        const actionFilter = document.getElementById('actionFilter')?.value;
-                        const dateFilter = document.getElementById('dateFilter')?.value;
-
-                        // Debug logging
-                        console.debug('Filtering log:', {
-                            userFilter,
-                            actionFilter,
-                            dateFilter,
-                            logUserId: log.userId,
-                            logUserName: log.userName,
-                            logActionType: log.actionType,
-                            logTimestamp: timestamp
-                        });
-
-                        // Apply filters with null checks
-                        if (userFilter && (log.userId !== userFilter && log.userName !== userFilter)) return;
-                        if (actionFilter && log.actionType?.toLowerCase() !== actionFilter.toLowerCase()) return;
-                        if (dateFilter) {
-                            const logDate = timestamp.toISOString().split('T')[0];
-                            if (logDate !== dateFilter) return;
-                        }
-
-                        filteredCount++;
-                        logsHtml.push(`
-                            <tr class="hover:bg-gray-50">
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${timestamp.toLocaleString()}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${log.userName || 'Unknown User'}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                    <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getActionColor(log.actionType)}">
-                                        ${log.actionType?.toUpperCase() || 'UNKNOWN'}
-                                    </span>
-                                </td>
-                                <td class="px-6 py-4 text-sm text-gray-500">${log.details || 'No details'}</td>
-                            </tr>
-                        `);
-                    } catch (err) {
-                        console.error('Error processing log entry:', err);
-                    }
-                });
-
-                if (filteredCount === 0) {
-                    logsContainer.innerHTML = `
-                        <tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">No matching logs found</td></tr>
-                    `;
-                } else {
-                    logsContainer.innerHTML = logsHtml.join('');
-                }
-
-                console.log(`Displayed ${filteredCount} logs after filtering`);
-
-            } catch (err) {
-                console.error('Error in snapshot handler:', err);
-                handleError(err, logsContainer, loadingState);
+            loadingState.classList.add('hidden');
+            
+            if (snapshot.empty) {
+                logsContainer.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="px-6 py-4 text-center text-gray-500">
+                            No activity logs found
+                        </td>
+                    </tr>
+                `;
+                return;
             }
+
+            const logsHtml = [];
+
+            snapshot.forEach(doc => {
+                const log = doc.data();
+                const timestamp = log.timestamp?.toDate() || new Date();
+
+                // Date filter handling
+                if (dateFilter) {
+                    const logDate = timestamp.toISOString().split('T')[0];
+                    if (logDate !== dateFilter) return;
+                }
+
+                // Enhanced styling for room deletions
+                let actionClass = getActionColor(log.actionType);
+                let actionDetails = log.details || 'No details';
+
+                // Special handling for room deletions
+                if (log.actionType === 'room_deletion') {
+                    actionClass = 'bg-red-100 text-red-800';
+                    actionDetails = `🗑️ ${actionDetails}`; // Add deletion icon
+                }
+
+                logsHtml.push(`
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${timestamp.toLocaleString()}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${log.userName || 'Unknown User'}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${actionClass}">
+                                ${(log.actionType || 'UNKNOWN').toUpperCase()}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-500">
+                            ${actionDetails}
+                            ${log.module ? `<br><span class="text-xs text-gray-400">(${log.module})</span>` : ''}
+                        </td>
+                    </tr>
+                `);
+            });
+
+            logsContainer.innerHTML = logsHtml.join('');
         }, (error) => {
-            console.error('Snapshot listener error:', error);
+            console.error('Error in activity log listener:', error);
             handleError(error, logsContainer, loadingState);
         });
+
     } catch (error) {
-        console.error('Setup error:', error);
+        console.error('Error setting up activity log listener:', error);
         handleError(error, logsContainer, loadingState);
     }
 }
@@ -372,6 +377,7 @@ function createLogRow(log) {
     return row;
 }
 
+// Update the getActionColor function to include room_deletion
 function getActionColor(actionType) {
     const colors = {
         login: 'bg-green-100 text-green-800',
@@ -379,7 +385,31 @@ function getActionColor(actionType) {
         navigation: 'bg-blue-100 text-blue-800',
         booking: 'bg-purple-100 text-purple-800',
         room: 'bg-indigo-100 text-indigo-800',
+        room_deletion: 'bg-red-100 text-red-800', // Add this line
+        room_add: 'bg-green-100 text-green-800',
+        room_update: 'bg-yellow-100 text-yellow-800',
         request: 'bg-yellow-100 text-yellow-800'
     };
     return colors[actionType?.toLowerCase()] || 'bg-gray-100 text-gray-800';
 }
+
+// Add the action filter dropdown
+const actionFilterContainer = document.getElementById('actionFilterContainer');
+if (actionFilterContainer) {
+    actionFilterContainer.innerHTML = `
+        <select id="actionFilter" class="w-full border rounded px-3 py-2">
+            <option value="">All Activities</option>
+            <option value="login">Logins</option>
+            <option value="logout">Logouts</option>
+            <option value="navigation">Navigation</option>
+            <option value="booking">Booking</option>
+            <option value="room">Room Management</option>
+            <option value="room_deletion">Room Deletions</option>
+            <option value="request">Requests</option>
+        </select>
+    `;
+}
+
+// Add to room_management.js
+console.log('Deleting room:', roomDetails);
+console.log('Activity logger initialized:', activityLogger);
