@@ -261,8 +261,9 @@ ${this.generateOccupancyInsights(stats)}`;
             // Convert message to lowercase for case-insensitive matching
             const lowerMessage = message.toLowerCase();
             
-            // Define hotel/property management related keywords
+            // Define hotel/property management related keywords with expanded vocabulary
             const hotelKeywords = [
+                // Basic hotel terms
                 'room', 'booking', 'reservation', 'occupancy', 'revenue', 'hotel',
                 'property', 'guest', 'stay', 'check-in', 'check-out', 'availability',
                 'rate', 'adr', 'revpar', 'performance', 'analytics', 'forecast',
@@ -270,7 +271,86 @@ ${this.generateOccupancyInsights(stats)}`;
                 'billing', 'payment', 'report', 'maintenance', 'housekeeping', 'customer',
                 'retention', 'satisfaction', 'analysis', 'business', 'income', 'management',
                 'month', 'year', 'growth', 'comparison', 'statistics', 'data', 'pattern',
-                'optimization', 'strategy', 'pricing', 'long-term', 'short-term', 'vacancy'
+                'optimization', 'strategy', 'pricing', 'long-term', 'short-term', 'vacancy',
+                
+                // Hotel operations specific terms
+                'front desk', 'reception', 'lobby', 'concierge', 'amenities', 'facilities',
+                'service', 'turnover', 'housekeeping', 'cleaning', 'linen', 'towel', 
+                'minibar', 'key card', 'breakfast', 'dinner', 'restaurant', 'bar',
+                'conference', 'meeting room', 'event', 'function', 'banquet',
+                
+                // Business metrics
+                'profit', 'loss', 'expense', 'cost', 'budget', 'investment', 'roi', 
+                'turnover', 'cash flow', 'occupancy rate', 'length of stay', 'los',
+                'daily rate', 'average rate', 'seasonal', 'peak season', 'off season',
+                
+                // Property types and features
+                'suite', 'single', 'double', 'twin', 'king', 'queen', 'executive',
+                'standard', 'deluxe', 'premium', 'economy', 'luxury', 'view', 'balcony',
+                'bathroom', 'shower', 'bed', 'pillow', 'mattress', 'air conditioning',
+                'heating', 'wheelchair', 'accessible', 'pet-friendly', 'smoking', 'non-smoking',
+                
+                // Distribution channels
+                'ota', 'website', 'booking engine', 'travel agent', 'corporate', 'direct',
+                'walk-in', 'commission', 'channel manager', 'gds', 'global distribution',
+                
+                // Customer relationship
+                'review', 'rating', 'feedback', 'complaint', 'loyalty', 'member', 'program',
+                'vip', 'repeat guest', 'lifetime value', 'clv', 'acquisition', 'retention'
+            ];
+            
+            // Define contexts that the AI can understand
+            const hotelContexts = [
+                // Occupancy queries
+                {
+                    context: 'occupancy',
+                    patterns: [
+                        /\b(?:occupancy|vacancy|empty|full|available)\b/i,
+                        /\broom(?:s)? (?:status|availability)\b/i,
+                        /\bhow (?:many|much) (?:rooms?|occupancy)\b/i,
+                        /\bwhat is (?:our|the) occupancy\b/i
+                    ]
+                },
+                // Revenue queries
+                {
+                    context: 'revenue',
+                    patterns: [
+                        /\b(?:revenue|income|earnings|money|profit|financial)\b/i,
+                        /\bhow much (?:revenue|money|profit)\b/i,
+                        /\b(?:daily|weekly|monthly|annual) (?:revenue|income|earnings)\b/i,
+                        /\brevenue (?:per|by|for|from)\b/i
+                    ]
+                },
+                // Booking queries
+                {
+                    context: 'bookings',
+                    patterns: [
+                        /\b(?:booking|reservation|check-in|checkout|arrival|departure)\b/i,
+                        /\b(?:confirmed|pending|canceled) (?:bookings?|reservations?)\b/i,
+                        /\bbooking (?:pace|status|trend|pattern)\b/i,
+                        /\bhow many (?:bookings|reservations|guests|arrivals|departures)\b/i
+                    ]
+                },
+                // Business performance queries
+                {
+                    context: 'performance',
+                    patterns: [
+                        /\b(?:performance|kpi|metric|benchmark|comparison)\b/i,
+                        /\b(?:business|hotel|property) (?:performance|health|status)\b/i,
+                        /\bhow (?:is|are) (?:we|the hotel|our property) (?:doing|performing)\b/i,
+                        /\b(?:show|tell|give) me (?:the|our|a) (?:performance|report|summary|overview)\b/i
+                    ]
+                },
+                // Forecasting queries
+                {
+                    context: 'forecasting',
+                    patterns: [
+                        /\b(?:forecast|predict|projection|future|expect|anticipate)\b/i,
+                        /\bnext (?:day|week|month|year|quarter)\b/i,
+                        /\bwhat will (?:happen|be) (?:next|in|during)\b/i,
+                        /\bhow (?:will|would|might) (?:we|the hotel) (?:do|perform)\b/i
+                    ]
+                }
             ];
             
             // Check if the message contains any hotel-related keywords
@@ -278,8 +358,13 @@ ${this.generateOccupancyInsights(stats)}`;
                 lowerMessage.includes(keyword)
             );
             
-            // If message is too short or doesn't contain any hotel keywords, consider it off-topic
-            if (message.length < 3 || (!containsHotelKeyword && message.split(' ').length > 2)) {
+            // Check if the message matches any hotel context patterns
+            const matchesContextPattern = hotelContexts.some(context => 
+                context.patterns.some(pattern => pattern.test(lowerMessage))
+            );
+            
+            // If message is too short or doesn't contain any hotel keywords/patterns, consider it off-topic
+            if (message.length < 3 || (!containsHotelKeyword && !matchesContextPattern && message.split(' ').length > 2)) {
                 return true;
             }
             
@@ -294,7 +379,15 @@ ${this.generateOccupancyInsights(stats)}`;
                 /tell me a joke|funny/i,
                 /what is your name/i,
                 /what's your name/i,
-                /can you help me with/i
+                /can you help me with/i,
+                /thank you|thanks/i,
+                /bye|goodbye/i,
+                /how old are you/i,
+                /where are you from/i,
+                /are you human|are you a robot|are you real|are you ai/i,
+                /what time is it|what day is it|what is today/i,
+                /who made you|who created you|who built you/i,
+                /what do you think about|what's your opinion/i
             ];
             
             return offTopicPatterns.some(pattern => pattern.test(lowerMessage));
