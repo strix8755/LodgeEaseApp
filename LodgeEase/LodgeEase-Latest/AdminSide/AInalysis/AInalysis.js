@@ -177,6 +177,11 @@ new Vue({
 
         async processQuery(message) {
             try {
+                // First check if the query is off-topic
+                if (this.isOffTopicQuery(message)) {
+                    return this.generateRelevantSuggestions();
+                }
+                
                 // Check if this is a prediction-related query
                 if (message.toLowerCase().includes('predict') || 
                     message.toLowerCase().includes('forecast') ||
@@ -250,6 +255,73 @@ ${this.generateOccupancyInsights(stats)}`;
                 console.error('Error processing query:', error);
                 return "I apologize, but I'm having trouble accessing the latest data. Please try again in a moment.";
             }
+        },
+
+        isOffTopicQuery(message) {
+            // Convert message to lowercase for case-insensitive matching
+            const lowerMessage = message.toLowerCase();
+            
+            // Define hotel/property management related keywords
+            const hotelKeywords = [
+                'room', 'booking', 'reservation', 'occupancy', 'revenue', 'hotel',
+                'property', 'guest', 'stay', 'check-in', 'check-out', 'availability',
+                'rate', 'adr', 'revpar', 'performance', 'analytics', 'forecast',
+                'trend', 'metric', 'kpi', 'hospitality', 'accommodation', 'lodging',
+                'billing', 'payment', 'report', 'maintenance', 'housekeeping', 'customer',
+                'retention', 'satisfaction', 'analysis', 'business', 'income', 'management',
+                'month', 'year', 'growth', 'comparison', 'statistics', 'data', 'pattern',
+                'optimization', 'strategy', 'pricing', 'long-term', 'short-term', 'vacancy'
+            ];
+            
+            // Check if the message contains any hotel-related keywords
+            const containsHotelKeyword = hotelKeywords.some(keyword => 
+                lowerMessage.includes(keyword)
+            );
+            
+            // If message is too short or doesn't contain any hotel keywords, consider it off-topic
+            if (message.length < 3 || (!containsHotelKeyword && message.split(' ').length > 2)) {
+                return true;
+            }
+            
+            // Check for common off-topic patterns
+            const offTopicPatterns = [
+                /how are you/i,
+                /tell me about yourself/i,
+                /what can you do/i,
+                /who are you/i,
+                /hello|hi|hey/i,
+                /weather|news|sports|politics/i,
+                /tell me a joke|funny/i,
+                /what is your name/i,
+                /what's your name/i,
+                /can you help me with/i
+            ];
+            
+            return offTopicPatterns.some(pattern => pattern.test(lowerMessage));
+        },
+
+        generateRelevantSuggestions() {
+            // Log this interaction
+            logAIActivity('ai_off_topic', 'User asked an off-topic question');
+            
+            // Create a helpful message that guides the user back to hotel-related topics
+            return `I'm designed to help with hotel management analytics and insights for Lodge Ease. 
+
+I can assist you with questions about:
+• Occupancy rates and room availability
+• Revenue analysis and financial metrics
+• Booking trends and patterns
+• Guest statistics and satisfaction
+• Business performance analytics
+• Forecasts and predictions
+
+Here are some questions you might want to ask:
+• "What is our current occupancy rate?"
+• "Show me revenue trends for this month"
+• "What are our peak booking hours?"
+• "Analyze our business performance"
+• "Predict next month's occupancy"
+• "Compare this month's revenue with last month"`;
         },
 
         async calculateCurrentOccupancy(rooms, bookings) {
@@ -565,10 +637,16 @@ ${this.generateOccupancyInsights(stats)}`;
                 this.removeTypingIndicator();
                 this.addMessage(response, 'bot');
 
-                // Add follow-up suggestions based on the response
-                this.addSuggestions(response);
+                // Check if response is from the off-topic handler and ensure suggestions are appropriate
+                if (response.includes("I'm designed to help with hotel management analytics")) {
+                    // Add specific recommendations for off-topic queries
+                    this.addOffTopicSuggestions();
+                } else {
+                    // Add follow-up suggestions based on the response
+                    this.addSuggestions(response);
+                }
 
-                await logAIActivity('ai_query', `User asked: ${this.currentMessage}`);
+                await logAIActivity('ai_query', `User asked: ${message}`);
             } catch (error) {
                 this.handleError(error);
                 await logAIActivity('ai_error', `Failed to process query: ${error.message}`);
@@ -1592,6 +1670,45 @@ ${this.generateRevPARRecommendations(trends)}`;
                 <div class="chat-suggestions">
                     ${suggestions.map(s => {
                         const sanitizedText = this.sanitizeHtml(s.text);
+                        return `
+                            <div class="suggestion-chip" 
+                                 data-suggestion="${sanitizedText}"
+                                 role="button"
+                                 tabindex="0">
+                                ${sanitizedText}
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+
+            // Add click event listeners to suggestions
+            suggestionDiv.addEventListener('click', (e) => {
+                const chip = e.target.closest('.suggestion-chip');
+                if (chip) {
+                    const suggestion = chip.dataset.suggestion;
+                    this.submitSuggestion(suggestion);
+                }
+            });
+
+            document.getElementById('chatContainer').appendChild(suggestionDiv);
+        },
+
+        addOffTopicSuggestions() {
+            const suggestions = [
+                'Show our occupancy rate',
+                'Analyze revenue performance',
+                'What are our booking trends?',
+                'Generate a business performance report',
+                'Predict next month\'s revenue'
+            ];
+            
+            const suggestionDiv = document.createElement('div');
+            suggestionDiv.className = 'message-suggestions';
+            suggestionDiv.innerHTML = `
+                <div class="chat-suggestions">
+                    ${suggestions.map(text => {
+                        const sanitizedText = this.sanitizeHtml(text);
                         return `
                             <div class="suggestion-chip" 
                                  data-suggestion="${sanitizedText}"

@@ -31,6 +31,13 @@ export class SuggestionService {
                 'What is our repeat booking rate?',
                 'Which customer segments are most profitable?'
             ],
+            'off-topic': [
+                'Show me our current occupancy rate',
+                'What is our revenue for this month?',
+                'Show booking trends for this year',
+                'Generate a performance report',
+                'Analyze room type popularity'
+            ],
             'default': [
                 'Show me business performance overview',
                 'What are our current market trends?',
@@ -56,6 +63,13 @@ export class SuggestionService {
 
     determineContext(response) {
         const responseText = response.toLowerCase();
+        
+        // Check if this is an off-topic response
+        if (responseText.includes("i'm designed to help") || 
+            responseText.includes("here are some questions you might want to ask")) {
+            return 'off-topic';
+        }
+        
         const contextKeywords = {
             analytics: ['performance', 'kpi', 'metrics', 'growth', 'trend'],
             revenue: ['revenue', 'earnings', 'revpar', 'adr', 'sales'],
