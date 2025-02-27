@@ -176,6 +176,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         roomOption.textContent = 'Room Deletions';
         actionFilter.appendChild(roomOption);
     }
+
+    // Update the action filter options in activity_log.html
+    const actionFilter = document.getElementById('actionFilter');
+    if (actionFilter) {
+        const roomOption = document.createElement('option');
+        roomOption.value = 'room_deletion';
+        roomOption.textContent = 'Room Deletions';
+        actionFilter.appendChild(roomOption);
+    }
 });
 
 async function setupFilters() {
@@ -221,9 +230,11 @@ async function setupFilters() {
 }
 
 // Update the setupActivityLogListener function to include room deletions
+// Update the setupActivityLogListener function to include room deletions
 function setupActivityLogListener() {
     const logsContainer = document.getElementById('activityLogTable');
     const loadingState = document.getElementById('loadingState');
+    
     
     if (!logsContainer || !loadingState) {
         console.error('Required DOM elements not found');
@@ -233,9 +244,28 @@ function setupActivityLogListener() {
     try {
         loadingState.classList.remove('hidden');
         
+        
         const logsRef = collection(db, 'activityLogs');
         // Create base query
         let baseQuery = [orderBy('timestamp', 'desc')];
+        // Create base query
+        let baseQuery = [orderBy('timestamp', 'desc')];
+
+        // Add filters
+        const userFilter = document.getElementById('userFilter')?.value;
+        const actionFilter = document.getElementById('actionFilter')?.value;
+        const dateFilter = document.getElementById('dateFilter')?.value;
+
+        if (userFilter) {
+            baseQuery.push(where('userId', '==', userFilter));
+        }
+
+        if (actionFilter) {
+            baseQuery.push(where('actionType', '==', actionFilter));
+        }
+
+        // Create the query with all conditions
+        let logsQuery = query(logsRef, ...baseQuery);
 
         // Add filters
         const userFilter = document.getElementById('userFilter')?.value;
@@ -266,9 +296,31 @@ function setupActivityLogListener() {
                 `;
                 return;
             }
+            loadingState.classList.add('hidden');
+            
+            if (snapshot.empty) {
+                logsContainer.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="px-6 py-4 text-center text-gray-500">
+                            No activity logs found
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
 
             const logsHtml = [];
+            const logsHtml = [];
 
+            snapshot.forEach(doc => {
+                const log = doc.data();
+                const timestamp = log.timestamp?.toDate() || new Date();
+
+                // Date filter handling
+                if (dateFilter) {
+                    const logDate = timestamp.toISOString().split('T')[0];
+                    if (logDate !== dateFilter) return;
+                }
             snapshot.forEach(doc => {
                 const log = doc.data();
                 const timestamp = log.timestamp?.toDate() || new Date();
@@ -309,14 +361,48 @@ function setupActivityLogListener() {
                     </tr>
                 `);
             });
+                // Enhanced styling for room deletions
+                let actionClass = getActionColor(log.actionType);
+                let actionDetails = log.details || 'No details';
+
+                // Special handling for room deletions
+                if (log.actionType === 'room_deletion') {
+                    actionClass = 'bg-red-100 text-red-800';
+                    actionDetails = `🗑️ ${actionDetails}`; // Add deletion icon
+                }
+
+                logsHtml.push(`
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${timestamp.toLocaleString()}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${log.userName || 'Unknown User'}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${actionClass}">
+                                ${(log.actionType || 'UNKNOWN').toUpperCase()}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-500">
+                            ${actionDetails}
+                            ${log.module ? `<br><span class="text-xs text-gray-400">(${log.module})</span>` : ''}
+                        </td>
+                    </tr>
+                `);
+            });
 
             logsContainer.innerHTML = logsHtml.join('');
+            logsContainer.innerHTML = logsHtml.join('');
         }, (error) => {
+            console.error('Error in activity log listener:', error);
             console.error('Error in activity log listener:', error);
             handleError(error, logsContainer, loadingState);
         });
 
+
     } catch (error) {
+        console.error('Error setting up activity log listener:', error);
         console.error('Error setting up activity log listener:', error);
         handleError(error, logsContainer, loadingState);
     }
@@ -379,6 +465,7 @@ function createLogRow(log) {
 }
 
 // Update the getActionColor function to include room_deletion
+// Update the getActionColor function to include room_deletion
 function getActionColor(actionType) {
     const colors = {
         login: 'bg-green-100 text-green-800',
@@ -386,6 +473,9 @@ function getActionColor(actionType) {
         navigation: 'bg-blue-100 text-blue-800',
         booking: 'bg-purple-100 text-purple-800',
         room: 'bg-indigo-100 text-indigo-800',
+        room_deletion: 'bg-red-100 text-red-800', // Add this line
+        room_add: 'bg-green-100 text-green-800',
+        room_update: 'bg-yellow-100 text-yellow-800',
         room_deletion: 'bg-red-100 text-red-800', // Add this line
         room_add: 'bg-green-100 text-green-800',
         room_update: 'bg-yellow-100 text-yellow-800',

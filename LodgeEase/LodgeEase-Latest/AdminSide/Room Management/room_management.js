@@ -21,9 +21,11 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 import { signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { PageLogger } from '../js/pageLogger.js';
+import { ActivityLogger } from '../ActivityLog/activityLogger.js';
 
 // Initialize Firebase Storage with existing app instance
 const storage = getStorage(app);
+const activityLogger = new ActivityLogger();
 
 // Add activity logging function
 async function logRoomActivity(actionType, details) {
@@ -42,6 +44,48 @@ async function logRoomActivity(actionType, details) {
         });
     } catch (error) {
         console.error('Error logging room activity:', error);
+    }
+}
+
+// Update the deleteRoom function
+async function deleteRoom(roomId) {
+    try {
+        const user = auth.currentUser;
+        if (!user) {
+            alert('Please log in to delete rooms');
+            return;
+        }
+
+        // Get room details before deletion
+        const roomDoc = await getDoc(doc(db, 'rooms', roomId));
+        if (!roomDoc.exists()) {
+            throw new Error('Room not found');
+        }
+
+        const roomData = roomDoc.data();
+        const roomDetails = `${roomData.propertyDetails.name} - Room ${roomData.propertyDetails.roomNumber} (${roomData.propertyDetails.roomType})`;
+
+        // Confirm deletion
+        if (!confirm(`Are you sure you want to delete ${roomDetails}?`)) {
+            return;
+        }
+
+        // Delete the room
+        await deleteDoc(doc(db, 'rooms', roomId));
+
+        // Log the deletion activity
+        await activityLogger.logActivity(
+            'room_deletion',
+            `Room deleted: ${roomDetails}`,
+            'Room Management'
+        );
+
+        // Show success message
+        alert('Room deleted successfully');
+
+    } catch (error) {
+        console.error('Error deleting room:', error);
+        alert('Error deleting room: ' + error.message);
     }
 }
 
@@ -283,6 +327,7 @@ new Vue({
             }
         },
 
+        // Update the deleteBooking function
         async deleteBooking(booking) {
             try {
                 if (!booking.id) {
@@ -290,7 +335,6 @@ new Vue({
                     return;
                 }
 
-                // Check if user is authenticated and is admin
                 const user = auth.currentUser;
                 if (!user) {
                     alert('Please log in to delete bookings');
@@ -308,20 +352,32 @@ new Vue({
                     return;
                 }
 
+                // Create detailed room information for logging
+                const roomDetails = {
+                    roomNumber: booking.propertyDetails?.roomNumber || 'Unknown',
+                    propertyName: booking.propertyDetails?.name || 'Unknown Property',
+                    roomType: booking.propertyDetails?.roomType || 'Unknown Type'
+                };
+
+                // Delete the booking
                 const bookingRef = doc(db, 'bookings', booking.id);
                 await deleteDoc(bookingRef);
+
+                // Log the deletion with detailed information
+                await activityLogger.logActivity(
+                    'room_deletion',
+                    `Deleted booking for ${roomDetails.propertyName} - Room ${roomDetails.roomNumber} (${roomDetails.roomType})`,
+                    'Room Management'
+                );
 
                 // Remove from local state
                 this.bookings = this.bookings.filter(b => b.id !== booking.id);
                 
                 alert('Booking deleted successfully!');
+                
             } catch (error) {
                 console.error('Error deleting booking:', error);
-                if (error.code === 'permission-denied') {
-                    alert('You do not have permission to delete bookings. Please contact your administrator.');
-                } else {
-                    alert('Failed to delete booking: ' + error.message);
-                }
+                alert('Failed to delete booking: ' + error.message);
             }
         },
 
@@ -352,8 +408,23 @@ new Vue({
 
                 const establishment = this.establishments[this.newRoom.establishment];
 
-                // Create room data object
+                // Get amenities from checkboxes
+                const amenityCheckboxes = document.querySelectorAll('input[name="amenity"]:checked');
+                const selectedAmenities = Array.from(amenityCheckboxes).map(cb => cb.value);
+
+                // Create room data object with structure matching client-side
                 const roomData = {
+                    name: establishment.name,
+                    location: establishment.location,
+                    barangay: this.newRoom.establishment === 'lodge1' ? 'Camp 7' : 'Session Road',
+                    price: parseFloat(this.newRoom.price),
+                    amenities: selectedAmenities,
+                    rating: 0,
+                    propertyType: this.newRoom.roomType.toLowerCase(),
+                    coordinates: {
+                        lat: this.newRoom.establishment === 'lodge1' ? 16.4096 : 16.4145,
+                        lng: this.newRoom.establishment === 'lodge1' ? 120.6010 : 120.5960
+                    },
                     propertyDetails: {
                         roomNumber: this.newRoom.roomNumber,
                         roomType: this.newRoom.roomType,
@@ -361,12 +432,11 @@ new Vue({
                         name: establishment.name,
                         location: establishment.location
                     },
-                    price: parseFloat(this.newRoom.price),
                     description: this.newRoom.description,
                     status: 'Available',
                     establishment: this.newRoom.establishment,
-                    createdAt: new Date(),
-                    updatedAt: new Date()
+                    createdAt: Timestamp.now(),
+                    updatedAt: Timestamp.now()
                 };
 
                 // Add to Firestore
@@ -377,7 +447,10 @@ new Vue({
                 if (this.selectedImages.length > 0) {
                     const imageUrls = await this.uploadImages(docRef.id);
                     // Update room document with image URLs
-                    await updateDoc(docRef, { images: imageUrls });
+                    await updateDoc(docRef, { 
+                        image: imageUrls[0], // Main image for card display
+                        additionalImages: imageUrls // All images for detail view
+                    });
                 }
 
                 // Reset form and close modal
