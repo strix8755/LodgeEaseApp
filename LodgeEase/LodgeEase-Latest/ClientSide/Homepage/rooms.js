@@ -691,7 +691,7 @@
                         lng: position.coords.longitude
                     };
                     
-                    // Add user marker
+                    // Add user marker with distinctive icon
                     if (userMarker) userMarker.setMap(null);
                     userMarker = new google.maps.Marker({
                         position: userLocation,
@@ -746,7 +746,8 @@
             mapTypeControl: true,
             streetViewControl: true,
             fullscreenControl: true,
-            zoomControl: true,
+            // Remove default zoom control, we'll add custom ones
+            zoomControl: false,
             gestureHandling: 'greedy',
             clickableIcons: true,
             draggable: true,
@@ -763,24 +764,45 @@
 
         directionsRenderer.setMap(map);
 
-        // Add custom controls
+        // Add custom controls - in a single group at the right bottom
         const zoomInButton = document.createElement("button");
         zoomInButton.textContent = "+";
         zoomInButton.className = "custom-map-control";
+        zoomInButton.title = "Zoom in";
         zoomInButton.onclick = () => map.setZoom(map.getZoom() + 1);
 
         const zoomOutButton = document.createElement("button");
         zoomOutButton.textContent = "-";
         zoomOutButton.className = "custom-map-control";
+        zoomOutButton.title = "Zoom out";
         zoomOutButton.onclick = () => map.setZoom(map.getZoom() - 1);
 
+        // Add a button to show user's location
+        const myLocationButton = document.createElement("button");
+        myLocationButton.className = "custom-map-control";
+        myLocationButton.innerHTML = '<i class="ri-map-pin-user-line"></i>';
+        myLocationButton.title = "Show my location";
+        myLocationButton.onclick = () => {
+            if (userLocation) {
+                map.panTo(userLocation);
+                map.setZoom(15);
+            } else {
+                getUserLocation();
+                alert("Getting your location. Please wait...");
+            }
+        };
+
+        // Add controls in this order: My Location, Zoom In, Zoom Out
+        map.controls[google.maps.ControlPosition.RIGHT_BOTTOM].push(myLocationButton);
         map.controls[google.maps.ControlPosition.RIGHT_BOTTOM].push(zoomInButton);
         map.controls[google.maps.ControlPosition.RIGHT_BOTTOM].push(zoomOutButton);
     }
 
     function getDirections(destination) {
         if (!userLocation) {
-            alert("Please allow location access to get directions");
+            // If we don't have user location yet, try to get it first
+            getUserLocation();
+            alert("Please allow location access to get directions. Try again in a moment.");
             return;
         }
 
@@ -905,11 +927,23 @@
             mapView.classList.remove("hidden");
             if (!map) {
                 initializeMap();
+            } else {
+                // If map already exists, trigger a resize to fix any display issues
+                google.maps.event.trigger(map, 'resize');
+                // Re-initialize markers that might be hidden
+                updateMapMarkers('All Barangays');
             }
         });
 
         closeMapBtn?.addEventListener("click", () => {
             mapView.classList.add("hidden");
+        });
+
+        // Close map view when clicking Escape key
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape" && !mapView.classList.contains("hidden")) {
+                mapView.classList.add("hidden");
+            }
         });
     }
 
