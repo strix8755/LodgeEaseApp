@@ -110,59 +110,66 @@
         // Clear existing cards
         container.innerHTML = '';
         
-        lodgeData.forEach((lodge, index) => {
-            console.log(`Creating card ${index + 1} for ${lodge.name}`);
-            const card = document.createElement('article');
-            card.className = 'lodge-card';
-            card.style.opacity = '1'; // Ensure visibility
-            card.style.display = 'block'; // Ensure display
-            card.dataset.propertyType = lodge.propertyType || 'hotel';
-            card.dataset.barangay = lodge.barangay;
-            
-            card.innerHTML = `
-                <img src="${lodge.image}" alt="${lodge.name}" class="lodge-image">
-                <button class="favorite-btn" aria-label="Add to favorites">
-                    <i class="ri-heart-line"></i>
-                </button>
-                <div class="content">
-                    <div class="flex justify-between items-start">
-                        <h2>${lodge.name}</h2>
-                        <div class="rating">
-                            <i class="ri-star-fill"></i>
-                            <span>${lodge.rating}</span>
+        // Add loading state
+        for (let i = 0; i < 6; i++) {
+            container.innerHTML += `
+                <div class="loading-card h-[300px] rounded-lg"></div>
+            `;
+        }
+        
+        // Simulate loading delay
+        setTimeout(() => {
+            container.innerHTML = '';
+            lodgeData.forEach((lodge, index) => {
+                const card = document.createElement('article');
+                card.className = 'lodge-card opacity-0';
+                card.style.animationDelay = `${index * 100}ms`;
+                card.style.animation = 'scaleIn 0.5s ease forwards';
+                card.dataset.propertyType = lodge.propertyType || 'hotel';
+                card.dataset.barangay = lodge.barangay;
+                
+                card.innerHTML = `
+                    <img src="${lodge.image}" alt="${lodge.name}" class="lodge-image">
+                    <button class="favorite-btn" aria-label="Add to favorites">
+                        <i class="ri-heart-line"></i>
+                    </button>
+                    <div class="content">
+                        <div class="flex justify-between items-start">
+                            <h2>${lodge.name}</h2>
+                            <div class="rating">
+                                <i class="ri-star-fill"></i>
+                                <span>${lodge.rating}</span>
+                            </div>
+                        </div>
+                        <div class="location">
+                            <i class="ri-map-pin-line"></i>
+                            <span>${lodge.location}</span>
+                        </div>
+                        <div class="amenities">
+                            ${lodge.amenities.map(amenity => 
+                                `<span class="amenity-tag">${amenity}</span>`
+                            ).join('')}
+                        </div>
+                        <div class="price">
+                            ₱${lodge.price.toLocaleString()}
+                            <span>/night</span>
                         </div>
                     </div>
-                    <div class="location">
-                        <i class="ri-map-pin-line"></i>
-                        <span>${lodge.location}</span>
-                    </div>
-                    <div class="amenities">
-                        ${lodge.amenities.map(amenity => 
-                            `<span class="amenity-tag">${amenity}</span>`
-                        ).join('')}
-                    </div>
-                    <div class="price">
-                        ₱${lodge.price.toLocaleString()}
-                        <span>/night</span>
-                    </div>
-                </div>
-            `;
-            
-            // Add click event listener to open lodge details
-            card.addEventListener('click', (e) => {
-                if (!e.target.closest('.favorite-btn')) {
-                    showLodgeDetails(lodge);
-                }
+                `;
+                
+                // Add click event listener to open lodge details
+                card.addEventListener('click', (e) => {
+                    if (!e.target.closest('.favorite-btn')) {
+                        showLodgeDetails(lodge);
+                    }
+                });
+                
+                container.appendChild(card);
+                
+                // Force a reflow to ensure the card is visible
+                void card.offsetHeight;
             });
-            
-            container.appendChild(card);
-            
-            // Force a reflow to ensure the card is visible
-            void card.offsetHeight;
-        });
-        
-        console.log('All lodge cards created successfully');
-        updateResultsCount();
+        }, 1000);
     }
 
     // Lodge data
