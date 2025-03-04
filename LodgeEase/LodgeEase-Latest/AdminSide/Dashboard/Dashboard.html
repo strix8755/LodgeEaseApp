@@ -75,11 +75,17 @@
                     <h1>Dashboard Overview</h1>
                     <div class="header-actions">
                         <button 
+                            @click="showMetricsExplanation" 
+                            class="flex items-center gap-2 px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg shadow mr-2 transition duration-200 ease-in-out transform hover:scale-105 focus:outline-none">
+                            <i class="fas fa-question-circle"></i>
+                            Explain Metrics
+                        </button>
+                        <button 
                         @click="updateDashboardStats" 
                         class="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow transition duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50">
                         <i class="fas fa-sync-alt animate-spin-hover"></i>
                         Refresh Data
-                    </button>
+                        </button>
                     </div>
                 </header>
 
@@ -88,21 +94,21 @@
                     <div class="metric-card">
                         <i class="fas fa-calendar-check"></i>
                         <div class="metric-content">
-                            <h3>Today's Check-ins</h3>
+                            <h3>Today's Check-ins <i class="fas fa-info-circle text-sm text-gray-400" title="Number of guests checking in today"></i></h3>
                             <p class="metric-value">{{ todayCheckIns }}</p>
                         </div>
                     </div>
                     <div class="metric-card">
                         <i class="fas fa-door-open"></i>
                         <div class="metric-content">
-                            <h3>Available Rooms</h3>
+                            <h3>Available Rooms <i class="fas fa-info-circle text-sm text-gray-400" title="Currently available rooms"></i></h3>
                             <p class="metric-value">{{ availableRooms }}</p>
                         </div>
                     </div>
                     <div class="metric-card">
                         <i class="fas fa-book"></i>
                         <div class="metric-content">
-                            <h3>Total Bookings</h3>
+                            <h3>Total Bookings <i class="fas fa-info-circle text-sm text-gray-400" title="Total bookings this month"></i></h3>
                             <p class="metric-value">{{ stats.totalBookings }}</p>
                             <span class="metric-period">This Month</span>
                         </div>
@@ -110,7 +116,7 @@
                     <div class="metric-card">
                         <i class="fas fa-chart-line"></i>
                         <div class="metric-content">
-                            <h3>Occupancy Rate</h3>
+                            <h3>Occupancy Rate <i class="fas fa-info-circle text-sm text-gray-400" title="Current percentage of occupied rooms"></i></h3>
                             <p class="metric-value">{{ stats.occupancyRate }}%</p>
                             <span class="metric-period">Current</span>
                         </div>
@@ -144,7 +150,14 @@
                                         <strong>{{ formatCurrency(revenueData?.metrics?.totalRevenue || 0) }}</strong>
                                     </div>
                                     <div class="metric">
-                                        <span>Growth:</span>
+                                        <span>Monthly Growth:</span>
+                                        <strong :class="{'positive': (revenueData?.metrics?.monthlyGrowth || 0) > 0, 
+                                                        'negative': (revenueData?.metrics?.monthlyGrowth || 0) < 0}">
+                                            {{ revenueData?.metrics?.monthlyGrowth.toFixed(1) || 0 }}%
+                                        </strong>
+                                    </div>
+                                    <div class="metric">
+                                        <span>Yearly Growth:</span>
                                         <strong :class="{'positive': (revenueData?.metrics?.yearOverYearGrowth || 0) > 0, 
                                                         'negative': (revenueData?.metrics?.yearOverYearGrowth || 0) < 0}">
                                             {{ revenueData?.metrics?.yearOverYearGrowth || 0 }}%
@@ -263,6 +276,49 @@
                         <h4>{{ explanationTitle }}</h4>
                         <div class="chart-explanation-body" v-html="explanationText"></div>
                         <button @click="closeExplanation" class="chart-explanation-close">Close</button>
+                    </div>
+                </div>
+
+                <!-- Add metrics explanation modal before closing main content div -->
+                <div v-if="showingMetricsExplanation" class="chart-explanation-modal" @click.self="closeMetricsExplanation">
+                    <div class="chart-explanation-content">
+                        <h4>Dashboard Metrics Explanation</h4>
+                        <div class="chart-explanation-body">
+                            <h5 class="font-bold text-lg mt-3 mb-2">Today's Check-ins</h5>
+                            <p>Number of guests scheduled to check in today. This is based on bookings with today's date.</p>
+                            
+                            <h5 class="font-bold text-lg mt-3 mb-2">Available Rooms</h5>
+                            <p>Current number of rooms that are not occupied and available for booking.</p>
+                            
+                            <h5 class="font-bold text-lg mt-3 mb-2">Total Bookings</h5>
+                            <p>Total number of bookings for the current month.</p>
+                            
+                            <h5 class="font-bold text-lg mt-3 mb-2">Occupancy Rate</h5>
+                            <p>Percentage of rooms currently occupied out of total rooms available.</p>
+                            
+                            <h5 class="font-bold text-lg mt-3 mb-2">Revenue Growth Metrics</h5>
+                            <ul class="list-disc pl-5 mt-2">
+                                <li>
+                                    <span class="font-semibold">Monthly Growth:</span> Percentage change in revenue compared to previous month. Negative values indicate a decrease in revenue.
+                                </li>
+                                <li>
+                                    <span class="font-semibold">Yearly Growth:</span> Percentage change in revenue compared to the same period last year or averaged across available data. Negative values indicate a downward trend.
+                                </li>
+                            </ul>
+                            
+                            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mt-4">
+                                <p class="font-bold">Why are growth metrics negative?</p>
+                                <p class="mt-2">Negative growth values indicate a decrease in revenue compared to the previous period. This could be due to:</p>
+                                <ul class="list-disc pl-5 mt-2">
+                                    <li>Seasonal fluctuations in booking patterns</li>
+                                    <li>Fewer bookings in the current period</li>
+                                    <li>Lower room rates or discounts applied</li>
+                                    <li>External factors affecting the hospitality industry</li>
+                                </ul>
+                                <p class="mt-2">Consider implementing promotional strategies or reviewing pricing to increase revenue.</p>
+                            </div>
+                        </div>
+                        <button @click="closeMetricsExplanation" class="chart-explanation-close mt-4">Close</button>
                     </div>
                 </div>
 

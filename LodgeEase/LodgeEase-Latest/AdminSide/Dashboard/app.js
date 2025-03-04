@@ -121,6 +121,7 @@ new Vue({
             bookingTrend: null
         },
         isInitialized: false, // Add this flag
+        showingMetricsExplanation: false, // Add this flag
     },
     methods: {
         async handleLogout() {
@@ -243,24 +244,8 @@ new Vue({
 
                 console.log('Total bookings fetched:', this.bookings.length);
                 
-                // Calculate key metrics manually to ensure they exist
-                const now = new Date();
-                const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-                
-                // Calculate today's check-ins
-                this.todayCheckIns = this.bookings.filter(booking => {
-                    if (!booking.checkIn || !booking.checkIn.toDate) return false;
-                    const checkInDate = booking.checkIn.toDate();
-                    return checkInDate >= todayStart && checkInDate < new Date(todayStart.getTime() + 86400000);
-                }).length;
-                
-                // Calculate available rooms
-                const totalRooms = 10; // Adjust based on your total room count
-                const occupiedRooms = this.bookings.filter(b => b.status === 'occupied').length;
-                this.availableRooms = Math.max(0, totalRooms - occupiedRooms);
-                
-                // Update dashboard with calculated metrics
-                await this.updateDashboardStats();
+                // Immediately calculate key metrics after fetching bookings
+                await this.calculateDashboardMetrics();
                 
                 // Generate forecasts after metrics are calculated
                 await this.generateAIForecasts();
@@ -467,6 +452,24 @@ new Vue({
                     this.updateChart(this.chartInstances.bookingTrend, bookingTrendData);
                 }
                 
+                // Update the revenueData property 
+                if (data.revenueData) {
+                    this.revenueData = {
+                        ...this.revenueData,
+                        labels: data.revenueData.labels || [],
+                        datasets: data.revenueData.datasets || this.revenueData.datasets,
+                        metrics: {
+                            totalRevenue: data.revenueData.metrics?.totalRevenue || 0,
+                            currentMonthRevenue: data.revenueData.metrics?.currentMonthRevenue || 0,
+                            previousMonthRevenue: data.revenueData.metrics?.previousMonthRevenue || 0,
+                            monthlyGrowth: data.revenueData.metrics?.monthlyGrowth || 0,
+                            yearOverYearGrowth: data.revenueData.metrics?.yearOverYearGrowth || 0,
+                            forecast: data.revenueData.metrics?.forecast || []
+                        }
+                    };
+                    console.log('Updated revenueData:', this.revenueData);
+                }
+                
                 // Improved metrics handling with better parsing and validation
                 const metrics = data.metrics || {};
                 // Update other stats with proper parsing and formatting
@@ -493,52 +496,121 @@ new Vue({
                 const now = new Date();
                 const currentMonth = now.getMonth();
                 const currentYear = now.getFullYear();
-                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
                 
-                // Calculate today's check-ins
-                this.todayCheckIns = this.bookings.filter(booking => {
+                // Create a clean date object for today (date only, no time)
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                today.setHours(0, 0, 0, 0); // Ensure hours are explicitly set to 0
+                
+                console.log('Current date for check-ins:', today);
+                
+                // Reset the count
+                this.todayCheckIns = 0;
+                
+                // Track processed bookings for debugging
+                let processedBookings = 0;
+                
+                // Count check-ins with improved logging
+                for (const booking of this.bookings) {
                     try {
-                        if (!booking.checkIn) return false;
+                        processedBookings++;
+                        if (!booking.checkIn) continue;
+                        
+                        // Extract date and normalize it
                         let checkInDate;
                         if (booking.checkIn.toDate && typeof booking.checkIn.toDate === 'function') {
                             checkInDate = booking.checkIn.toDate();
                         } else if (booking.checkIn instanceof Date) {
                             checkInDate = booking.checkIn;
+                        } else if (typeof booking.checkIn === 'string') {
+                            checkInDate = new Date(booking.checkIn);
+                        } else {
+                            continue;
+                        }
+                        
+                        // Create date object with only date components (no time)
+                        const checkInDateOnly = new Date(
+                            checkInDate.getFullYear(),
+                            checkInDate.getMonth(), 
+                            checkInDate.getDate()
+                        );
+                        checkInDateOnly.setHours(0, 0, 0, 0);
+                        
+                        // Check if dates match (using getTime() for accurate comparison)
+                        const isCheckInToday = checkInDateOnly.getTime() === today.getTime();
+                        
+                        // Include all non-cancelled bookings (broader status check)
+                        const validStatus = booking.status && 
+                            !['cancelled', 'completed'].includes(booking.status.toLowerCase());
+                        
+                        if (isCheckInToday && validStatus) {
+                            console.log(`Found check-in for today: ${booking.guestName}, Status: ${booking.status}`);
+                            this.todayCheckIns++;
+                        }
+                    } catch (err) {
+                        console.error('Error processing check-in date:', err, booking);
+                    }
+                }
+                
+                console.log(`Processed ${processedBookings} bookings, found ${this.todayCheckIns} check-ins for today`);
+                
+                // Calculate available rooms and occupancy rate
+                const totalRooms = 10; // Total room count
+                
+                // Count active bookings more accurately
+                const activeBookings = this.bookings.filter(booking => {
+                    try {
+                        if (!booking.checkIn || !booking.checkOut) return false;
+                        
+                        let checkInDate, checkOutDate;
+                        // Convert checkIn to Date object
+                        if (booking.checkIn.toDate && typeof booking.checkIn.toDate === 'function') {
+                            checkInDate = booking.checkIn.toDate();
+                        } else if (booking.checkIn instanceof Date) {
+                            checkInDate = booking.checkIn;
+                        } else if (typeof booking.checkIn === 'string') {
+                            checkInDate = new Date(booking.checkIn);
                         } else {
                             return false;
                         }
                         
-                        // Compare only the date part
-                        return (
-                            checkInDate.getDate() === today.getDate() &&
-                            checkInDate.getMonth() === today.getMonth() &&
-                            checkInDate.getFullYear() === today.getFullYear()
-                        );
+                        // Convert checkOut to Date object
+                        if (booking.checkOut.toDate && typeof booking.checkOut.toDate === 'function') {
+                            checkOutDate = booking.checkOut.toDate();
+                        } else if (booking.checkOut instanceof Date) {
+                            checkOutDate = booking.checkOut;
+                        } else if (typeof booking.checkOut === 'string') {
+                            checkOutDate = new Date(booking.checkOut);
+                        } else {
+                            return false;
+                        }
+                        
+                        // Check if the booking is currently active
+                        return checkInDate <= now && checkOutDate >= now && 
+                            booking.status && booking.status.toLowerCase() !== 'cancelled';
                     } catch (err) {
-                        console.error('Error processing check-in date:', err);
+                        console.error('Error processing booking dates:', err, booking);
                         return false;
                     }
-                }).length;
+                });
                 
-                // Calculate available rooms (assuming 10 total rooms)
-                const totalRooms = 10;
-                const occupiedRooms = this.bookings.filter(b => 
-                    b.status && b.status.toLowerCase() === 'occupied'
-                ).length;
+                const occupiedRooms = activeBookings.length;
                 this.availableRooms = Math.max(0, totalRooms - occupiedRooms);
                 
                 // Calculate occupancy rate
                 const occupancyRate = (occupiedRooms / totalRooms) * 100;
                 
-                // Calculate total bookings this month
+                // Calculate total bookings this month (improved calculation)
                 const currentMonthBookings = this.bookings.filter(booking => {
                     try {
                         if (!booking.checkIn) return false;
+                        
                         let checkInDate;
                         if (booking.checkIn.toDate && typeof booking.checkIn.toDate === 'function') {
                             checkInDate = booking.checkIn.toDate();
                         } else if (booking.checkIn instanceof Date) {
                             checkInDate = booking.checkIn;
+                        } else if (typeof booking.checkIn === 'string') {
+                            checkInDate = new Date(booking.checkIn);
                         } else {
                             return false;
                         }
@@ -548,6 +620,7 @@ new Vue({
                             checkInDate.getFullYear() === currentYear
                         );
                     } catch (err) {
+                        console.error('Error processing monthly check-in date:', err);
                         return false;
                     }
                 });
@@ -558,18 +631,30 @@ new Vue({
                     return sum + (isNaN(amount) ? 0 : amount);
                 }, 0);
                 
-                // Update stats
-                this.stats = {
+                // Update stats immediately
+                this.$set(this, 'stats', {
                     totalBookings: currentMonthBookings.length,
                     currentMonthRevenue: this.formatCurrency(currentMonthRevenue),
                     occupancyRate: occupancyRate.toFixed(1)
-                };
+                });
                 
-                console.log('Calculated metrics:', {
+                console.log('Dashboard metrics calculated:', {
                     todayCheckIns: this.todayCheckIns,
                     availableRooms: this.availableRooms,
-                    stats: this.stats
+                    occupancyRate: occupancyRate.toFixed(1) + '%',
+                    totalBookings: currentMonthBookings.length,
+                    activeBookings: occupiedRooms
                 });
+
+                // Initialize charts if not already done
+                if (!this.isInitialized) {
+                    this.initializeCharts();
+                }
+                
+                // Force Vue to re-render the cards by "touching" the reactive properties
+                this.todayCheckIns = this.todayCheckIns;
+                this.availableRooms = this.availableRooms;
+                this.stats = { ...this.stats };
                 
             } catch (error) {
                 console.error('Error calculating dashboard metrics:', error);
@@ -579,6 +664,8 @@ new Vue({
                     currentMonthRevenue: this.formatCurrency(0),
                     occupancyRate: '0.0'
                 };
+                this.todayCheckIns = 0;
+                this.availableRooms = 10;
             }
         },
 
@@ -867,15 +954,15 @@ new Vue({
                 const roomTypeCanvas = document.getElementById('roomTypeChart');
                 const bookingTrendCanvas = document.getElementById('bookingTrendChart');
 
+                // Check if all required canvas elements exist
                 if (!revenueCanvas || !occupancyCanvas || !roomTypeCanvas || !bookingTrendCanvas) {
-                    console.error('Chart canvas elements not found. Retrying in 500ms...');
-                    
-                    // Retry after a short delay
-                    setTimeout(() => {
-                        if (!this.isInitialized) {
-                            this.initializeCharts();
-                        }
-                    }, 500);
+                    console.error('Chart canvas elements not found. Will retry on next update cycle.');
+                    return; // Don't set isInitialized flag if elements aren't ready
+                }
+
+                // Check if Chart.js is available
+                if (typeof Chart === 'undefined') {
+                    console.error('Chart.js not loaded. Will retry on next update cycle.');
                     return;
                 }
 
@@ -1018,6 +1105,9 @@ new Vue({
 
                 this.isInitialized = true;
                 console.log('Charts initialized successfully');
+
+                // Update the charts with existing data
+                await this.updateDashboardStats();
 
             } catch (error) {
                 console.error('Error initializing charts:', error);
@@ -1947,6 +2037,14 @@ new Vue({
         calculateGrowth(data) {
             return this.calculateGrowthRate(data);
         },
+
+        showMetricsExplanation() {
+            this.showingMetricsExplanation = true;
+        },
+        
+        closeMetricsExplanation() {
+            this.showingMetricsExplanation = false;
+        },
     },
     computed: {
         filteredBookings() {
@@ -1981,11 +2079,22 @@ new Vue({
                 // Ensure DOM is fully rendered
                 await this.$nextTick();
                 
-                // Initialize charts after a short delay to ensure canvas elements are ready
+                console.log('Dashboard mounted, initializing...');
+                
+                // First fetch bookings to calculate metrics
+                await this.fetchBookings();
+                
+                // Then initialize charts after ensuring data is loaded
                 setTimeout(() => {
                     this.initializeCharts();
-                    this.fetchBookings();
-                }, 100);
+                    // Force a UI update to ensure metric cards display correctly
+                    this.$forceUpdate();
+                    console.log('Force updated UI, current metrics:', {
+                        todayCheckIns: this.todayCheckIns,
+                        availableRooms: this.availableRooms,
+                        occupancyRate: this.stats.occupancyRate
+                    });
+                }, 500);
             }
         } catch (error) {
             console.error('Error during mounted:', error);
