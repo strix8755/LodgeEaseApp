@@ -46,7 +46,8 @@ new Vue({
             checkOutTime: '11:00',
             currency: 'USD',
             dateFormat: 'MM/DD/YYYY',
-            language: 'English'
+            language: 'English',
+            preferLongTerm: false // Add new setting
         },
 
         // Notification Settings
@@ -174,7 +175,6 @@ new Vue({
         // Save settings
         async saveSettings() {
             try {
-                // Create settings object
                 const settings = {
                     hotelInfo: this.hotelInfo,
                     systemSettings: this.systemSettings,
@@ -185,17 +185,29 @@ new Vue({
                 // Save to localStorage
                 localStorage.setItem('lodgeEaseSettings', JSON.stringify(settings));
 
-                // In a real application, you would save to an API:
-                // await this.saveSettingsToAPI(settings);
+                // Update sidebar visibility based on preferLongTerm setting
+                const sidebarLinks = document.querySelectorAll('.sidebar a');
+                sidebarLinks.forEach(link => {
+                    if (this.systemSettings.preferLongTerm) {
+                        if (link.textContent.includes('Room Management')) {
+                            link.parentElement.style.display = 'none';
+                        }
+                        if (link.textContent.includes('Long-term Stays')) {
+                            link.parentElement.style.display = 'block';
+                        }
+                    } else {
+                        if (link.textContent.includes('Room Management')) {
+                            link.parentElement.style.display = 'block';
+                        }
+                        if (link.textContent.includes('Long-term Stays')) {
+                            link.parentElement.style.display = 'none';
+                        }
+                    }
+                });
 
-                // Show success message
                 this.showSuccessAlert();
-                
-                // Reset modified flag
                 this.settingsModified = false;
-
                 await logSettingsActivity('settings_update', 'Updated system settings');
-
             } catch (error) {
                 console.error('Error saving settings:', error);
                 this.showErrorAlert();
@@ -391,6 +403,23 @@ new Vue({
         this.checkAuthState();
         this.loadSettings();
         this.loadActiveSessions();
+
+        // Apply initial visibility based on saved preference
+        const savedSettings = localStorage.getItem('lodgeEaseSettings');
+        if (savedSettings) {
+            const { systemSettings } = JSON.parse(savedSettings);
+            if (systemSettings.preferLongTerm) {
+                const sidebarLinks = document.querySelectorAll('.sidebar a');
+                sidebarLinks.forEach(link => {
+                    if (link.textContent.includes('Room Management')) {
+                        link.parentElement.style.display = 'none';
+                    }
+                    if (link.textContent.includes('Long-term Stays')) {
+                        link.parentElement.style.display = 'block';
+                    }
+                });
+            }
+        }
 
         // Add warning before leaving page with unsaved changes
         window.addEventListener('beforeunload', (e) => {
