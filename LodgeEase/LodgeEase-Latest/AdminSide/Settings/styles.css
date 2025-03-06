@@ -447,6 +447,86 @@ input:checked + .slider:before {
     font-size: 16px;
 }
 
+/* Common Button Styles */
+button {
+    background-color: #4a90e2;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    background-color: #357abd;
+}
+
+button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+/* Specific Button Styles */
+.change-password-btn, 
+.analyze-button,
+.terminate-btn,
+.change-photo-btn,
+.logout-btn {
+    background-color: #4a90e2;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.change-password-btn:hover,
+.analyze-button:hover,
+.terminate-btn:hover,
+.change-photo-btn:hover,
+.logout-btn:hover {
+    background-color: #357abd;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.terminate-btn.current {
+    background-color: #e6e6e6;
+    color: #666;
+    cursor: default;
+}
+
+.terminate-btn.current:hover {
+    background-color: #e6e6e6;
+    transform: none;
+    box-shadow: none;
+}
+
+.change-photo-btn {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    padding: 8px;
+    border-radius: 50%;
+    background-color: #4a90e2;
+}
+
+.logout-btn {
+    background-color: #f44336;
+    margin-top: auto;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.logout-btn:hover {
+    background-color: #d32f2f;
+}
 
 /* Responsive adjustments */
 @media (max-width: 768px) {

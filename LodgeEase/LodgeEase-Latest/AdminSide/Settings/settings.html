@@ -118,6 +118,18 @@
                             <label>Default Check-in Time</label>
                             <input type="time" v-model="systemSettings.checkInTime" class="search-input">
                         </div>
+                        <!-- Add new setting switch -->
+                        <div class="form-group checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" v-model="systemSettings.preferLongTerm">
+                                Prefer Long-term Stays Mode
+                                <small style="display: block; color: #666; margin-top: 4px;">
+                                    When enabled, shows Long-term Stays and hides Room Management.
+                                    When disabled, shows Room Management and hides Long-term Stays.
+                                </small>
+                            </label>
+                        </div>
+                        <!-- Continue with existing settings -->
                         <div class="form-group">
                             <label>Default Check-out Time</label>
                             <input type="time" v-model="systemSettings.checkOutTime" class="search-input">
