@@ -99,6 +99,8 @@ new Vue({
         selectedBooking: null,
         isAuthenticated: false,
         showAddRoomModal: false,
+        showManualBookingModal: false,
+        showClientRoomsModal: false, // Add this new property
         newRoom: {
             establishment: '',
             roomNumber: '',
@@ -133,7 +135,10 @@ new Vue({
             checkOut: '',
             numberOfGuests: 1,
             paymentStatus: 'Pending'
-        }
+            },
+        clientRooms: [],
+        showClientRoomEditModal: false,
+        selectedClientRoom: null,
     },
     computed: {
         filteredBookings() {
@@ -414,12 +419,12 @@ new Vue({
 
                 // Create room data object with structure matching client-side
                 const roomData = {
-                    name: establishment.name,
+                    name: `${establishment.name} - Room ${this.newRoom.roomNumber}`,
                     location: establishment.location,
                     barangay: this.newRoom.establishment === 'lodge1' ? 'Camp 7' : 'Session Road',
                     price: parseFloat(this.newRoom.price),
                     amenities: selectedAmenities,
-                    rating: 0,
+                    rating: 4.5, // Default rating for new rooms
                     propertyType: this.newRoom.roomType.toLowerCase(),
                     coordinates: {
                         lat: this.newRoom.establishment === 'lodge1' ? 16.4096 : 16.4145,
@@ -435,8 +440,9 @@ new Vue({
                     description: this.newRoom.description,
                     status: 'Available',
                     establishment: this.newRoom.establishment,
-                    createdAt: Timestamp.now(),
-                    updatedAt: Timestamp.now()
+                    showOnClient: true, // Flag to show on client side
+                    createdAt: new Date(),
+                    updatedAt: new Date()
                 };
 
                 // Add to Firestore
@@ -451,6 +457,11 @@ new Vue({
                         image: imageUrls[0], // Main image for card display
                         additionalImages: imageUrls // All images for detail view
                     });
+                    
+                    // Add this room to client rooms list
+                    roomData.id = docRef.id;
+                    roomData.image = imageUrls[0];
+                    this.clientRooms.push(roomData);
                 }
 
                 // Reset form and close modal
@@ -460,8 +471,8 @@ new Vue({
                 // Refresh the rooms list
                 await this.fetchBookings();
                 
-                alert('Room added successfully!');
-                await logRoomActivity('room_add', `Added new room ${roomData.propertyDetails.roomNumber}`);
+                alert('Room added successfully! It will now appear on the client website.');
+                await logRoomActivity('room_add', `Added new room ${roomData.propertyDetails.roomNumber} visible on client website`);
             } catch (error) {
                 console.error('Error adding room:', error);
                 alert('Failed to add room: ' + error.message);
@@ -706,7 +717,130 @@ new Vue({
                 }
                 this.loading = false;
             });
-        }
+        },
+
+        async fetchClientRooms() {
+            try {
+                this.loading = true;
+                
+                // Fetch rooms that have client-facing display flag
+                const roomsRef = collection(db, 'rooms');
+                const roomsQuery = query(roomsRef, where('showOnClient', '==', true));
+                const roomsSnapshot = await getDocs(roomsQuery);
+                
+                if (roomsSnapshot.empty) {
+                    // If no client rooms with flag, fetch rooms that have format matching client rooms
+                    const allRoomsQuery = query(roomsRef);
+                    const allRoomsSnapshot = await getDocs(allRoomsQuery);
+                    
+                    this.clientRooms = allRoomsSnapshot.docs
+                        .filter(doc => doc.data().name && doc.data().price) // Filter to rooms with client format
+                        .map(doc => ({
+                            id: doc.id,
+                            ...doc.data()
+                        }));
+                } else {
+                    this.clientRooms = roomsSnapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    }));
+                }
+                
+                console.log('Client rooms loaded:', this.clientRooms);
+                this.loading = false;
+            } catch (error) {
+                console.error('Error fetching client rooms:', error);
+                alert('Error loading client rooms: ' + error.message);
+                this.loading = false;
+            }
+        },
+        
+        async hideFromClient(roomId) {
+            try {
+                if (!confirm('Are you sure you want to hide this room from the client website?')) {
+                    return;
+                }
+                
+                const roomRef = doc(db, 'rooms', roomId);
+                await updateDoc(roomRef, { 
+                    showOnClient: false,
+                    updatedAt: new Date()
+                });
+                
+                // Remove from local list
+                this.clientRooms = this.clientRooms.filter(room => room.id !== roomId);
+                
+                await logRoomActivity('client_room_hide', `Room hidden from client website: ${roomId}`);
+                
+            } catch (error) {
+                console.error('Error hiding room from client:', error);
+                alert('Failed to hide room: ' + error.message);
+            }
+        },
+        
+        editClientRoom(room) {
+            this.selectedClientRoom = { ...room };
+            this.showClientRoomEditModal = true;
+        },
+        
+        async saveClientRoomChanges() {
+            try {
+                this.loading = true;
+                
+                const roomRef = doc(db, 'rooms', this.selectedClientRoom.id);
+                await updateDoc(roomRef, {
+                    name: this.selectedClientRoom.name,
+                    price: parseFloat(this.selectedClientRoom.price),
+                    location: this.selectedClientRoom.location,
+                    description: this.selectedClientRoom.description,
+                    amenities: this.selectedClientRoom.amenities,
+                    updatedAt: new Date()
+                });
+                
+                // Update in local list
+                const index = this.clientRooms.findIndex(r => r.id === this.selectedClientRoom.id);
+                if (index !== -1) {
+                    this.clientRooms[index] = { ...this.selectedClientRoom };
+                }
+                
+                this.showClientRoomEditModal = false;
+                this.selectedClientRoom = null;
+                this.loading = false;
+                
+                await logRoomActivity('client_room_edit', `Edited client room: ${this.selectedClientRoom.name}`);
+                
+            } catch (error) {
+                console.error('Error updating client room:', error);
+                alert('Failed to update room: ' + error.message);
+                this.loading = false;
+            }
+        },
+        
+        closeClientRoomEditModal() {
+            this.showClientRoomEditModal = false;
+            this.selectedClientRoom = null;
+        },
+        
+        addAmenity() {
+            const newAmenity = document.getElementById('newAmenity').value.trim();
+            if (newAmenity && !this.selectedClientRoom.amenities.includes(newAmenity)) {
+                this.selectedClientRoom.amenities.push(newAmenity);
+                document.getElementById('newAmenity').value = '';
+            }
+        },
+
+        removeAmenity(index) {
+            this.selectedClientRoom.amenities.splice(index, 1);
+        },
+
+        openClientRoomsModal() {
+            this.showClientRoomsModal = true;
+            this.fetchClientRooms();
+        },
+
+        closeClientRoomsModal() {
+            this.showClientRoomsModal = false;
+        },
     },
     async mounted() {
         this.checkAuthState(); // This will handle auth check and fetch bookings

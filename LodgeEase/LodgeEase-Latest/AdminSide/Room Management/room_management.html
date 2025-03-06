@@ -94,6 +94,9 @@
                             <button @click="openManualBookingModal" class="primary-button booking-button" title="Manual Booking">
                                 <i class="fas fa-book"></i> Manual Booking
                             </button>
+                            <button @click="openClientRoomsModal" class="primary-button client-room-button" title="Client Rooms">
+                                <i class="fas fa-globe"></i> Client Rooms
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -456,6 +459,47 @@
                             </button>
                         </div>
                     </form>
+                </div>
+            </div>
+
+            <!-- Client Rooms Modal -->
+            <div v-if="showClientRoomsModal" class="modal" @click.self="closeClientRoomsModal">
+                <div class="modal-content client-rooms-modal">
+                    <button class="close-btn" @click="closeClientRoomsModal">&times;</button>
+                    <h2>Client-Facing Rooms</h2>
+                    <p class="subtitle">Rooms visible on the homepage</p>
+                    
+                    <div class="header-actions mb-4">
+                        <span class="font-bold">{{ clientRooms.length }} Rooms Available</span>
+                        <button class="primary-button" title="Refresh Client Rooms" @click="fetchClientRooms">
+                            <i class="fas fa-sync"></i> Refresh
+                        </button>
+                    </div>
+                    
+                    <div class="client-rooms-grid">
+                        <div v-for="room in clientRooms" :key="room.id" class="client-room-card">
+                            <div class="image-container">
+                                <img :src="room.image || '../images/default-room.jpg'" :alt="room.name">
+                                <span class="price-tag">₱{{ room.price }}</span>
+                            </div>
+                            <div class="room-details">
+                                <h3>{{ room.name }}</h3>
+                                <p class="location"><i class="fas fa-map-marker-alt"></i> {{ room.location }}</p>
+                                <p class="room-type">{{ room.propertyDetails?.roomType || 'Standard' }} Room</p>
+                                <div class="amenities">
+                                    <span v-for="(amenity, idx) in room.amenities" :key="idx" class="amenity-tag">{{ amenity }}</span>
+                                </div>
+                                <div class="actions">
+                                    <button @click="hideFromClient(room.id)" class="action-btn" title="Hide from client">
+                                        <i class="fas fa-eye-slash"></i>
+                                    </button>
+                                    <button @click="editClientRoom(room)" class="action-btn" title="Edit room">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
