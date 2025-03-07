@@ -128,31 +128,43 @@
                 card.dataset.propertyType = lodge.propertyType || 'hotel';
                 card.dataset.barangay = lodge.barangay;
                 
+                // Add special highlight for Ever Lodge (id: 13)
+                const highlightClass = lodge.id === 13 ? 'border-2 border-green-500' : '';
+                
+                // Improved promo tag with better styling and positioning
+                const promoTag = lodge.promoPrice ? 
+                    `<div class="absolute top-2 right-2 bg-green-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-sm z-10">
+                        <span class="whitespace-nowrap">PROMO: ₱${lodge.promoPrice}/night</span>
+                    </div>` : '';
+                
                 card.innerHTML = `
-                    <img src="${lodge.image}" alt="${lodge.name}" class="lodge-image">
-                    <button class="favorite-btn" aria-label="Add to favorites">
-                        <i class="ri-heart-line"></i>
-                    </button>
-                    <div class="content">
-                        <div class="flex justify-between items-start">
-                            <h2>${lodge.name}</h2>
-                            <div class="rating">
-                                <i class="ri-star-fill"></i>
-                                <span>${lodge.rating}</span>
+                    <div class="relative ${highlightClass}">
+                        <img src="${lodge.image}" alt="${lodge.name}" class="lodge-image">
+                        ${promoTag}
+                        <button class="favorite-btn" aria-label="Add to favorites">
+                            <i class="ri-heart-line"></i>
+                        </button>
+                        <div class="content">
+                            <div class="flex justify-between items-start">
+                                <h2>${lodge.name}</h2>
+                                <div class="rating">
+                                    <i class="ri-star-fill"></i>
+                                    <span>${lodge.rating}</span>
+                                </div>
                             </div>
-                        </div>
-                        <div class="location">
-                            <i class="ri-map-pin-line"></i>
-                            <span>${lodge.location}</span>
-                        </div>
-                        <div class="amenities">
-                            ${lodge.amenities.map(amenity => 
-                                `<span class="amenity-tag">${amenity}</span>`
-                            ).join('')}
-                        </div>
-                        <div class="price">
-                            ₱${lodge.price.toLocaleString()}
-                            <span>/night</span>
+                            <div class="location">
+                                <i class="ri-map-pin-line"></i>
+                                <span>${lodge.location}</span>
+                            </div>
+                            <div class="amenities">
+                                ${lodge.amenities.map(amenity => 
+                                    `<span class="amenity-tag">${amenity}</span>`
+                                ).join('')}
+                            </div>
+                            <div class="price">
+                                ₱${lodge.price.toLocaleString()}
+                                <span>/night</span>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -174,6 +186,22 @@
 
     // Lodge data
     const lodgeData = [
+        {
+            id: 13,
+            name: "Ever Lodge",
+            location: "Baguio City Center, Baguio City",
+            barangay: "Session Road",
+            image: "../components/6.jpg",
+            price: 1300,
+            promoPrice: 580,
+            amenities: ["Mountain View", "High-speed WiFi", "Fitness Center", "Coffee Shop"],
+            rating: 4.9,
+            propertyType: "hotel",
+            coordinates: {
+                lat: 16.4088,
+                lng: 120.6013
+            }
+        },
         {
             id: 1,
             name: "Pine Haven Lodge",
@@ -586,9 +614,23 @@
         // Generate the correct file path with the Lodge folder
         const bookingUrl = `../Lodge/lodge${lodge.id}.html`;
         
+        // Add promo price with improved styling if it exists
+        const promoDisplay = lodge.promoPrice ? 
+            `<div class="mt-3">
+                <p class="flex items-center font-bold text-green-600 text-lg">
+                    <span class="inline-block bg-green-100 text-green-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded">PROMO</span>
+                    Night Rate: ₱${lodge.promoPrice}
+                </p>
+                <p class="text-xs text-gray-500">(Check-in: 10PM - 8AM)</p>
+             </div>` : '';
+        
+        // Add "Best Value" badge for Ever Lodge (id: 13)
+        const bestValueBadge = lodge.id === 13 ? 
+            `<span class="inline-block bg-green-600 text-white text-xs font-bold px-2.5 py-1 rounded mr-2">BEST VALUE</span>` : '';
+        
         content.innerHTML = `
             <div class="flex justify-between items-start mb-6">
-                <h2 class="text-2xl font-bold">${lodge.name}</h2>
+                <h2 class="text-2xl font-bold flex items-center">${bestValueBadge}${lodge.name}</h2>
                 <button class="text-gray-500 hover:text-gray-700" onclick="document.getElementById('lodgeDetailsModal').classList.add('hidden')">
                     <i class="ri-close-line text-2xl"></i>
                 </button>
@@ -600,7 +642,8 @@
                     <p class="text-gray-600">${lodge.location}</p>
                     
                     <h3 class="font-semibold mt-4 mb-2">Price</h3>
-                    <p class="text-green-600 font-bold text-xl">₱${lodge.price} per night</p>
+                    <p class="text-green-600 font-bold text-xl">₱${lodge.price.toLocaleString()} per night</p>
+                    ${promoDisplay}
                     
                     <h3 class="font-semibold mt-4 mb-2">Rating</h3>
                     <div class="flex items-center">

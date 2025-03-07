@@ -1460,3 +1460,192 @@ main.w-3\/4 {
         box-shadow: 0 0 0 2px rgba(37, 99, 235, 0);
     }
 }
+
+/* Ever Lodge Highlighting */
+.lodge-card[data-property-type="hotel"] .border-green-500 {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+    position: relative;
+    z-index: 1; /* Ensure proper stacking context */
+}
+
+.lodge-card[data-property-type="hotel"] .border-green-500:before {
+    content: "Best Value";
+    position: absolute;
+    top: -12px;
+    left: 10px;
+    background-color: #10B981; /* green-500 */
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    padding: 4px 8px;
+    border-radius: 4px;
+    z-index: 10; /* Higher z-index to ensure visibility */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    white-space: nowrap; /* Prevent text wrapping */
+    line-height: 1.2;
+}
+
+/* Add a hover effect to make the badge more noticeable */
+.lodge-card:hover .border-green-500:before {
+    background-color: #059669; /* green-600 - slightly darker on hover */
+    transform: translateY(-1px);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+}
+
+/* Add animation to make it more attention-grabbing */
+@keyframes pulse-badge {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.lodge-card[data-property-type="hotel"] .border-green-500:before {
+    animation: pulse-badge 2s infinite;
+}
+
+/* Night Promo Badge Animation */
+.lodge-card .absolute.top-2.right-2 {
+    animation: pulse-glow 2s infinite;
+    z-index: 10; /* Higher z-index to ensure visibility */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+}
+
+@keyframes pulse-border {
+    0% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    }
+}
+
+/* Night Promo Badge Animation */
+.lodge-card .absolute.top-2.right-2 {
+    animation: pulse-glow 2s infinite;
+    z-index: 5;
+}
+
+@keyframes pulse-glow {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.05);
+        opacity: 0.9;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Additional styling to fix Ever Lodge highlighting */
+.lodge-card {
+    overflow: visible !important; /* Allow badges to render outside the container */
+    position: relative;
+}
+
+.lodge-card[data-property-type="hotel"] .border-green-500 {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+    position: relative;
+    z-index: 1;
+    border-width: 2px;
+    border-color: #10B981;
+    transition: all 0.3s ease;
+}
+
+.lodge-card[data-property-type="hotel"] .border-green-500:before {
+    content: "Best Value";
+    position: absolute;
+    top: -12px;
+    left: 10px;
+    background-color: #10B981; /* green-500 */
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    padding: 4px 8px;
+    border-radius: 4px;
+    z-index: 20; /* Ensure it's above all other elements */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    white-space: nowrap;
+    line-height: 1.2;
+    transform: translateY(-4px);
+    animation: pulse-badge 2s infinite;
+}
+
+/* Enhanced hover states */
+.lodge-card:hover .border-green-500 {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
+    border-color: #059669; /* green-600 */
+}
+
+.lodge-card:hover .border-green-500:before {
+    background-color: #059669; /* green-600 - slightly darker on hover */
+    transform: translateY(-6px);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+}
+
+/* Custom badge animation */
+@keyframes pulse-badge {
+    0% { 
+        transform: translateY(-4px) scale(1);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    50% { 
+        transform: translateY(-6px) scale(1.05);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+    100% { 
+        transform: translateY(-4px) scale(1);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+}
+
+/* Night Promo Badge Animation - Enhanced with better z-indexing */
+.lodge-card .absolute.top-2.right-2 {
+    animation: pulse-glow 2s infinite;
+    z-index: 15; /* Ensure it's above most content */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+    transform-origin: center;
+}
+
+/* Improved animation for the promo tag */
+@keyframes pulse-glow {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 3px 7px rgba(0, 0, 0, 0.2);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+    }
+}
+
+/* Fix for Safari which might cut off absolutely positioned elements */
+.lodge-container {
+    padding-top: 12px; /* Add space for the badge that might overflow */
+}
+
+/* Ensure modal badges display properly */
+#lodgeDetailsContent h2 .inline-block.bg-green-600 {
+    position: relative;
+    top: -1px;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.8; }
+    100% { opacity: 1; }
+}
