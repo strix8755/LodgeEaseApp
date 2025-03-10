@@ -120,6 +120,11 @@ function handleDateSelection(selectedDate) {
   }
 
   renderCalendar(currentDate);
+  
+  // Check if night promo is eligible after date selection
+  if (selectedCheckIn && selectedCheckOut) {
+    updatePromoEligibility();
+  }
 }
 
 // Updated function to calculate pricing based on rate and nights
@@ -129,9 +134,40 @@ function updatePriceCalculation() {
   const nights = Math.round((selectedCheckOut - selectedCheckIn) / (1000 * 60 * 60 * 24));
   nightsSelected.textContent = `${nights} nights selected`;
   
+  // Check if eligible for night promo - updated to allow any one-night stay
+  // Night promo is valid for any 1-night stay
+  const isPromoEligible = nights === 1;
+  
+  // Get the night promo option element
+  const nightPromoOption = document.querySelector('option[value="night-promo"]');
+  
+  if (nightPromoOption) {
+    if (isPromoEligible) {
+      nightPromoOption.disabled = false;
+      nightPromoOption.textContent = "Night Promo (10:00 PM - 8:00 AM) - Available!";
+    } else {
+      // If currently selected but not eligible, switch to standard
+      if (checkInTime && checkInTime.value === 'night-promo') {
+        checkInTime.value = 'standard';
+      }
+      nightPromoOption.disabled = true;
+      nightPromoOption.textContent = "Night Promo (Not Available - Requires 1-night stay)";
+    }
+  }
+  
   // Get rate based on check-in time selection
-  const isPromoRate = checkInTime && checkInTime.value === 'night-promo';
+  const isPromoRate = isPromoEligible && checkInTime && checkInTime.value === 'night-promo';
   const nightlyRate = isPromoRate ? NIGHT_PROMO_RATE : STANDARD_RATE;
+
+  // Update promo banner visibility
+  const promoBanner = document.getElementById('promo-banner');
+  if (promoBanner) {
+    if (isPromoEligible) {
+      promoBanner.classList.remove('hidden');
+    } else {
+      promoBanner.classList.add('hidden');
+    }
+  }
   
   // Apply weekly discount if applicable
   let subtotal = nightlyRate * nights;
@@ -175,53 +211,95 @@ function formatDate(date) {
 }
 
 // Event Listeners
-checkInInput?.addEventListener('click', () => {
-  calendarModal.classList.remove('hidden');
-  calendarModal.classList.add('flex');
-});
-
-checkOutInput?.addEventListener('click', () => {
-  if (selectedCheckIn) {
+function setupCalendarListeners() {
+  checkInInput?.addEventListener('click', () => {
     calendarModal.classList.remove('hidden');
     calendarModal.classList.add('flex');
-  }
-});
+  });
 
-closeCalendarBtn?.addEventListener('click', () => {
-  calendarModal.classList.add('hidden');
-  calendarModal.classList.remove('flex');
-});
+  checkOutInput?.addEventListener('click', () => {
+    if (selectedCheckIn) {
+      calendarModal.classList.remove('hidden');
+      calendarModal.classList.add('flex');
+    }
+  });
 
-clearDatesBtn?.addEventListener('click', () => {
-  selectedCheckIn = null;
-  selectedCheckOut = null;
-  checkInInput.value = '';
-  checkOutInput.value = '';
-  nightsSelected.textContent = '';
-  pricingDetails.classList.add('hidden');
-  renderCalendar(currentDate);
-});
-
-prevMonthBtn?.addEventListener('click', () => {
-  currentDate.setMonth(currentDate.getMonth() - 1);
-  renderCalendar(currentDate);
-});
-
-nextMonthBtn?.addEventListener('click', () => {
-  currentDate.setMonth(currentDate.getMonth() + 1);
-  renderCalendar(currentDate);
-});
-
-// Initial calendar render
-renderCalendar(currentDate);
-
-// Close calendar when clicking outside
-calendarModal?.addEventListener('click', (e) => {
-  if (e.target === calendarModal) {
+  closeCalendarBtn?.addEventListener('click', () => {
     calendarModal.classList.add('hidden');
     calendarModal.classList.remove('flex');
+  });
+
+  clearDatesBtn?.addEventListener('click', () => {
+    selectedCheckIn = null;
+    selectedCheckOut = null;
+    checkInInput.value = '';
+    checkOutInput.value = '';
+    nightsSelected.textContent = '';
+    pricingDetails.classList.add('hidden');
+    renderCalendar(currentDate);
+  });
+
+  prevMonthBtn?.addEventListener('click', () => {
+    currentDate.setMonth(currentDate.getMonth() - 1);
+    renderCalendar(currentDate);
+  });
+
+  nextMonthBtn?.addEventListener('click', () => {
+    currentDate.setMonth(currentDate.getMonth() + 1);
+    renderCalendar(currentDate);
+  });
+
+  // Close calendar when clicking outside
+  calendarModal?.addEventListener('click', (e) => {
+    if (e.target === calendarModal) {
+      calendarModal.classList.add('hidden');
+      calendarModal.classList.remove('flex');
+    }
+  });
+}
+
+// Add check for promo eligibility when the page loads or dates change
+function updatePromoEligibility() {
+  const promoBanner = document.getElementById('promo-banner');
+  const nightPromoOption = document.querySelector('option[value="night-promo"]');
+  
+  if (promoBanner) {
+    // By default, hide the promo banner until valid dates are selected
+    promoBanner.classList.add('hidden');
   }
-});
+  
+  if (nightPromoOption) {
+    nightPromoOption.disabled = true;
+    nightPromoOption.textContent = "Night Promo (Not Available - Requires 1-night stay)";
+  }
+  
+  if (selectedCheckIn && selectedCheckOut) {
+    const nights = Math.round((selectedCheckOut - selectedCheckIn) / (1000 * 60 * 60 * 24));
+    
+    // Updated to allow any one-night stay
+    const isPromoEligible = nights === 1;
+    
+    if (isPromoEligible && promoBanner) {
+      promoBanner.classList.remove('hidden');
+    }
+    
+    if (nightPromoOption) {
+      nightPromoOption.disabled = !isPromoEligible;
+      if (isPromoEligible) {
+        nightPromoOption.textContent = "Night Promo (10:00 PM - 8:00 AM) - Available!";
+      }
+    }
+  }
+}
+
+function updateDateInputs() {
+  if (checkInInput && selectedCheckIn) {
+    checkInInput.value = formatDate(selectedCheckIn);
+  }
+  if (checkOutInput && selectedCheckOut) {
+    checkOutInput.value = formatDate(selectedCheckOut);
+  }
+}
 
 // Get current user data
 async function getCurrentUserData() {
@@ -432,18 +510,23 @@ export async function handleReserveClick(event) {
             return;
         }
 
+        // Check if night promo is eligible - updated to allow any one-night stay
+        const isPromoEligible = nights === 1;
+
         // Calculate costs based on selected rate and apply discounts
-        const isPromoRate = checkInTime && checkInTime.value === 'night-promo';
+        const isPromoRate = isPromoEligible && checkInTime && checkInTime.value === 'night-promo';
         const nightlyRate = isPromoRate ? NIGHT_PROMO_RATE : STANDARD_RATE;
         let subtotal = nightlyRate * nights;
+        let discountAmount = 0;
         
         // Apply weekly discount if applicable
         if (nights >= 7) {
-            subtotal = subtotal * (1 - WEEKLY_DISCOUNT);
+            discountAmount = subtotal * WEEKLY_DISCOUNT;
+            subtotal -= discountAmount;
         }
         
         const serviceFeeAmount = Math.round(subtotal * SERVICE_FEE_PERCENTAGE);
-        const totalPrice = subtotal + serviceFeeAmount;
+        const totalAmount = subtotal + serviceFeeAmount;
 
         // Create booking data object with all necessary details
         const bookingData = {
@@ -456,7 +539,7 @@ export async function handleReserveClick(event) {
             nightlyRate: nightlyRate,
             subtotal: subtotal,
             serviceFee: serviceFeeAmount,
-            totalPrice: totalPrice,
+            totalPrice: totalAmount,
             propertyDetails: {
                 name: 'Ever Lodge',
                 location: 'Baguio City, Philippines',
@@ -478,6 +561,20 @@ export async function handleReserveClick(event) {
     }
 }
 
+// Add subtle animation to promo banner
+function addPromoBannerAnimation() {
+  const promoBanner = document.querySelector('#promo-banner');
+  if (promoBanner) {
+    // Add a subtle pulse animation
+    setInterval(() => {
+      promoBanner.classList.add('scale-105');
+      setTimeout(() => {
+        promoBanner.classList.remove('scale-105');
+      }, 1000);
+    }, 5000);
+  }
+}
+
 // Update the event listener setup
 document.addEventListener('DOMContentLoaded', async () => {
     try {
@@ -485,6 +582,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Initialize time slot selector
         initializeTimeSlotSelector();
+        updatePromoEligibility();
+        
+        // Initialize calendar on page load
+        if (calendarGrid) {
+            renderCalendar(currentDate);
+        }
+        
+        // Set up calendar event listeners
+        setupCalendarListeners();
         
         // Check if there's a pending booking after login
         const pendingBooking = localStorage.getItem('pendingBooking');
@@ -505,11 +611,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Update the display
             updateDateInputs();
             updatePriceCalculation();
+            
+            // Clear the pending booking
+            localStorage.removeItem('pendingBooking');
         }
-
-        // Initialize calendar and event listeners
-        renderCalendar(currentDate);
-        initializeEventListeners();
         
         // Add animation for promo banner
         addPromoBannerAnimation();
@@ -517,141 +622,3 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error('Error during initialization:', error);
     }
 });
-
-function initializeEventListeners() {
-  // Initialize calendar
-  renderCalendar(currentDate);
-
-  // Direct event listener for reserve button
-  const reserveBtn = document.getElementById('reserve-btn');
-  if (reserveBtn) {
-    console.log('Found reserve button, adding click listener');
-    reserveBtn.onclick = async (event) => {
-      console.log('Reserve button clicked');
-      try {
-        await handleReserveClick(event);
-      } catch (error) {
-        console.error('Error in reserve button click handler:', error);
-      }
-    };
-  } else {
-    console.error('Reserve button not found');
-  }
-
-  // Auth state observer
-  auth.onAuthStateChanged((user) => {
-    const loginButton = document.getElementById('login-button');
-    if (loginButton) {
-      if (!user) {
-        loginButton.classList.remove('hidden');
-      } else {
-        loginButton.classList.add('hidden');
-      }
-    }
-  });
-
-  // Calendar event listeners
-  setupCalendarListeners();
-
-  // Toggle reviews button
-  const toggleReviewsBtn = document.getElementById('toggle-reviews');
-  if (toggleReviewsBtn) {
-    toggleReviewsBtn.addEventListener('click', () => {
-      const reviewsSection = document.getElementById('reviews-section');
-      if (reviewsSection.classList.contains('hidden')) {
-        reviewsSection.classList.remove('hidden');
-        toggleReviewsBtn.textContent = 'Hide Reviews';
-      } else {
-        reviewsSection.classList.add('hidden');
-        toggleReviewsBtn.textContent = 'Show Reviews';
-      }
-    });
-  }
-}
-
-function setupCalendarListeners() {
-  // Calendar event listeners
-  checkInInput?.addEventListener('click', () => {
-    calendarModal.classList.remove('hidden');
-    calendarModal.classList.add('flex');
-  });
-
-  checkOutInput?.addEventListener('click', () => {
-    if (selectedCheckIn) {
-      calendarModal.classList.remove('hidden');
-      calendarModal.classList.add('flex');
-    }
-  });
-
-  closeCalendarBtn?.addEventListener('click', () => {
-    calendarModal.classList.add('hidden');
-    calendarModal.classList.remove('flex');
-  });
-
-  clearDatesBtn?.addEventListener('click', () => {
-    selectedCheckIn = null;
-    selectedCheckOut = null;
-    checkInInput.value = '';
-    checkOutInput.value = '';
-    nightsSelected.textContent = '';
-    pricingDetails.classList.add('hidden');
-    renderCalendar(currentDate);
-  });
-
-  prevMonthBtn?.addEventListener('click', () => {
-    currentDate.setMonth(currentDate.getMonth() - 1);
-    renderCalendar(currentDate);
-  });
-
-  nextMonthBtn?.addEventListener('click', () => {
-    currentDate.setMonth(currentDate.getMonth() + 1);
-    renderCalendar(currentDate);
-  });
-
-  // Calendar modal outside click
-  calendarModal?.addEventListener('click', (e) => {
-    if (e.target === calendarModal) {
-      calendarModal.classList.add('hidden');
-      calendarModal.classList.remove('flex');
-    }
-  });
-}
-
-function updateDateInputs() {
-  checkInInput.value = formatDate(selectedCheckIn);
-  checkOutInput.value = formatDate(selectedCheckOut);
-}
-
-// Add subtle animation to promo banner
-function addPromoBannerAnimation() {
-  const promoBanner = document.querySelector('.bg-gradient-to-r.from-green-500');
-  if (promoBanner) {
-    // Add a subtle pulse animation
-    setInterval(() => {
-      promoBanner.classList.add('scale-105');
-      setTimeout(() => {
-        promoBanner.classList.remove('scale-105');
-      }, 1000);
-    }, 5000);
-  }
-}
-
-// Add to rooms.js data for Ever Lodge
-/*
-    {
-        id: 13,
-        name: "Ever Lodge",
-        location: "Baguio City Center, Baguio City",
-        barangay: "Session Road",
-        image: "../components/6.jpg",
-        price: 1300,
-        promoPrice: 580,
-        amenities: ["Mountain View", "High-speed WiFi", "Fitness Center", "Coffee Shop"],
-        rating: 4.9,
-        propertyType: "hotel",
-        coordinates: {
-            lat: 16.4088,
-            lng: 120.6013
-        }
-    }
-*/
