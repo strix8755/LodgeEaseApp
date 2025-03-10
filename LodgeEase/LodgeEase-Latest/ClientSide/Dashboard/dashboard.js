@@ -27,6 +27,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         console.error('Error initializing user drawer:', error);
     }
 
+    // Check for booking confirmation from payment flow
+    checkBookingConfirmation();
+
     auth.onAuthStateChanged(async (user) => {
         // Add this at the beginning of the auth state change handler
         const loginButton = document.getElementById('loginButton');
@@ -90,7 +93,7 @@ async function getLatestBooking(user) {
         const q = query(
             bookingsRef,
             where('userId', '==', user.uid),
-            orderBy('timestamp', 'desc'),
+            orderBy('createdAt', 'desc'),
             limit(1)
         );
 
@@ -112,6 +115,52 @@ async function getLatestBooking(user) {
     } catch (error) {
         console.error('Error getting latest booking:', error);
         throw error;
+    }
+}
+
+// Add a new function to check booking confirmation from session storage
+function checkBookingConfirmation() {
+    const confirmationData = sessionStorage.getItem('bookingConfirmation');
+    if (confirmationData) {
+        console.log('Found booking confirmation in session storage');
+        // Clear the confirmation from session storage to prevent showing it again on refresh
+        sessionStorage.removeItem('bookingConfirmation');
+        
+        // Update the dashboard with this booking information
+        // We'll need to fetch the complete booking details using the bookingId
+        const bookingDetails = JSON.parse(confirmationData);
+        if (bookingDetails && bookingDetails.bookingId) {
+            fetchBookingById(bookingDetails.bookingId);
+        }
+    }
+}
+
+// Add a function to fetch booking by ID
+async function fetchBookingById(bookingId) {
+    try {
+        console.log('Fetching booking by ID:', bookingId);
+        const bookingsRef = collection(db, 'bookings');
+        const q = query(
+            bookingsRef,
+            where('bookingId', '==', bookingId)
+        );
+
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+            const bookingData = {
+                id: querySnapshot.docs[0].id,
+                ...querySnapshot.docs[0].data()
+            };
+            console.log('Retrieved booking by ID:', bookingData);
+            
+            // Store in localStorage for future reference
+            localStorage.setItem('currentBooking', JSON.stringify(bookingData));
+            
+            // Display the booking
+            displayBookingInfo(bookingData);
+        }
+    } catch (error) {
+        console.error('Error fetching booking by ID:', error);
     }
 }
 

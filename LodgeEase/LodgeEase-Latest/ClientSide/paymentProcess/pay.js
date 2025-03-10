@@ -1,18 +1,47 @@
 import { auth, db, addBooking } from '../../AdminSide/firebase.js';
-import { getAuth } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js";
 import { generateEmailTemplate } from './emailTemplate.js';
 import { initializePaymentListeners } from './payment.js';
 import { GCashPayment } from './gcashPayment.js';
+import { doc, getDoc, collection, addDoc, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 // Constants
 const NIGHTLY_RATE = 6500;
 const SERVICE_FEE_PERCENTAGE = 0.14;
 
+// Auth state flag
+let userAuthenticated = false;
+let currentUser = null;
+
 // Get UI elements
 const confirmButton = document.getElementById('confirm-button');
 const paymentSuccessModal = document.getElementById('payment-success-modal');
 const closeModalBtn = document.getElementById('close-modal-btn');
+
+// Initialize authentication listener immediately
+auth.onAuthStateChanged((user) => {
+    if (user) {
+        console.log('User authenticated in payment page:', user.email);
+        userAuthenticated = true;
+        currentUser = user;
+        
+        // Check for pending booking
+        if (sessionStorage.getItem('pendingBooking')) {
+            sessionStorage.removeItem('pendingBooking');
+            handlePaymentSuccess();
+        }
+    } else {
+        console.log('No user is signed in on payment page');
+        userAuthenticated = false;
+        currentUser = null;
+        
+        // Redirect to login if not authenticated
+        alert('Please log in to complete your booking');
+        const returnUrl = encodeURIComponent(window.location.href);
+        window.location.href = `../Login/index.html?redirect=${returnUrl}`;
+    }
+});
 
 // Card input fields
 const cardNumberInput = document.getElementById('card-number');
@@ -27,20 +56,35 @@ function verifyBookingCosts(bookingData) {
         throw new Error('Invalid booking data: missing rate information');
     }
 
-    // Recalculate using the same formula as lodge1.js
-    const subtotal = NIGHTLY_RATE * bookingData.numberOfNights;
+    // Use the actual rate from the booking data instead of a constant
+    const nightlyRate = bookingData.nightlyRate;
+    const numberOfNights = bookingData.numberOfNights;
+    
+    // Recalculate using the same formula as in lodge files
+    const subtotal = nightlyRate * numberOfNights;
     const serviceFee = Math.round(subtotal * SERVICE_FEE_PERCENTAGE);
     const totalPrice = subtotal + serviceFee;
 
     // Verify the calculations match
-    if (bookingData.subtotal !== subtotal || 
-        bookingData.serviceFee !== serviceFee || 
-        bookingData.totalPrice !== totalPrice) {
-        console.warn('Price mismatch detected, using recalculated values');
+    if (Math.abs(bookingData.subtotal - subtotal) > 1 || 
+        Math.abs(bookingData.serviceFee - serviceFee) > 1 || 
+        Math.abs(bookingData.totalPrice - totalPrice) > 1) {
+        console.warn('Price mismatch detected', {
+            original: {
+                subtotal: bookingData.subtotal,
+                serviceFee: bookingData.serviceFee,
+                totalPrice: bookingData.totalPrice
+            },
+            recalculated: {
+                subtotal,
+                serviceFee, 
+                totalPrice
+            }
+        });
     }
 
     return {
-        nightlyRate: NIGHTLY_RATE,
+        nightlyRate,
         subtotal,
         serviceFee,
         totalPrice
@@ -74,15 +118,50 @@ function checkPaymentSelections() {
 }
 
 // Show payment success modal on confirm
-confirmButton.addEventListener('click', () => {
-    paymentSuccessModal.classList.remove('hidden');
-    handlePaymentSuccess();
+confirmButton.addEventListener('click', async (event) => {
+    event.preventDefault();
+    
+    if (!validatePaymentForm()) {
+        return;
+    }
+
+    try {
+        // Show processing state
+        confirmButton.disabled = true;
+        document.getElementById('button-text').textContent = 'Processing...';
+        document.getElementById('loading-spinner').classList.remove('hidden');
+        
+        // Make sure we have a user
+        if (!userAuthenticated || !currentUser) {
+            console.log('Waiting for authentication...');
+            // Wait a bit for auth to initialize if it hasn't already
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            if (!userAuthenticated || !currentUser) {
+                throw new Error('Authentication required');
+            }
+        }
+        
+        // Process the payment and create booking
+        await processPaymentAndBooking();
+        
+        // Show success modal
+        paymentSuccessModal.classList.remove('hidden');
+    } catch (error) {
+        console.error('Payment processing error:', error);
+        alert(error.message || 'An error occurred during payment processing');
+        
+        // Reset button
+        confirmButton.disabled = false;
+        document.getElementById('button-text').textContent = 'Confirm and Pay';
+        document.getElementById('loading-spinner').classList.add('hidden');
+    }
 });
 
 // Close modal functionality
 closeModalBtn.addEventListener('click', () => {
   paymentSuccessModal.classList.add('hidden');
-  window.location.href = '../Dashboard/dashboard.html';
+  window.location.href = '../Dashboard/Dashboard.html';
 });
 
 // Initial state
@@ -92,7 +171,13 @@ confirmButton.disabled = true;
 function getBookingData() {
     const data = localStorage.getItem('bookingData');
     if (!data) return null;
-    return JSON.parse(data);
+    
+    try {
+        return JSON.parse(data);
+    } catch (error) {
+        console.error('Error parsing booking data:', error);
+        return null;
+    }
 }
 
 // Single function to initialize page
@@ -124,8 +209,9 @@ function updateSummaryDisplay(bookingData, costs) {
     document.getElementById('summary-checkin').textContent = formatDate(bookingData.checkIn);
     document.getElementById('summary-checkout').textContent = formatDate(bookingData.checkOut);
     document.getElementById('summary-guests').textContent = `${bookingData.guests} guest${bookingData.guests > 1 ? 's' : ''}`;
+    document.getElementById('summary-contact').textContent = bookingData.contactNumber || 'Not provided';
     document.getElementById('summary-nights').textContent = `${bookingData.numberOfNights} night${bookingData.numberOfNights > 1 ? 's' : ''}`;
-    document.getElementById('summary-rate').textContent = `₱${NIGHTLY_RATE.toLocaleString()}`;
+    document.getElementById('summary-rate').textContent = `₱${costs.nightlyRate.toLocaleString()}`;
     document.getElementById('summary-subtotal').textContent = `₱${costs.subtotal.toLocaleString()}`;
     document.getElementById('summary-fee').textContent = `₱${costs.serviceFee.toLocaleString()}`;
     document.getElementById('summary-total').textContent = `₱${costs.totalPrice.toLocaleString()}`;
@@ -133,183 +219,220 @@ function updateSummaryDisplay(bookingData, costs) {
 
 function updatePaymentAmounts(totalPrice) {
     document.getElementById('pay-now-amount').textContent = `₱${totalPrice.toLocaleString()}`;
-    const firstPayment = Math.round(totalPrice * 0.562);
-    const secondPayment = Math.round(totalPrice * 0.438);
+    const firstPayment = Math.round(totalPrice / 2);
+    const secondPayment = totalPrice - firstPayment;
     document.getElementById('pay-later-first').textContent = `₱${firstPayment.toLocaleString()}`;
     document.getElementById('pay-later-second').textContent = `₱${secondPayment.toLocaleString()}`;
 }
 
-async function sendBookingConfirmationEmail(bookingDetails, userEmail) {
-    try {
-        // Basic validation
-        if (!userEmail || !bookingDetails?.bookingId) {
-            console.error('Missing required email data');
-            return false;
-        }
-
-        const functions = getFunctions();
-        const sendEmail = httpsCallable(functions, 'sendBookingConfirmation');
-
-        console.log('Attempting to send email:', {
-            email: userEmail,
-            bookingId: bookingDetails.bookingId
-        });
-
-        // Simple payload
-        const result = await sendEmail({
-            email: userEmail,
-            bookingId: bookingDetails.bookingId
-        });
-
-        console.log('Email function result:', result);
-        return result?.data?.success === true;
-    } catch (error) {
-        console.error('Email send failed:', error);
-        return false;
+async function processPaymentAndBooking() {
+    // Get booking data
+    const bookingDataJson = localStorage.getItem('bookingData');
+    if (!bookingDataJson) {
+        throw new Error('No booking data found');
     }
-}
-
-// Update handlePaymentSuccess function
-async function handlePaymentSuccess() {
-    const user = auth.currentUser;
-    if (!user?.email) {
-        console.error('No user email available');
-        alert('Please log in to complete your booking');
-        return;
+    
+    const bookingData = JSON.parse(bookingDataJson);
+    
+    // Double-check authentication
+    if (!currentUser) {
+        throw new Error('You must be logged in to complete this booking');
     }
-
+    
+    // Get payment details
+    const paymentType = document.querySelector('input[name="payment_type"]:checked').value;
+    const paymentMethod = document.querySelector('input[name="payment_method"]:checked').value;
+    
+    // Get additional reference number for GCash
+    let referenceNumber = null;
+    if (paymentMethod === 'gcash') {
+        const gcashRefInput = document.getElementById('gcash-reference');
+        if (gcashRefInput) {
+            referenceNumber = gcashRefInput.value.trim();
+        }
+    }
+    
+    // Prepare booking record for Firestore
+    const userData = await getUserData(currentUser.uid);
+    
+    const bookingId = `BK${Date.now()}`;
+    
+    const booking = {
+        bookingId: bookingId,
+        userId: currentUser.uid,
+        guestName: userData.name || currentUser.displayName || userData.fullname || 'Guest',
+        email: userData.email || currentUser.email,
+        contactNumber: bookingData.contactNumber,
+        checkIn: Timestamp.fromDate(new Date(bookingData.checkIn)),
+        checkOut: Timestamp.fromDate(new Date(bookingData.checkOut)),
+        guests: bookingData.guests,
+        numberOfNights: bookingData.numberOfNights,
+        nightlyRate: bookingData.nightlyRate,
+        subtotal: bookingData.subtotal,
+        serviceFee: bookingData.serviceFee,
+        totalPrice: bookingData.totalPrice,
+        paymentType: paymentType,
+        paymentMethod: paymentMethod,
+        paymentStatus: paymentType === 'pay_now' ? 'paid' : 'partially_paid',
+        status: 'confirmed',
+        createdAt: Timestamp.now(),
+        propertyDetails: bookingData.propertyDetails,
+        paymentDetails: {
+            referenceNumber: referenceNumber
+        }
+    };
+    
+    console.log('Creating booking with data:', booking);
+    
+    // Save booking to Firestore
     try {
-        let bookingData = JSON.parse(localStorage.getItem('bookingData'));
-        if (!bookingData) {
-            throw new Error('No booking data found');
-        }
-
-        const costs = verifyBookingCosts(bookingData);
-        const selectedPaymentMethod = document.querySelector('input[name="payment_method"]:checked');
-
-        if (selectedPaymentMethod.value === 'gcash') {
-            const gcashPayment = new GCashPayment(costs.totalPrice);
-            
-            // Process GCash payment with user data
-            const paymentResult = await gcashPayment.processPayment({
-                name: user.displayName || 'Guest',
-                email: user.email,
-                phone: bookingData.phone || ''
-            });
-
-            if (!paymentResult.success) {
-                throw new Error('GCash payment failed');
-            }
-
-            // Store payment source ID for verification
-            localStorage.setItem('pendingPaymentSource', paymentResult.sourceId);
-            
-            // Payment is being processed - show waiting message
-            const modalMessage = document.querySelector('#payment-success-modal p');
-            if (modalMessage) {
-                modalMessage.innerHTML = `
-                    Processing your payment...<br>
-                    Please complete the payment in the GCash window.
-                `;
-            }
-
-            // Check payment status periodically
-            const checkPaymentStatus = async () => {
-                const isPaymentComplete = await gcashPayment.verifyPayment(paymentResult.sourceId);
-                if (isPaymentComplete) {
-                    // Complete the booking process
-                    await finalizeBooking(bookingData, costs, paymentResult);
-                    localStorage.removeItem('pendingPaymentSource');
-                } else {
-                    // Check again in 5 seconds
-                    setTimeout(checkPaymentStatus, 5000);
-                }
-            };
-
-            // Start checking payment status
-            checkPaymentStatus();
-        }
-
-        const bookingId = `BK${Date.now()}`;
-
-        // Create final booking with exact amounts
-        const finalBooking = {
-            id: bookingId,
-            bookingId,
-            userId: user.uid,
-            userEmail: user.email,
-            guestName: user.displayName || 'Guest',
-            email: user.email,
-            checkIn: bookingData.checkIn,
-            checkOut: bookingData.checkOut,
-            guests: parseInt(bookingData.guests) || 1,
-            numberOfNights: parseInt(bookingData.numberOfNights) || 1,
-            nightlyRate: costs.nightlyRate,
-            serviceFee: costs.serviceFee,
-            subtotal: costs.subtotal,
-            totalPrice: costs.totalPrice,
-            propertyDetails: {
-                name: 'Pine Haven Lodge',
-                location: 'Baguio City, Philippines',
-                roomType: 'Deluxe Suite',
-                roomNumber: bookingData.propertyDetails?.roomNumber || "304"
-            },
-            status: 'confirmed',
-            bookingDate: new Date().toISOString(),
-            timestamp: new Date()
-        };
-
-        // Save to Firestore
-        await addBooking(finalBooking);
+        const docRef = await addDoc(collection(db, 'bookings'), booking);
+        console.log('Booking created with ID:', docRef.id);
         
-        // Save exact same data to localStorage
-        localStorage.setItem('currentBooking', JSON.stringify(finalBooking));
-        localStorage.removeItem('bookingData'); // Clear temporary booking data
-
-        console.log('Booking saved successfully:', finalBooking);
-        
-        // Update modal message
+        // Update success message
         const modalMessage = document.querySelector('#payment-success-modal p');
         if (modalMessage) {
-            modalMessage.innerHTML = `Payment of ₱${finalBooking.totalPrice.toLocaleString()} confirmed!<br>Booking ID: ${finalBooking.bookingId}`;
-        }
-        
-        // Update success message to include GCash reference
-        if (modalMessage && bookingData.paymentDetails?.referenceId) {
             modalMessage.innerHTML = `
-                Payment of ₱${costs.totalPrice.toLocaleString()} confirmed!<br>
-                Booking ID: ${bookingData.bookingId}<br>
-                GCash Reference: ${bookingData.paymentDetails.referenceId}
+                Payment of ₱${booking.totalPrice.toLocaleString()} confirmed!<br>
+                Your booking is confirmed.<br>
+                Booking ID: ${booking.bookingId}
             `;
         }
         
+        // Clear booking data from localStorage
+        localStorage.removeItem('bookingData');
+        
+        // Store booking in localStorage for dashboard access
+        localStorage.setItem('currentBooking', JSON.stringify({
+            ...booking,
+            id: docRef.id
+        }));
+        
+        // Store confirmation in sessionStorage for dashboard redirect
+        sessionStorage.setItem('bookingConfirmation', JSON.stringify({
+            bookingId: booking.bookingId,
+            propertyName: booking.propertyDetails?.name || 'Your Lodge',
+            totalPrice: booking.totalPrice
+        }));
+        
+        return docRef.id;
     } catch (error) {
-        console.error('Error processing payment:', error);
-        alert('Error processing payment. Please try again.');
+        console.error('Error saving booking to Firestore:', error);
+        throw new Error('Failed to save your booking. Please try again.');
     }
 }
 
-// Add authentication state observer
-auth.onAuthStateChanged((user) => {
-    if (user) {
-        console.log('User is signed in:', user.email);
-        // Check for pending booking
-        if (sessionStorage.getItem('pendingBooking')) {
-            sessionStorage.removeItem('pendingBooking');
-            handlePaymentSuccess();
+async function getUserData(userId) {
+    try {
+        const userDoc = await getDoc(doc(db, 'users', userId));
+        if (userDoc.exists()) {
+            return userDoc.data();
         }
-    } else {
-        console.log('No user is signed in');
+        return {};
+    } catch (error) {
+        console.error('Error fetching user data:', error);
+        return {};
     }
-});
+}
 
-// Add this to your existing payment button click handler
-document.getElementById('confirm-button').addEventListener('click', function() {
-    // ... existing payment processing code ...
-    handlePaymentSuccess();
-});
+function setupPaymentOptions(bookingData) {
+    const paymentTypeRadios = document.querySelectorAll('input[name="payment_type"]');
+    if (paymentTypeRadios.length) {
+        paymentTypeRadios[0].checked = true; // Default to first option (pay now)
+        
+        paymentTypeRadios.forEach(radio => {
+            radio.addEventListener('change', () => {
+                validatePaymentForm();
+            });
+        });
+    }
+}
+
+function setupPaymentMethodListeners() {
+    const paymentMethodRadios = document.querySelectorAll('input[name="payment_method"]');
+    const cardForm = document.getElementById('card-form');
+    const gcashForm = document.getElementById('gcash-form');
+    
+    paymentMethodRadios.forEach(radio => {
+        radio.addEventListener('change', () => {
+            // Hide all payment method specific forms first
+            if (cardForm) cardForm.classList.add('hidden');
+            if (gcashForm) gcashForm.classList.add('hidden');
+            
+            // Show the selected payment method form
+            if (radio.value === 'card' && cardForm) {
+                cardForm.classList.remove('hidden');
+            } else if (radio.value === 'gcash' && gcashForm) {
+                gcashForm.classList.remove('hidden');
+            }
+            
+            validatePaymentForm();
+        });
+    });
+    
+    // Add listeners to card inputs for validation if they exist
+    const cardInputs = document.querySelectorAll('#card-number, #card-expiration, #card-cvv, #card-zip, #card-country');
+    cardInputs.forEach(input => {
+        if (input) {
+            input.addEventListener('input', validatePaymentForm);
+        }
+    });
+    
+    // Add listener to GCash reference number input
+    const gcashRef = document.getElementById('gcash-reference');
+    if (gcashRef) {
+        gcashRef.addEventListener('input', validatePaymentForm);
+    }
+}
+
+function validatePaymentForm() {
+    if (!confirmButton) return false;
+    
+    const selectedPaymentType = document.querySelector('input[name="payment_type"]:checked');
+    const selectedPaymentMethod = document.querySelector('input[name="payment_method"]:checked');
+    
+    let isValid = selectedPaymentType && selectedPaymentMethod;
+    
+    if (isValid && selectedPaymentMethod.value === 'card') {
+        // Validate card inputs
+        const cardNumber = document.getElementById('card-number')?.value;
+        const cardExpiration = document.getElementById('card-expiration')?.value;
+        const cardCvv = document.getElementById('card-cvv')?.value;
+        const cardZip = document.getElementById('card-zip')?.value;
+        const cardCountry = document.getElementById('card-country')?.value;
+        
+        isValid = cardNumber && cardExpiration && cardCvv && cardZip && cardCountry;
+    }
+    else if (isValid && selectedPaymentMethod.value === 'gcash') {
+        // Validate GCash reference number
+        const gcashRef = document.getElementById('gcash-reference');
+        isValid = gcashRef && gcashRef.value.trim().length > 5;
+    }
+    
+    confirmButton.disabled = !isValid;
+    return isValid;
+}
 
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('Payment page loaded, initializing...');
     initializePage();
-    initializePaymentListeners();
+    setupPaymentOptions(getBookingData());
+    setupPaymentMethodListeners();
+    
+    // Add event listeners to card form inputs
+    const cardInputs = document.querySelectorAll('#card-number, #card-expiration, #card-cvv, #card-zip, #card-country');
+    cardInputs.forEach(input => {
+        if (input) {
+            input.addEventListener('input', validatePaymentForm);
+        }
+    });
+    
+    // Check auth state immediately
+    if (auth.currentUser) {
+        console.log('User already authenticated on page load:', auth.currentUser.email);
+        userAuthenticated = true;
+        currentUser = auth.currentUser;
+    } else {
+        console.log('No user authenticated on page load, waiting for auth state change');
+    }
 });

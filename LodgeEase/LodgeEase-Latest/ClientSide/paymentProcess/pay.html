@@ -126,7 +126,7 @@
             <input type="radio" name="payment_method" class="text-indigo-600 focus:ring-indigo-500" value="card">
             <span class="font-medium text-gray-800">Credit or debit card</span>
           </label>
-          <div class="mt-4 space-y-2">
+          <div id="card-form" class="mt-4 space-y-2 hidden">
             <input
               type="text"
               placeholder="Card number"
@@ -167,53 +167,40 @@
 
         <!-- GCash -->
         <div class="border rounded-lg p-4">
-    <label class="flex items-center space-x-4 cursor-pointer">
-        <input type="radio" name="payment_method" class="text-indigo-600 focus:ring-indigo-500" value="gcash">
-        <span class="font-medium text-gray-800">GCash</span>
-        <img src="../components/gcash-logo-png_seeklogo-498022.png" alt="GCash" class="h-8">
-    </label>
-    <div id="gcash-form" class="hidden mt-4">
-        <div class="space-y-4">
-            <!-- Recipient's GCash Information -->
-            <div class="p-4 bg-gray-50 rounded-lg">
+          <label class="flex items-center space-x-4 cursor-pointer">
+            <input type="radio" name="payment_method" class="text-indigo-600 focus:ring-indigo-500" value="gcash">
+            <span class="font-medium text-gray-800">GCash</span>
+            <img src="../components/gcash-logo-png_seeklogo-498022.png" alt="GCash" class="h-8">
+          </label>
+          <div id="gcash-form" class="hidden mt-4">
+            <div class="space-y-4">
+              <!-- Recipient's GCash Information -->
+              <div class="p-4 bg-gray-50 rounded-lg">
                 <h3 class="font-medium text-gray-800 mb-2">Send Payment to:</h3>
                 <div class="space-y-2">
-                    <p class="text-gray-600">Pine Haven Lodge</p>
-                    <p class="text-gray-600">GCash: 0917 123 4567</p>
-                    <div class="flex items-center space-x-2">
-                        <button onclick="copyGcashNumber()" class="text-sm text-blue-600 hover:text-blue-700">
-                            <i class="fas fa-copy mr-1"></i> Copy Number
-                        </button>
-                        <span id="copyMessage" class="text-sm text-green-600 hidden">Copied!</span>
-                    </div>
+                  <p class="text-gray-600">Pine Haven Lodge</p>
+                  <p class="text-gray-600">GCash: 0917 123 4567</p>
+                  <div class="flex items-center space-x-2">
+                    <button onclick="copyGcashNumber()" class="text-sm text-blue-600 hover:text-blue-700">
+                      <i class="fas fa-copy mr-1"></i> Copy Number
+                    </button>
+                    <span id="copyMessage" class="text-sm text-green-600 hidden">Copied!</span>
+                  </div>
                 </div>
-            </div>
-            <!-- Reference Number Input -->
-            <div>
+              </div>
+              <!-- Reference Number Input -->
+              <div>
                 <label class="block text-sm font-medium text-gray-700">Reference Number</label>
                 <input type="text" id="gcash-reference" 
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                    placeholder="Enter GCash Reference Number"
-                    required>
+                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  placeholder="Enter GCash Reference Number"
+                  required>
                 <p class="mt-1 text-sm text-gray-500">Enter the reference number from your GCash payment</p>
+              </div>
+              <div id="gcash-error" class="text-red-500 text-sm hidden"></div>
             </div>
-            <div id="gcash-error" class="text-red-500 text-sm hidden"></div>
+          </div>
         </div>
-    </div>
-</div>
-
-<!-- Add this script for the copy functionality -->
-<script>
-function copyGcashNumber() {
-    navigator.clipboard.writeText('09171234567').then(() => {
-        const copyMessage = document.getElementById('copyMessage');
-        copyMessage.classList.remove('hidden');
-        setTimeout(() => {
-            copyMessage.classList.add('hidden');
-        }, 2000);
-    });
-}
-</script>
 
         <!-- PayPal -->
         <div class="border rounded-lg p-4">
@@ -251,7 +238,7 @@ function copyGcashNumber() {
     <div class="bg-white p-8 rounded-lg shadow-xl max-w-md w-full text-center">
       <i class="fas fa-check-circle text-5xl text-green-500 mb-4"></i>
       <h2 class="text-2xl font-semibold mb-4">Payment Successful!</h2>
-      <p class="text-gray-600 mb-6"></p>
+      <p class="text-gray-600 mb-6">Your booking has been confirmed.</p>
       <button 
         id="close-modal-btn"
         class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
@@ -294,6 +281,17 @@ function copyGcashNumber() {
             }
         });
     });
+  </script>
+  <script>
+    function copyGcashNumber() {
+        navigator.clipboard.writeText('09171234567').then(() => {
+            const copyMessage = document.getElementById('copyMessage');
+            copyMessage.classList.remove('hidden');
+            setTimeout(() => {
+                copyMessage.classList.add('hidden');
+            }, 2000);
+        });
+    }
   </script>
 </body>
 </html>
