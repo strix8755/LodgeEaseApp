@@ -99,89 +99,76 @@
     }
 
     function createLodgeCards() {
-        console.log('Starting createLodgeCards function...');
         const container = document.querySelector('.lodge-container');
-        
-        if (!container) {
-            console.error('Lodge container not found');
-            return;
-        }
-        
-        // Clear existing cards
+        if (!container) return;
+    
         container.innerHTML = '';
         
-        // Add loading state
-        for (let i = 0; i < 6; i++) {
-            container.innerHTML += `
-                <div class="loading-card h-[300px] rounded-lg"></div>
-            `;
-        }
-        
-        // Simulate loading delay
-        setTimeout(() => {
-            container.innerHTML = '';
-            lodgeData.forEach((lodge, index) => {
-                const card = document.createElement('article');
-                card.className = 'lodge-card opacity-0';
-                card.style.animationDelay = `${index * 100}ms`;
-                card.style.animation = 'scaleIn 0.5s ease forwards';
-                card.dataset.propertyType = lodge.propertyType || 'hotel';
-                card.dataset.barangay = lodge.barangay;
-                
-                // Add special highlight for Ever Lodge (id: 13)
-                const highlightClass = lodge.id === 13 ? 'border-2 border-green-500' : '';
-                
-                // Improved promo tag with better styling and positioning
-                const promoTag = lodge.promoPrice ? 
-                    `<div class="absolute top-2 right-2 bg-green-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-sm z-10">
-                        <span class="whitespace-nowrap">PROMO: ₱${lodge.promoPrice}/night</span>
-                    </div>` : '';
-                
-                card.innerHTML = `
-                    <div class="relative ${highlightClass}">
-                        <img src="${lodge.image}" alt="${lodge.name}" class="lodge-image">
-                        ${promoTag}
-                        <button class="favorite-btn" aria-label="Add to favorites">
-                            <i class="ri-heart-line"></i>
-                        </button>
-                        <div class="content">
-                            <div class="flex justify-between items-start">
-                                <h2>${lodge.name}</h2>
-                                <div class="rating">
-                                    <i class="ri-star-fill"></i>
-                                    <span>${lodge.rating}</span>
-                                </div>
-                            </div>
-                            <div class="location">
-                                <i class="ri-map-pin-line"></i>
-                                <span>${lodge.location}</span>
-                            </div>
-                            <div class="amenities">
-                                ${lodge.amenities.map(amenity => 
-                                    `<span class="amenity-tag">${amenity}</span>`
-                                ).join('')}
-                            </div>
-                            <div class="price">
-                                ₱${lodge.price.toLocaleString()}
-                                <span>/night</span>
-                            </div>
+        lodgeData.forEach((lodge, index) => {
+            const card = document.createElement('article');
+            card.className = 'lodge-card opacity-0';
+            card.style.animationDelay = `${index * 100}ms`;
+            card.style.animation = 'scaleIn 0.5s ease forwards';
+            card.dataset.propertyType = lodge.propertyType || 'hotel';
+            card.dataset.lodgeId = lodge.id;
+            card.dataset.barangay = lodge.barangay;
+    
+            
+            const isEverLodge = lodge.id === 13;
+            
+            
+            const bestValueBadge = isEverLodge ? 
+                `<div class="best-value-badge">BEST VALUE</div>` : '';
+    
+            
+            const promoTag = lodge.promoPrice ? 
+                `<div class="promo-tag">
+                    <span class="promo-tag-label">NIGHT PROMO</span>
+                    <span class="promo-tag-price">₱${lodge.promoPrice}</span>
+                 </div>` : '';
+    
+            card.innerHTML = `
+                <div class="relative overflow-hidden">
+                    ${bestValueBadge}
+                    ${promoTag}
+                    <img src="${lodge.image}" alt="${lodge.name}" class="lodge-image w-full h-48 object-cover">
+                    <button class="favorite-btn">
+                        <i class="ri-heart-line"></i>
+                    </button>
+                </div>
+                <div class="content p-4">
+                    <h2 class="text-xl font-semibold mb-2">${lodge.name}</h2>
+                    <div class="location flex items-center text-gray-600 mb-2">
+                        <i class="ri-map-pin-line mr-1"></i>
+                        <span>${lodge.location}</span>
+                    </div>
+                    <div class="amenities flex flex-wrap gap-2 mb-4">
+                        ${lodge.amenities.map(amenity => 
+                            `<span class="amenity-tag">${amenity}</span>`
+                        ).join('')}
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div class="rating flex items-center">
+                            <span class="text-yellow-400 mr-1">★</span>
+                            <span class="font-medium">${lodge.rating}</span>
+                        </div>
+                        <div class="price text-lg font-bold ${isEverLodge ? 'text-green-600' : ''}">
+                            ₱${lodge.price.toLocaleString()}
+                            <span class="text-sm font-normal text-gray-600">/night</span>
                         </div>
                     </div>
-                `;
-                
-                // Add click event listener to open lodge details
-                card.addEventListener('click', (e) => {
-                    if (!e.target.closest('.favorite-btn')) {
-                        showLodgeDetails(lodge);
-                    }
-                });
-                
-                container.appendChild(card);
-                
-                // Force a reflow to ensure the card is visible
-                void card.offsetHeight;
+                </div>
+            `;
+    
+            // Add click event to show details
+            card.addEventListener('click', (e) => {
+                if (!e.target.closest('.favorite-btn')) {
+                    showLodgeDetails(lodge);
+                }
             });
-        }, 1000);
+    
+            container.appendChild(card);
+        });
     }
 
     // Lodge data
