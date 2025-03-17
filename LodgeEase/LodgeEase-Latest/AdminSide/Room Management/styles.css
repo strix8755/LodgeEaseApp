@@ -1066,3 +1066,318 @@ body {
     }
 }
 
+/* Add these styles at the end of your file */
+
+/* Client Rooms Modal Styles */
+.client-rooms-modal {
+    width: 90%;
+    max-width: 1200px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+/* Lodge Card Styling */
+.lodge-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+.lodge-card {
+    background-color: white;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
+}
+
+.lodge-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+}
+
+.lodge-image {
+    position: relative;
+    height: 200px;
+    overflow: hidden;
+}
+
+.lodge-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.lodge-content {
+    padding: 1rem;
+}
+
+.lodge-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.5rem;
+}
+
+.lodge-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+}
+
+.lodge-rating {
+    display: flex;
+    align-items: center;
+    color: #FF9800;
+    font-weight: 500;
+}
+
+.lodge-rating i {
+    margin-right: 0.25rem;
+}
+
+.lodge-location {
+    display: flex;
+    align-items: center;
+    color: #666;
+    font-size: 0.875rem;
+    margin-bottom: 0.75rem;
+}
+
+.lodge-location i {
+    margin-right: 0.375rem;
+    font-size: 0.875rem;
+}
+
+.lodge-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.detail {
+    display: flex;
+    align-items: center;
+    color: #555;
+    font-size: 0.875rem;
+}
+
+.detail i {
+    margin-right: 0.375rem;
+    color: #666;
+}
+
+.lodge-amenities {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.amenity {
+    background-color: #f0f7ff;
+    color: #3182ce;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 9999px;
+}
+
+.more-amenities {
+    background-color: #edf2f7;
+    color: #718096;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 9999px;
+}
+
+.lodge-price {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #2c5282;
+    margin-bottom: 0.5rem;
+}
+
+.price-qualifier {
+    font-size: 0.875rem;
+    color: #718096;
+    font-weight: normal;
+}
+
+.lodge-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 0.75rem;
+    border-top: 1px solid #edf2f7;
+    font-size: 0.875rem;
+}
+
+.actions-overlay {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    gap: 8px;
+}
+
+.admin-action-btn {
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.admin-action-btn:hover {
+    background: rgba(0, 0, 0, 0.7);
+}
+
+.ribbon {
+    position: absolute;
+    top: 20px;
+    left: -30px;
+    background: #2c5282;
+    color: white;
+    padding: 5px 30px;
+    transform: rotate(-45deg);
+    font-size: 12px;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.image-count {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+/* Empty state styling */
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #718096;
+}
+
+/* Loading overlay */
+.loading-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    font-size: 1.5rem;
+    color: #4a5568;
+}
+
+/* Pagination controls */
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2rem;
+    gap: 1rem;
+}
+
+.pagination-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: #f7fafc;
+    border: 1px solid #e2e8f0;
+    color: #4a5568;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.pagination-btn:hover:not(:disabled) {
+    background-color: #edf2f7;
+}
+
+.pagination-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.pagination-info {
+    font-size: 0.875rem;
+    color: #4a5568;
+}
+
+.button-group {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Fix for incorrect image display */
+.lodge-image img[src=""] {
+    display: none;
+}
+
+.lodge-image img[src="null"],
+.lodge-image img[src="undefined"] {
+    display: none;
+}
+
+.lodge-image:has(img[src=""]),
+.lodge-image:has(img[src="null"]),
+.lodge-image:has(img[src="undefined"]) {
+    background-image: url('../images/default-room.jpg');
+    background-size: cover;
+    background-position: center;
+}
+
+/* Add these styles to support the new room display */
+.room-source-tabs {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.room-source-tabs button {
+    position: relative;
+    min-width: 120px;
+}
+
+.room-source-tabs button:hover {
+    background-color: #e9ecef;
+}
+
+.line-through {
+    text-decoration: line-through;
+}
+
+/* Style adjustments for the ribbons */
+.ribbon {
+    position: absolute;
+    top: 20px;
+    left: -30px;
+    color: white;
+    padding: 5px 30px;
+    transform: rotate(-45deg);
+    font-size: 12px;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    z-index: 10;
+}
+

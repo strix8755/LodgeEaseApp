@@ -11,7 +11,9 @@ import {
     where,
     getDoc,
     addDoc,
-    setDoc
+    setDoc,
+    limit,
+    startAfter
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { 
     getStorage, 
@@ -137,8 +139,20 @@ new Vue({
             paymentStatus: 'Pending'
             },
         clientRooms: [],
+        allClientLodges: [], // Add this missing property here
         showClientRoomEditModal: false,
         selectedClientRoom: null,
+        // Add new properties for pagination and view mode
+        currentPage: 1,
+        totalPages: 1,
+        itemsPerPage: 12,
+        viewMode: 'grid',
+        lastVisible: null,
+        defaultImage: '../../ClientSide/components/default-room.jpg', // Use image from components folder
+        // or alternatively:
+        // defaultImage: 'https://via.placeholder.com/300x200?text=No+Image', // Use a placeholder image service
+        roomsToDisplay: [],
+        roomSourceTab: 'database', // Default tab selection
     },
     computed: {
         filteredBookings() {
@@ -719,127 +733,473 @@ new Vue({
             });
         },
 
-        async fetchClientRooms() {
+        // Update fetchClientLodges method to extract lodge cards directly from the DOM
+        async fetchClientLodges() {
             try {
                 this.loading = true;
                 
-                // Fetch rooms that have client-facing display flag
-                const roomsRef = collection(db, 'rooms');
-                const roomsQuery = query(roomsRef, where('showOnClient', '==', true));
-                const roomsSnapshot = await getDocs(roomsQuery);
-                
-                if (roomsSnapshot.empty) {
-                    // If no client rooms with flag, fetch rooms that have format matching client rooms
-                    const allRoomsQuery = query(roomsRef);
-                    const allRoomsSnapshot = await getDocs(allRoomsQuery);
+                // Try to fetch the actual lodges from the client-side rooms.html
+                try {
+                    // First, try to fetch the HTML content
+                    const response = await fetch('../../ClientSide/Homepage/rooms.html');
+                    if (!response.ok) throw new Error('Could not load rooms.html');
                     
-                    this.clientRooms = allRoomsSnapshot.docs
-                        .filter(doc => doc.data().name && doc.data().price) // Filter to rooms with client format
-                        .map(doc => ({
-                            id: doc.id,
-                            ...doc.data()
-                        }));
+                    const htmlContent = await response.text();
+                    
+                    // Use DOMParser to parse the HTML content
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(htmlContent, 'text/html');
+                    
+                    // Extract lodges from script first if available
+                    const scriptElements = doc.querySelectorAll('script');
+                    let lodgesFromScript = null;
+                    
+                    for (const script of scriptElements) {
+                        const scriptContent = script.textContent;
+                        if (scriptContent.includes('const lodges =') || scriptContent.includes('let lodges =')) {
+                            const scriptRegex = /(?:const|let)\s+lodges\s*=\s*(\[[\s\S]*?\]);/;
+                            const match = scriptContent.match(scriptRegex);
+                            
+                            if (match && match[1]) {
+                                try {
+                                    // Clean up the extracted code to make it valid JSON
+                                    const jsonStr = match[1].replace(/'/g, '"')
+                                                       .replace(/(\w+):/g, '"$1":')
+                                                       .replace(/\s+/g, ' ')
+                                                       .replace(/,\s*]/g, ']');
+                                    lodgesFromScript = JSON.parse(jsonStr);
+                                    console.log('Successfully extracted lodges from script:', lodgesFromScript);
+                                    break;
+                                } catch (jsonError) {
+                                    console.error('Failed to parse extracted lodge data from script:', jsonError);
+                                }
+                            }
+                        }
+                    }
+                    
+                    // If we have lodges from script, use them
+                    if (lodgesFromScript && lodgesFromScript.length > 0) {
+                        this.allClientLodges = lodgesFromScript;
+                    } else {
+                        // Otherwise, try to extract lodges directly from the DOM elements
+                        console.log('Extracting lodge cards directly from DOM...');
+                        const lodgeCards = doc.querySelectorAll('.lodge-card');
+                        
+                        if (lodgeCards.length > 0) {
+                            console.log(`Found ${lodgeCards.length} lodge cards in the DOM`);
+                            
+                            this.allClientLodges = Array.from(lodgeCards).map((card, index) => {
+                                try {
+                                    // Extract lodge information from the card
+                                    const nameElement = card.querySelector('.lodge-title');
+                                    const ratingElement = card.querySelector('.lodge-rating span');
+                                    const locationElement = card.querySelector('.lodge-location span');
+                                    const priceElement = card.querySelector('.lodge-price .price');
+                                    const promoPriceElement = card.querySelector('.lodge-price .text-green-600');
+                                    const imageElement = card.querySelector('img');
+                                    const amenityElements = card.querySelectorAll('.amenity');
+                                    
+                                    // Convert price strings to numbers
+                                    let price = 0;
+                                    let promoPrice = null;
+                                    
+                                    if (priceElement) {
+                                        const priceText = priceElement.textContent.trim();
+                                        price = parseFloat(priceText.replace(/[₱,]/g, '')) || 0;
+                                    }
+                                    
+                                    if (promoPriceElement) {
+                                        const promoPriceText = promoPriceElement.textContent.trim();
+                                        promoPrice = parseFloat(promoPriceText.replace(/[₱,]/g, '')) || 0;
+                                    }
+                                    
+                                    // Determine the property type based on amenities or other clues
+                                    let propertyType = 'Lodge';
+                                    if (amenityElements.length > 0) {
+                                        const amenitiesText = Array.from(amenityElements)
+                                            .map(el => el.textContent.trim())
+                                            .join(' ').toLowerCase();
+                                        
+                                        if (amenitiesText.includes('pool') || amenitiesText.includes('spa')) {
+                                            propertyType = 'Resort';
+                                        } else if (amenitiesText.includes('kitchen')) {
+                                            propertyType = 'Apartment';
+                                        } else if (amenitiesText.includes('fireplace')) {
+                                            propertyType = 'Cabin';
+                                        }
+                                    }
+                                    
+                                    return {
+                                        id: `dom-lodge-${index + 1}`,
+                                        name: nameElement ? nameElement.textContent.trim() : `Lodge ${index + 1}`,
+                                        rating: ratingElement ? ratingElement.textContent.trim() : '4.5',
+                                        location: locationElement ? locationElement.textContent.trim() : 'Baguio City',
+                                        price: price,
+                                        promoPrice: promoPrice,
+                                        image: imageElement ? imageElement.src : '../../ClientSide/components/default-room.jpg',
+                                        amenities: Array.from(amenityElements).map(el => el.textContent.trim()),
+                                        propertyType: propertyType,
+                                        description: `Beautiful ${propertyType.toLowerCase()} in Baguio City with amazing views and comfortable accommodations.`
+                                    };
+                                } catch (cardError) {
+                                    console.error('Error parsing lodge card:', cardError);
+                                    return {
+                                        id: `dom-lodge-error-${index + 1}`,
+                                        name: `Lodge ${index + 1}`,
+                                        rating: '4.5',
+                                        location: 'Baguio City',
+                                        price: 3000,
+                                        image: '../../ClientSide/components/default-room.jpg',
+                                        amenities: ['WiFi', 'Parking', 'Mountain View'],
+                                        propertyType: 'Lodge',
+                                        description: 'A comfortable lodge in Baguio City.'
+                                    };
+                                }
+                            });
+                            
+                            console.log('Extracted lodge data from DOM:', this.allClientLodges);
+                        } else {
+                            // Fallback to fetching from lodgeData.json
+                            console.log('No lodge cards found in DOM, trying lodgeData.json...');
+                            const dataResponse = await fetch('../../ClientSide/Homepage/lodgeData.json');
+                            if (!dataResponse.ok) throw new Error('Could not load lodgeData.json');
+                            
+                            this.allClientLodges = await dataResponse.json();
+                            console.log('Loaded lodges from lodgeData.json:', this.allClientLodges);
+                        }
+                    }
+                } catch (fetchError) {
+                    console.warn('Could not fetch from actual source, using sample data:', fetchError);
+                    
+                    // Use fallback sample lodges if all extraction methods fail
+                    this.allClientLodges = [
+                        {
+                            id: 'lodge1',
+                            name: 'Pine Haven Lodge',
+                            location: 'Baguio City',
+                            price: 6500,
+                            rating: '4.9',
+                            image: '../../ClientSide/components/1.jpg',
+                            amenities: ['WiFi', 'Fireplace', 'Mountain View'],
+                            description: 'A cozy mountain retreat with spectacular views.',
+                            propertyType: 'Cabin'
+                        },
+                        {
+                            id: 'lodge2',
+                            name: 'Mountain View Suite',
+                            location: 'La Trinidad',
+                            price: 5200,
+                            rating: '4.8',
+                            image: '../../ClientSide/components/2.jpg',
+                            amenities: ['Pool', 'Restaurant', 'Spa'],
+                            description: 'Luxury accommodations with modern amenities.',
+                            propertyType: 'Hotel'
+                        },
+                        // ...existing sample lodges...
+                    ];
+                }
+                
+                // If we have extracted a lot of lodges, log the count for verification
+                if (this.allClientLodges.length > 0) {
+                    console.log(`Successfully loaded ${this.allClientLodges.length} lodges`);
                 } else {
-                    this.clientRooms = roomsSnapshot.docs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data()
-                    }));
+                    console.warn('No lodges loaded - using empty array');
+                    this.allClientLodges = [];
+                }
+
+                // Add additional lodges from the Lodge folder
+                const additionalLodges = [
+                    {
+                        id: 'lodge3',
+                        name: "Baguio Hillside Retreat",
+                        location: "Burnham Park, Baguio City",
+                        barangay: "Burnham-Legarda",
+                        image: "../../ClientSide/components/3.jpg",
+                        price: 4800,
+                        amenities: ["Mountain View", "Kitchen", "WiFi", "Parking"],
+                        rating: 4.7,
+                        propertyType: "vacation-home",
+                        coordinates: {
+                            lat: 16.4123,
+                            lng: 120.5925
+                        },
+                        description: "A beautiful retreat with stunning mountain views and modern amenities."
+                    },
+                    {
+                        id: 'lodge4',
+                        name: "The Forest Lodge",
+                        location: "Session Road Area, Baguio City",
+                        barangay: "Session Road",
+                        image: "../../ClientSide/components/4.jpg",
+                        price: 2800,
+                        amenities: ["City View", "WiFi", "Restaurant"],
+                        rating: 4.3,
+                        propertyType: "hotel",
+                        coordinates: {
+                            lat: 16.4156,
+                            lng: 120.5964
+                        },
+                        description: "Comfortable accommodation in the heart of Baguio City with excellent city views."
+                    },
+                    {
+                        id: 'lodge5',
+                        name: "Super Apartment - Room 6",
+                        location: "City Center, Baguio City",
+                        barangay: "City Camp Central",
+                        image: "../../ClientSide/components/SuperApartmentRoom6.jpg",
+                        price: 6000,
+                        amenities: ["City View", "WiFi", "Kitchen", "Near Eatery"],
+                        rating: 4.4,
+                        propertyType: "apartment",
+                        description: "Located in Upper Bonifacion Street, offering affordable rooms with comfort and security."
+                    },
+                    {
+                        id: 'lodge6',
+                        name: "Wright Park Manor",
+                        location: "Wright Park, Baguio City",
+                        barangay: "Kisad",
+                        image: "../../ClientSide/components/7.jpg",
+                        price: 5200,
+                        amenities: ["Mountain View", "Kitchen", "Parking", "Pet Friendly"],
+                        rating: 4.6,
+                        propertyType: "bed-breakfast",
+                        coordinates: {
+                            lat: 16.4105,
+                            lng: 120.6287
+                        },
+                        description: "Charming bed & breakfast near the famous Wright Park with pet-friendly accommodations."
+                    },
+                    {
+                        id: 'lodge7',
+                        name: "Highland Haven",
+                        location: "Burnham Park, Baguio City",
+                        barangay: "Burnham-Legarda",
+                        image: "../../ClientSide/components/8.jpg",
+                        price: 4100,
+                        amenities: ["City View", "WiFi", "Fitness Center"],
+                        rating: 4.4,
+                        propertyType: "hotel",
+                        coordinates: {
+                            lat: 16.4115,
+                            lng: 120.5932
+                        },
+                        description: "Modern hotel with fitness center and great views of Burnham Park."
+                    },
+                    {
+                        id: 'lodge8',
+                        name: "Sunset View Villa",
+                        location: "Camp John Hay, Baguio City",
+                        barangay: "Camp 7",
+                        image: "../../ClientSide/components/9.jpg",
+                        price: 8900,
+                        amenities: ["Mountain View", "Pool", "Kitchen", "Fireplace"],
+                        rating: 4.9,
+                        propertyType: "vacation-home",
+                        coordinates: {
+                            lat: 16.4089,
+                            lng: 120.6015
+                        },
+                        description: "Luxurious villa with private pool and stunning sunset views over the mountains."
+                    },
+                    {
+                        id: 'lodge9',
+                        name: "Cozy Corner B&B",
+                        location: "Wright Park, Baguio City",
+                        barangay: "Kisad",
+                        image: "../../ClientSide/components/10.jpg",
+                        price: 3500,
+                        amenities: ["Garden View", "Free Breakfast", "WiFi"],
+                        rating: 4.5,
+                        propertyType: "bed-breakfast",
+                        coordinates: {
+                            lat: 16.4112,
+                            lng: 120.6291
+                        },
+                        description: "Homey bed & breakfast with beautiful garden views and complimentary breakfast."
+                    },
+                    {
+                        id: 'lodge10',
+                        name: "The Manor Hotel",
+                        location: "Camp John Hay, Baguio City",
+                        barangay: "Camp 7",
+                        image: "../../ClientSide/components/11.jpg",
+                        price: 9500,
+                        amenities: ["Mountain View", "Spa", "Restaurant", "Room Service"],
+                        rating: 4.8,
+                        propertyType: "hotel",
+                        coordinates: {
+                            lat: 16.4098,
+                            lng: 120.6018
+                        },
+                        description: "Prestigious hotel in Camp John Hay with full-service spa and gourmet dining."
+                    },
+                    {
+                        id: 'lodge11',
+                        name: "Session Suites",
+                        location: "Session Road, Baguio City",
+                        barangay: "Session Road",
+                        image: "../../ClientSide/components/5.jpg",
+                        price: 5800,
+                        amenities: ["City View", "WiFi", "24/7 Security", "Kitchen"],
+                        rating: 4.6,
+                        propertyType: "apartment",
+                        description: "Modern suites in the heart of Baguio's commercial district with 24/7 security."
+                    },
+                    {
+                        id: 'lodge12',
+                        name: "Burnham Lake House",
+                        location: "Burnham Park, Baguio City",
+                        barangay: "Burnham-Legarda",
+                        image: "../../ClientSide/components/2.jpg",
+                        price: 4200,
+                        amenities: ["Lake View", "Free Parking", "WiFi", "Garden"],
+                        rating: 4.4,
+                        propertyType: "guest-house",
+                        description: "Charming guest house with beautiful views of Burnham Lake and a private garden."
+                    },
+                    {
+                        id: 'lodge13',
+                        name: "Ever Lodge",
+                        location: "Baguio City Center, Baguio City",
+                        barangay: "Session Road",
+                        image: "../../ClientSide/components/6.jpg",
+                        price: 1300,
+                        promoPrice: 580,
+                        amenities: ["Mountain View", "High-speed WiFi", "Fitness Center", "Coffee Shop"],
+                        rating: 4.9,
+                        propertyType: "hotel",
+                        coordinates: {
+                            lat: 16.4088,
+                            lng: 120.6013
+                        },
+                        description: "Affordable and modern accommodation with promotional night rates and excellent amenities."
+                    }
+                ];
+                
+                // Merge the additional lodges with any existing lodges
+                // Make sure we don't have duplicates by checking IDs
+                const existingIds = new Set(this.allClientLodges.map(lodge => lodge.id));
+                
+                for (const lodge of additionalLodges) {
+                    if (!existingIds.has(lodge.id)) {
+                        this.allClientLodges.push(lodge);
+                        existingIds.add(lodge.id);
+                    }
                 }
                 
-                console.log('Client rooms loaded:', this.clientRooms);
-                this.loading = false;
-            } catch (error) {
-                console.error('Error fetching client rooms:', error);
-                alert('Error loading client rooms: ' + error.message);
-                this.loading = false;
-            }
-        },
-        
-        async hideFromClient(roomId) {
-            try {
-                if (!confirm('Are you sure you want to hide this room from the client website?')) {
-                    return;
-                }
-                
-                const roomRef = doc(db, 'rooms', roomId);
-                await updateDoc(roomRef, { 
-                    showOnClient: false,
-                    updatedAt: new Date()
-                });
-                
-                // Remove from local list
-                this.clientRooms = this.clientRooms.filter(room => room.id !== roomId);
-                
-                await logRoomActivity('client_room_hide', `Room hidden from client website: ${roomId}`);
+                console.log(`Successfully loaded ${this.allClientLodges.length} lodges (including Lodge folder ones)`);
                 
             } catch (error) {
-                console.error('Error hiding room from client:', error);
-                alert('Failed to hide room: ' + error.message);
-            }
-        },
-        
-        editClientRoom(room) {
-            this.selectedClientRoom = { ...room };
-            this.showClientRoomEditModal = true;
-        },
-        
-        async saveClientRoomChanges() {
-            try {
-                this.loading = true;
-                
-                const roomRef = doc(db, 'rooms', this.selectedClientRoom.id);
-                await updateDoc(roomRef, {
-                    name: this.selectedClientRoom.name,
-                    price: parseFloat(this.selectedClientRoom.price),
-                    location: this.selectedClientRoom.location,
-                    description: this.selectedClientRoom.description,
-                    amenities: this.selectedClientRoom.amenities,
-                    updatedAt: new Date()
-                });
-                
-                // Update in local list
-                const index = this.clientRooms.findIndex(r => r.id === this.selectedClientRoom.id);
-                if (index !== -1) {
-                    this.clientRooms[index] = { ...this.selectedClientRoom };
-                }
-                
-                this.showClientRoomEditModal = false;
-                this.selectedClientRoom = null;
+                console.error('Error fetching client lodges:', error);
+                // Don't reset this.allClientLodges here, as we might have partly loaded some lodges
+            } finally {
                 this.loading = false;
-                
-                await logRoomActivity('client_room_edit', `Edited client room: ${this.selectedClientRoom.name}`);
-                
-            } catch (error) {
-                console.error('Error updating client room:', error);
-                alert('Failed to update room: ' + error.message);
-                this.loading = false;
-            }
-        },
-        
-        closeClientRoomEditModal() {
-            this.showClientRoomEditModal = false;
-            this.selectedClientRoom = null;
-        },
-        
-        addAmenity() {
-            const newAmenity = document.getElementById('newAmenity').value.trim();
-            if (newAmenity && !this.selectedClientRoom.amenities.includes(newAmenity)) {
-                this.selectedClientRoom.amenities.push(newAmenity);
-                document.getElementById('newAmenity').value = '';
             }
         },
 
-        removeAmenity(index) {
-            this.selectedClientRoom.amenities.splice(index, 1);
-        },
-
-        openClientRoomsModal() {
+        // Modify openClientRoomsModal to only fetch homepage lodges
+        async openClientRoomsModal() {
+            // Load saved view preference
+            this.viewMode = localStorage.getItem('roomViewMode') || 'grid';
+            
             this.showClientRoomsModal = true;
-            this.fetchClientRooms();
+            this.currentPage = 1;
+            
+            // Only fetch homepage lodges, not database rooms
+            await this.fetchClientLodges();
         },
 
         closeClientRoomsModal() {
             this.showClientRoomsModal = false;
+            this.clientRooms = [];  // Clear data to free memory
+            this.lastVisible = null;  // Reset pagination
+        },
+
+        // Handle image loading errors with fallback to a local image
+        handleImageError(e) {
+            console.log("Image loading error, using local default image");
+            // Use image from components folder
+            e.target.src = "../../ClientSide/components/default-room.jpg";
+            
+            // If the default image also fails, use a simpler fallback
+            e.target.onerror = function() {
+                e.target.src = "../../ClientSide/components/LodgeEaseLogo.png";
+                e.target.onerror = null; // Prevent infinite loop
+            };
+        },
+
+        // Toggle between grid and list view
+        toggleViewMode() {
+            this.viewMode = this.viewMode === 'grid' ? 'list' : 'grid';
+            // Save preference
+            localStorage.setItem('roomViewMode', this.viewMode);
+        },
+
+        // Change pagination page
+        async changePage(pageNumber) {
+            if (pageNumber >= 1 && pageNumber <= this.totalPages) {
+                this.currentPage = pageNumber;
+                await this.fetchClientRooms(pageNumber);
+            }
+        },
+
+        // Add method to view homepage lodge details
+        viewHomepageLodge(lodge) {
+            // Create a simple modal to display lodge information
+            const modalHtml = `
+        handleImageError(e) {
+                <div id="homepageLodgeModal" class="fixed inset-0 bg-black bg-opacity-50 z-[1001] flex items-center justify-center">
+                    <div class="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-xl font-bold">${lodge.name}</h2>
+                            <button id="closeHomepageLodgeModal" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+                        </div>
+                        <div class="mb-4">
+                            <img src="${lodge.image || '../../ClientSide/components/default-room.jpg'}" 
+                                 alt="${lodge.name}" 
+                                 class="w-full h-64 object-cover rounded-lg">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <p class="text-gray-600">Location</p>
+                                <p class="font-semibold">${lodge.location}</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-600">Price</p>
+                                <p class="font-semibold">₱${lodge.price?.toLocaleString()} / night</p>
+                                ${lodge.promoPrice ? `<p class="text-green-600 font-bold">Promo: ₱${lodge.promoPrice?.toLocaleString()}</p>` : ''}
+                            </div>
+                            <div>
+                                <p class="text-gray-600">Rating</p>
+                                <p class="font-semibold">${lodge.rating} <i class="fas fa-star text-yellow-400"></i></p>
+                            </div>
+                            <div>
+                                <p class="text-gray-600">Property Type</p>
+                                <p class="font-semibold">${lodge.propertyType || 'Not specified'}</p>
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <p class="text-gray-600">Amenities</p>
+                            <div class="flex flex-wrap gap-2 mt-2">
+                                ${(lodge.amenities || []).map(amenity => 
+                                    `<span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">${amenity}</span>`
+                                ).join('')}
+                            </div>
+                        </div>
+                        <div class="border-t pt-4">
+                            <p class="text-sm text-gray-500">This lodge is defined in the homepage data and cannot be edited directly.</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Add modal to document
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // Add event listener to close button
+            document.getElementById('closeHomepageLodgeModal').addEventListener('click', () => {
+                document.getElementById('homepageLodgeModal').remove();
+            });
         },
     },
     async mounted() {
