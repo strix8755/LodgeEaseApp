@@ -123,6 +123,9 @@
                             <button @click="openAddRoomModal" class="primary-button" title="Add Lodge">
                                 <i class="fas fa-plus"></i> Add Lodge
                             </button>
+                            <button @click="openAddRoomToLodgeModal" class="primary-button add-room-button" title="Add Room to Lodge">
+                                <i class="fas fa-door-open"></i> Add Room
+                            </button>
                             <button @click="openManualBookingModal" class="primary-button booking-button" title="Manual Booking">
                                 <i class="fas fa-book"></i> Manual Booking
                             </button>
@@ -820,6 +823,173 @@
                             Check your client-side rooms.html file to make sure it contains lodge data.
                         </p>
                     </div>
+                </div>
+            </div>
+
+            <!-- Add Room to Lodge Modal -->
+            <div v-if="showAddRoomToLodgeModal" class="modal" @click.self="closeAddRoomToLodgeModal">
+                <div class="modal-content">
+                    <button class="close-btn" @click="closeAddRoomToLodgeModal">&times;</button>
+                    <h2>Add Room to Lodge</h2>
+                    
+                    <form @submit.prevent="addRoomToLodge" class="add-room-form">
+                        <!-- Lodge Selection -->
+                        <div class="form-section">
+                            <h3>Select Lodge</h3>
+                            <div class="form-group">
+                                <label for="selectLodge">Lodge*</label>
+                                <select id="selectLodge" v-model="newRoom.lodgeId" required @change="loadLodgeDetails">
+                                    <option value="">Select a lodge</option>
+                                    <option v-for="lodge in availableLodges" :key="lodge.id" :value="lodge.id">
+                                        {{ lodge.name }} ({{ lodge.htmlFile }})
+                                    </option>
+                                </select>
+                                <small class="form-help-text">Select the lodge HTML file to add this room to</small>
+                            </div>
+                        </div>
+                        
+                        <!-- Room Details -->
+                        <div class="form-section">
+                            <h3>Room Details</h3>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="roomNumber">Room Number*</label>
+                                    <input 
+                                        type="text" 
+                                        id="roomNumber" 
+                                        v-model="newRoom.roomNumber" 
+                                        required 
+                                        placeholder="e.g., 101"
+                                    >
+                                </div>
+                                <div class="form-group">
+                                    <label for="roomType">Room Type*</label>
+                                    <select id="roomType" v-model="newRoom.roomType" required>
+                                        <option value="">Select room type</option>
+                                        <option value="Standard">Standard</option>
+                                        <option value="Deluxe">Deluxe</option>
+                                        <option value="Suite">Suite</option>
+                                        <option value="Family">Family</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="floorLevel">Floor Level*</label>
+                                    <input 
+                                        type="text" 
+                                        id="floorLevel" 
+                                        v-model="newRoom.floorLevel" 
+                                        required 
+                                        placeholder="e.g., 1st Floor"
+                                    >
+                                </div>
+                                <div class="form-group">
+                                    <label for="roomPrice">Price per Night*</label>
+                                    <div class="input-with-prefix">
+                                        <span class="input-prefix">₱</span>
+                                        <input 
+                                            type="number" 
+                                            id="roomPrice" 
+                                            v-model="newRoom.price" 
+                                            required 
+                                            min="0" 
+                                            step="0.01"
+                                            placeholder="Price per night"
+                                        >
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="roomDescription">Description*</label>
+                                <textarea 
+                                    id="roomDescription" 
+                                    v-model="newRoom.description" 
+                                    rows="3"
+                                    required
+                                    placeholder="Describe this room"
+                                ></textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="roomStatus">Status*</label>
+                                <select id="roomStatus" v-model="newRoom.status" required>
+                                    <option value="Available">Available</option>
+                                    <option value="Occupied">Occupied</option>
+                                    <option value="Maintenance">Maintenance</option>
+                                    <option value="Reserved">Reserved</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="maxOccupancy">Maximum Occupancy*</label>
+                                <input 
+                                    type="number" 
+                                    id="maxOccupancy" 
+                                    v-model="newRoom.maxOccupants" 
+                                    required 
+                                    min="1"
+                                    placeholder="e.g., 2"
+                                >
+                            </div>
+                        </div>
+
+                        <!-- Room Amenities -->
+                        <div class="form-section">
+                            <h3>Room Amenities</h3>
+                            <p class="text-sm text-gray-600 mb-2">Select amenities available in this room</p>
+                            <div class="amenities-grid">
+                                <label class="amenity-checkbox" v-for="amenity in roomAmenities" :key="amenity">
+                                    <input type="checkbox" :value="amenity" v-model="newRoom.amenities">
+                                    <span>{{ amenity }}</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Room Images -->
+                        <div class="form-section">
+                            <h3>Room Images</h3>
+                            <div class="image-upload-container">
+                                <input 
+                                    type="file" 
+                                    id="roomImages" 
+                                    @change="handleRoomImageUpload" 
+                                    accept="image/*" 
+                                    multiple
+                                    class="image-input"
+                                >
+                                <label for="roomImages" class="image-upload-label">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <span>Click to upload room images</span>
+                                    <small>or drag and drop images here</small>
+                                </label>
+                            </div>
+                            
+                            <!-- Preview selected images -->
+                            <div v-if="roomImages.length" class="image-preview-container">
+                                <div v-for="(image, index) in roomImages" :key="index" class="image-preview">
+                                    <img :src="image.url" :alt="'Room image ' + (index + 1)">
+                                    <button type="button" @click="removeRoomImage(index)" class="remove-image">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                    <div v-if="index === 0" class="main-image-badge">Main Image</div>
+                                </div>
+                            </div>
+                            
+                            <small class="image-help-text">
+                                First image will be the main display image. You can upload up to 5 images (max 5MB each).
+                            </small>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="button" class="btn cancel-btn" @click="closeAddRoomToLodgeModal">Cancel</button>
+                            <button type="submit" class="btn submit-btn" :disabled="loading || !isRoomFormValid">
+                                {{ loading ? 'Adding...' : 'Add Room' }}
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </main>

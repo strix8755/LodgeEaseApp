@@ -1736,3 +1736,34 @@ body {
     border-radius: 4px;
 }
 
+/* Add Room Button Styles */
+.add-room-button {
+    background-color: #2563eb;
+}
+
+.add-room-button:hover {
+    background-color: #1d4ed8;
+}
+
+/* Room form modal specific styles */
+.amenities-grid {
+    max-height: 200px;
+    overflow-y: auto;
+    padding-right: 10px;
+}
+
+/* Highlight selected lodge in dropdown */
+#selectLodge option:checked {
+    background-color: #1e3c72;
+    color: white;
+}
+
+/* Enhance the form-section style for better visual hierarchy */
+.form-section h3 {
+    color: #2563eb;
+    font-weight: 600;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 16px;
+}
+

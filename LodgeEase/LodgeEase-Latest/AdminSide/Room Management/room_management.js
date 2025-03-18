@@ -171,6 +171,27 @@ new Vue({
         defaultImage: '../images/default-room.jpg', // Changed to use an image in the AdminSide/images folder
         roomsToDisplay: [],
         roomSourceTab: 'database', // Default tab selection
+        showAddRoomToLodgeModal: false,
+        availableLodges: [],
+        newRoom: {
+            lodgeId: '',
+            lodgeName: '',
+            roomNumber: '',
+            roomType: '',
+            floorLevel: '',
+            price: '',
+            description: '',
+            status: 'Available',
+            maxOccupants: 2,
+            amenities: []
+        },
+        roomImages: [],
+        roomAmenities: [
+            'Wi-Fi', 'TV', 'Air Conditioning', 'Heating', 'Private Bathroom', 
+            'Shower', 'Bathtub', 'Hair Dryer', 'Mini Fridge', 'Coffee Maker',
+            'Safe', 'Work Desk', 'Iron', 'Balcony', 'Sea View', 'Mountain View',
+            'City View', 'King Bed', 'Queen Bed', 'Twin Beds', 'Sofa Bed'
+        ],
     },
     computed: {
         filteredBookings() {
@@ -247,7 +268,16 @@ new Vue({
                    this.newLodge.description &&
                    this.newLodge.amenities.length >= 2 &&
                    this.selectedImages.length > 0;
-        }
+        },
+        isRoomFormValid() {
+            return this.newRoom.lodgeId && 
+                   this.newRoom.roomNumber && 
+                   this.newRoom.roomType && 
+                   this.newRoom.floorLevel && 
+                   this.newRoom.price && 
+                   this.newRoom.description &&
+                   this.roomImages.length > 0;
+        },
     },
     methods: {
         async fetchBookings() {
@@ -1199,6 +1229,225 @@ new Vue({
             } catch (error) {
                 console.error('Error checking PostgreSQL availability:', error);
                 return false;
+            }
+        },
+
+        async openAddRoomToLodgeModal() {
+            this.showAddRoomToLodgeModal = true;
+            await this.fetchAvailableLodges();
+        },
+
+        closeAddRoomToLodgeModal() {
+            this.showAddRoomToLodgeModal = false;
+            this.resetRoomForm();
+        },
+
+        resetRoomForm() {
+            this.newRoom = {
+                lodgeId: '',
+                lodgeName: '',
+                roomNumber: '',
+                roomType: '',
+                floorLevel: '',
+                price: '',
+                description: '',
+                status: 'Available',
+                maxOccupants: 2,
+                amenities: []
+            };
+            this.roomImages = [];
+        },
+
+        async fetchAvailableLodges() {
+            try {
+                this.loading = true;
+                
+                // Create an array of lodge entries from lodge1.html to lodge13.html
+                const lodges = Array.from({ length: 13 }, (_, i) => {
+                    const number = i + 1;
+                    return { 
+                        id: `lodge${number}`, 
+                        name: `Lodge ${number}`, 
+                        location: 'Baguio City',
+                        htmlFile: `lodge${number}.html`
+                    };
+                });
+                
+                // Add more descriptive names for specific lodges based on what we know
+                const lodgeNames = {
+                    lodge1: 'Pine Haven Lodge',
+                    lodge2: 'Mountain View Lodge',
+                    lodge3: 'Baguio Hillside Retreat',
+                    lodge6: 'Sky View Resort',
+                    lodge7: 'Cozy Mountain Retreat',
+                    lodge13: 'Ever Lodge'
+                };
+                
+                // Update the names where we have specifics
+                lodges.forEach(lodge => {
+                    if (lodgeNames[lodge.id]) {
+                        lodge.name = lodgeNames[lodge.id];
+                    }
+                });
+                
+                this.availableLodges = lodges;
+                console.log('Available lodges:', this.availableLodges);
+            } catch (error) {
+                console.error('Error setting up available lodges:', error);
+                alert('Failed to set up lodge list. Please try again.');
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async loadLodgeDetails() {
+            if (!this.newRoom.lodgeId) return;
+            
+            try {
+                const selectedLodge = this.availableLodges.find(lodge => lodge.id === this.newRoom.lodgeId);
+                if (selectedLodge) {
+                    this.newRoom.lodgeName = selectedLodge.name;
+                    
+                    // You could pre-populate other fields based on the lodge
+                    if (selectedLodge.price) {
+                        this.newRoom.price = selectedLodge.price;
+                    }
+                    
+                    // If the lodge has amenities, we can pre-select some for the room
+                    if (selectedLodge.amenities && selectedLodge.amenities.length) {
+                        // Filter amenities that are relevant to rooms (not general lodge amenities)
+                        const roomRelevantAmenities = selectedLodge.amenities.filter(amenity => 
+                            this.roomAmenities.includes(amenity));
+                        
+                        this.newRoom.amenities = roomRelevantAmenities;
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading lodge details:', error);
+            }
+        },
+
+        handleRoomImageUpload(event) {
+            const files = Array.from(event.target.files);
+            
+            // Validate number of images
+            if (this.roomImages.length + files.length > this.maxImages) {
+                alert(`You can only upload up to ${this.maxImages} images`);
+                return;
+            }
+
+            // Process each file
+            for (const file of files) {
+                // Validate file size
+                if (file.size > this.maxImageSize) {
+                    alert(`Image ${file.name} is too large. Maximum size is 5MB`);
+                    continue;
+                }
+
+                // Validate file type
+                if (!file.type.startsWith('image/')) {
+                    alert(`File ${file.name} is not an image`);
+                    continue;
+                }
+
+                // Read file as DataURL for preview
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const url = URL.createObjectURL(file);
+                    this.roomImages.push({
+                        file,
+                        url,
+                        dataUrl: e.target.result,
+                        name: file.name,
+                        type: file.type,
+                        size: file.size
+                    });
+                };
+                reader.readAsDataURL(file);
+            }
+        },
+
+        removeRoomImage(index) {
+            URL.revokeObjectURL(this.roomImages[index].url);
+            this.roomImages.splice(index, 1);
+        },
+
+        async addRoomToLodge() {
+            try {
+                this.loading = true;
+
+                if (!this.isRoomFormValid) {
+                    alert('Please fill in all required fields and add at least one image');
+                    return;
+                }
+
+                // Get the selected lodge details
+                const selectedLodge = this.availableLodges.find(lodge => lodge.id === this.newRoom.lodgeId);
+                if (!selectedLodge) {
+                    throw new Error('Selected lodge not found');
+                }
+
+                // Create room data
+                const roomData = {
+                    lodgeId: this.newRoom.lodgeId,
+                    lodgeName: selectedLodge.name,
+                    propertyDetails: {
+                        name: selectedLodge.name,
+                        location: selectedLodge.location || 'Baguio City',
+                        roomNumber: this.newRoom.roomNumber,
+                        roomType: this.newRoom.roomType,
+                        floorLevel: this.newRoom.floorLevel
+                    },
+                    price: parseFloat(this.newRoom.price),
+                    description: this.newRoom.description,
+                    status: this.newRoom.status,
+                    maxOccupants: parseInt(this.newRoom.maxOccupants),
+                    amenities: [...this.newRoom.amenities],
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                };
+
+                // Generate a unique room ID that includes the lodge ID
+                const roomId = `${this.newRoom.lodgeId}_room_${Date.now()}`;
+
+                // Upload images
+                console.log('Starting image upload for room');
+                const imageUrls = await this.uploadRoomImages(roomId);
+                if (imageUrls.length > 0) {
+                    roomData.mainImage = imageUrls[0];
+                    roomData.images = imageUrls;
+                }
+
+                // Add to Firestore
+                const roomsRef = collection(db, 'rooms');
+                const docRef = await addDoc(roomsRef, roomData);
+                
+                // Log activity
+                await logRoomActivity('room_add', `Added new room ${roomData.propertyDetails.roomNumber} to ${selectedLodge.name}`);
+
+                // Reset form and close modal
+                this.closeAddRoomToLodgeModal();
+                alert('Room added successfully!');
+
+                // Refresh the room list if needed
+                await this.fetchBookings();
+            } catch (error) {
+                console.error('Error adding room:', error);
+                alert('Failed to add room: ' + error.message);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async uploadRoomImages(roomId) {
+            try {
+                const { DirectUploader } = await import('./direct-uploader.js');
+                const uploader = new DirectUploader({...this, $options: { db }});
+                
+                return await uploader.uploadImages(roomId, this.roomImages);
+            } catch (error) {
+                console.error('Error uploading room images:', error);
+                throw error;
             }
         },
     },
