@@ -12,6 +12,38 @@
         window.clearDirectionsCallback?.();
     }
 
+    // Expose lodgeData and rendering functions globally for admin integration
+    window.LodgeEasePublicAPI = {
+        getAllLodges: () => lodgeData,
+        renderLodges: createLodgeCards,
+        addNewLodge: (lodge) => {
+            // Add a new lodge to the collection and re-render
+            lodgeData.push(lodge);
+            createLodgeCards();
+            return true;
+        },
+        updateLodge: (lodgeId, updatedData) => {
+            // Find and update an existing lodge by ID
+            const index = lodgeData.findIndex(lodge => lodge.id === parseInt(lodgeId));
+            if (index !== -1) {
+                lodgeData[index] = { ...lodgeData[index], ...updatedData };
+                createLodgeCards();
+                return true;
+            }
+            return false;
+        },
+        removeLodge: (lodgeId) => {
+            // Remove a lodge by ID
+            const initialLength = lodgeData.length;
+            lodgeData = lodgeData.filter(lodge => lodge.id !== parseInt(lodgeId));
+            if (lodgeData.length !== initialLength) {
+                createLodgeCards();
+                return true;
+            }
+            return false;
+        }
+    };
+
     // Add this function to handle login button visibility
     function updateLoginButtonVisibility(user) {
         const loginButton = document.getElementById('loginButton');

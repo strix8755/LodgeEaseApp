@@ -5,6 +5,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hotel Room Management</title>
+    <script>
+// Simplified CORS handler - just adds console debugging
+(function() {
+    console.log("Using direct base64 uploader to bypass CORS restrictions");
+    
+    // Keep track of failed requests for debugging
+    window.failedRequests = [];
+    
+    // Monkey patch fetch to log failed Firebase Storage requests
+    const originalFetch = window.fetch;
+    window.fetch = function(url, options) {
+        const promise = originalFetch(url, options);
+        
+        // Only monitor Firebase Storage requests
+        if (typeof url === 'string' && url.includes('firebasestorage.googleapis.com')) {
+            promise.catch(error => {
+                console.warn('Firebase Storage fetch failed:', error);
+                window.failedRequests.push({
+                    url,
+                    options,
+                    error,
+                    timestamp: new Date()
+                });
+            });
+        }
+        
+        return promise;
+    };
+})();
+</script>
     <script type="module" src="../firebase.js"></script>
     <script type="module" src="../AInalysis/auth-check.js"></script>
     <script type="module" src="room_management.js"></script>
@@ -90,8 +120,8 @@
                             <i class="fas fa-search search-icon"></i>
                         </div>
                         <div class="button-group">
-                            <button @click="openAddRoomModal" class="primary-button" title="Add Room">
-                                <i class="fas fa-plus"></i> Add Room
+                            <button @click="openAddRoomModal" class="primary-button" title="Add Lodge">
+                                <i class="fas fa-plus"></i> Add Lodge
                             </button>
                             <button @click="openManualBookingModal" class="primary-button booking-button" title="Manual Booking">
                                 <i class="fas fa-book"></i> Manual Booking
@@ -822,6 +852,58 @@
                 }
             }, 500); // Small delay to ensure Vue instance is ready
         });
+    </script>
+
+    <!-- Add this script at the beginning of the body after the app div -->
+    <script type="module">
+        // Import Firebase modules
+        import { db } from '../firebase.js';
+        
+        // Wait for Vue app to be created
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                if (window.app) {
+                    // Expose Firestore db to the Vue instance so DirectUploader can access it
+                    window.app.$options = window.app.$options || {};
+                    window.app.$options.db = db;
+                    
+                    console.log('Firestore DB reference attached to Vue app');
+                }
+            }, 500);
+        });
+    </script>
+
+    <script type="module">
+    // Import the direct uploader module
+    import { DirectUploader } from './direct-uploader.js';
+
+    // Make it globally available
+    window.DirectUploader = DirectUploader;
+
+    // This will override the existing upload method when Vue is ready
+    document.addEventListener('DOMContentLoaded', () => {
+        // Wait for Vue to be mounted
+        setTimeout(() => {
+            if (window.app) {
+                console.log('Applying direct uploader to Vue instance');
+                // Store original method
+                const originalUpload = window.app.uploadImages;
+                
+                // Override with our wrapper method
+                window.app.uploadImages = async function(roomId) {
+                    try {
+                        console.log('Using DirectUploader');
+                        const uploader = new DirectUploader(window.app);
+                        return await uploader.uploadImages(roomId, this.selectedImages);
+                    } catch (err) {
+                        console.error('DirectUploader failed:', err);
+                        console.log('Falling back to original upload method');
+                        return await originalUpload.call(this, roomId);
+                    }
+                };
+            }
+        }, 1000); // Wait 1 second for Vue to be fully mounted
+    });
     </script>
 </body>
 </html>

@@ -472,13 +472,22 @@ new Vue({
                     alert('Please fill in all required fields and add at least one image');
                     return;
                 }
+                
+                // Import the syncLodgeToClient function
+                const { syncLodgeToClient } = await import('./firebase-helper.js');
 
-                // Generate a unique ID for the lodge (timestamp + random number)
+                // First, compress and upload the images using DirectUploader
+                const { DirectUploader } = await import('./direct-uploader.js');
+                const uploader = new DirectUploader({...this, $options: { db }});
+
                 const newLodgeId = Date.now().toString() + Math.floor(Math.random() * 1000);
+                console.log('Starting image upload with DirectUploader');
+                const imageUrls = await uploader.uploadImages(newLodgeId, this.selectedImages);
+                console.log(`Successfully processed ${imageUrls.length} images`);
 
-                // Create lodge data object with structure matching client-side
+                // Create lodge data object
                 const lodgeData = {
-                    id: parseInt(newLodgeId.slice(-5)), // Use last 5 digits as numeric ID
+                    id: parseInt(newLodgeId.slice(-5)),
                     name: this.newLodge.name,
                     location: this.newLodge.location,
                     barangay: this.newLodge.barangay,
@@ -501,44 +510,49 @@ new Vue({
                     status: 'Available',
                     createdAt: new Date(),
                     updatedAt: new Date(),
-                    showOnClient: true // Flag to show on client side
+                    showOnClient: true,
+                    imageStorage: 'firestore-base64',
+                    hasImages: imageUrls.length > 0
                 };
 
-                // Add to Firestore
+                // Add to Firestore without the large image data
                 const lodgesRef = collection(db, 'lodges');
                 const docRef = await addDoc(lodgesRef, lodgeData);
                 
-                // Initialize image URLs array
-                let imageUrls = [];
-                
-                // Upload images if any
-                if (this.selectedImages.length > 0) {
+                // Create a separate document for image references to avoid size limits
+                if (imageUrls.length > 0) {
                     try {
-                        // Always use Firebase storage (removed PostgreSQL option)
-                        imageUrls = await this.uploadImages(newLodgeId);
-                    } catch (uploadError) {
-                        console.error('Error during image upload:', uploadError);
-                        throw uploadError;
+                        // Create a separate document for image references
+                        const imageRefsRef = collection(db, 'lodgeImages');
+                        await addDoc(imageRefsRef, { 
+                            lodgeId: docRef.id,
+                            mainImage: imageUrls[0],
+                            timestamp: Date.now()
+                        });
+                        
+                        // Update the lodge with a reference to the first image only
+                        await updateDoc(docRef, { 
+                            image: imageUrls[0],
+                            imageCount: imageUrls.length
+                        });
+                        
+                        lodgeData.image = imageUrls[0];
+                    } catch (imageRefError) {
+                        console.error('Error storing image references:', imageRefError);
                     }
-                    
-                    // Update lodge document with image URLs
-                    await updateDoc(docRef, { 
-                        image: imageUrls[0], // Main image for card display
-                        additionalImages: imageUrls, // All images for detail view
-                        imageStorage: 'firebase' // Always Firebase storage
-                    });
-                    
-                    // Update the lodge data with image URL
-                    lodgeData.image = imageUrls[0];
-                    lodgeData.additionalImages = imageUrls;
-                    lodgeData.imageStorage = 'firebase';
                 }
 
-                // Create a room reference in the rooms collection to connect the systems
+                // Create a room reference in the rooms collection
                 const roomsRef = collection(db, 'rooms');
                 await addDoc(roomsRef, {
                     lodgeId: docRef.id,
                     ...lodgeData,
+                });
+                
+                // Synchronize to client side
+                await syncLodgeToClient(db, {
+                    ...lodgeData,
+                    id: docRef.id,  // Use Firestore document ID as the lodge ID for client sync
                 });
 
                 // Reset form and close modal
@@ -546,7 +560,7 @@ new Vue({
                 this.closeAddRoomModal();
                 
                 alert('Lodge added successfully! It will now appear on the client website.');
-                await logRoomActivity('lodge_add', `Added new lodge "${lodgeData.name}" to client website using Firebase storage`);
+                await logRoomActivity('lodge_add', `Added new lodge "${lodgeData.name}" with ${imageUrls.length} images`);
                 
                 // Refresh the client lodges list if the modal is open
                 if (this.showClientRoomsModal) {
@@ -632,51 +646,20 @@ new Vue({
             this.selectedImages.splice(index, 1);
         },
 
-        // Keep existing Firebase uploadImages method as backup
+        // Replace the uploadImages method completely with this version
         async uploadImages(roomId) {
-            const imageUrls = [];
-            
             try {
-                for (const image of this.selectedImages) {
-                    // Create storage reference with appropriate metadata
-                    const storageRef = ref(storage, `rooms/${roomId}/${image.name}`);
-                    
-                    // Set proper metadata with content type to help with CORS
-                    const metadata = {
-                        contentType: image.type,
-                        // Adding custom metadata to help with CORS issues
-                        customMetadata: {
-                            'origin': window.location.origin,
-                            'uploaded-from': 'admin-panel'
-                        }
-                    };
-                    
-                    try {
-                        console.log(`Uploading image: ${image.name}`);
-                        const snapshot = await uploadBytes(storageRef, image.file, metadata);
-                        console.log('Upload successful!', snapshot);
-                        
-                        // Get download URL
-                        const url = await getDownloadURL(snapshot.ref);
-                        console.log('Download URL:', url);
-                        imageUrls.push(url);
-                    } catch (uploadError) {
-                        console.error('Error uploading individual image:', uploadError);
-                        // Display more specific error info to help debug
-                        if (uploadError.code === 'storage/unauthorized') {
-                            alert(`Upload error: You don't have permission to upload to this bucket. Check your Firebase rules.`);
-                        } else if (uploadError.code === 'storage/cors-error') {
-                            alert('CORS error: Your Firebase Storage CORS configuration needs to be updated.');
-                        } else {
-                            alert(`Upload error: ${uploadError.message}`);
-                        }
-                        throw uploadError;
-                    }
-                }
+                console.log('Using fallback direct uploader method');
                 
-                return imageUrls;
+                // Import the DirectUploader class
+                const { DirectUploader } = await import('./direct-uploader.js');
+                const uploader = new DirectUploader(app);
+                
+                // Use the direct uploader
+                return await uploader.uploadImages(roomId, this.selectedImages);
             } catch (error) {
-                console.error('Error in uploadImages function:', error);
+                console.error('Fatal error in direct image upload:', error);
+                alert('Failed to upload images. Please try again or contact support.');
                 throw error;
             }
         },
