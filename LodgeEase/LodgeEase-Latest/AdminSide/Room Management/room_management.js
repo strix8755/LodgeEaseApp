@@ -29,6 +29,9 @@ import { ActivityLogger } from '../ActivityLog/activityLogger.js';
 const storage = getStorage(app);
 const activityLogger = new ActivityLogger();
 
+// PostgreSQL connection service - import the service module
+import { pgService } from '../services/postgres-service.js';
+
 // Add activity logging function
 async function logRoomActivity(actionType, details) {
     try {
@@ -94,6 +97,7 @@ async function deleteRoom(roomId) {
 new Vue({
     el: '#app',
     data: {
+        pgService, // Add the pgService import to data so it's available in templates
         bookings: [],
         rooms: [],  // Remove default rooms, we'll fetch all from Firestore
         searchQuery: '',
@@ -103,15 +107,35 @@ new Vue({
         showAddRoomModal: false,
         showManualBookingModal: false,
         showClientRoomsModal: false, // Add this new property
-        newRoom: {
-            establishment: '',
-            roomNumber: '',
-            roomType: '',
-            floorLevel: '',
+        newLodge: {
+            name: '',
+            location: '',
+            barangay: '',
             price: '',
+            promoPrice: '',
+            amenities: [],
+            rating: 4.5,
+            propertyType: '',
             description: '',
-            status: 'Available'
+            roomNumber: '',
+            coordinates: {
+                lat: 16.4023, // Default Baguio City coordinates
+                lng: 120.5960
+            }
         },
+        availableAmenities: [
+            'Mountain View', 'WiFi', 'Kitchen', 'Parking', 'Fireplace', 'City View',
+            'Pool', 'Restaurant', 'Spa', 'Pet Friendly', 'Fitness Center', 'Free Breakfast',
+            'Room Service', 'High-speed WiFi', 'Coffee Shop', '24/7 Security', 'Air Conditioning',
+            'Hot Tub', 'Garden', 'Terrace', 'TV', 'Lake View', 'Near Eatery'
+        ],
+        barangays: [
+            'Session Road', 'Camp 7', 'Burnham-Legarda', 'Kisad', 'City Camp Central',
+            'Abanao-Zandueta-Kayong-Chugum-Otek', 'Alfonso Tabora', 'Ambiong',
+            'Andres Bonifacio', 'Apugan-Loakan', 'Aurora Hill North Central',
+            'Aurora Hill Proper', 'Aurora Hill South Central', 'Bagong Abreza',
+            'BGH Compound', 'Cabinet Hill-Teachers Camp', 'Camp 8', 'Camp Allen',
+        ],
         establishments: {
             lodge1: {
                 name: 'Pine Haven Lodge',
@@ -125,6 +149,8 @@ new Vue({
         selectedImages: [], // Array to store selected images
         maxImages: 5,
         maxImageSize: 5 * 1024 * 1024, // 5MB in bytes
+        uploadProgress: [], // Track progress for each image upload
+        imageSaveMethod: 'postgresql', // 'firebase' or 'postgresql'
         showManualBookingModal: false,
         availableRooms: [],
         manualBooking: {
@@ -148,7 +174,7 @@ new Vue({
         itemsPerPage: 12,
         viewMode: 'grid',
         lastVisible: null,
-        defaultImage: '../../ClientSide/components/default-room.jpg', // Use image from components folder
+        defaultImage: '../images/default-room.jpg', // Changed to use an image in the AdminSide/images folder
         // or alternatively:
         // defaultImage: 'https://via.placeholder.com/300x200?text=No+Image', // Use a placeholder image service
         roomsToDisplay: [],
@@ -199,6 +225,36 @@ new Vue({
 
         calculateTotal() {
             return this.calculateSubtotal + this.calculateServiceFee;
+        },
+
+        previewImage() {
+            if (this.selectedImages.length > 0) {
+                return this.selectedImages[0].url;
+            }
+            return this.defaultImage; // Use the instance property
+        },
+        
+        isPreviewBestValue() {
+            // Logic to determine if this lodge should be marked as "best value"
+            // For example, if it has a promo price and the discount is substantial
+            if (!this.newLodge.price || !this.newLodge.promoPrice) return false;
+            
+            const regularPrice = parseFloat(this.newLodge.price);
+            const promoPrice = parseFloat(this.newLodge.promoPrice);
+            
+            // If discount is more than 50%
+            return promoPrice < (regularPrice * 0.5);
+        },
+        
+        isFormValid() {
+            return this.newLodge.name && 
+                   this.newLodge.location && 
+                   this.newLodge.barangay && 
+                   this.newLodge.price && 
+                   this.newLodge.propertyType && 
+                   this.newLodge.description &&
+                   this.newLodge.amenities.length >= 2 &&
+                   this.selectedImages.length > 0;
         }
     },
     methods: {
@@ -416,102 +472,155 @@ new Vue({
             this.showAddRoomModal = false;
         },
 
-        async addNewRoom() {
+        async addNewLodge() {
             try {
                 this.loading = true;
 
-                if (!this.newRoom.establishment) {
-                    alert('Please select an establishment');
+                if (!this.isFormValid) {
+                    alert('Please fill in all required fields and add at least one image');
                     return;
                 }
 
-                const establishment = this.establishments[this.newRoom.establishment];
+                // Check if PostgreSQL is available if that's the selected method
+                if (this.imageSaveMethod === 'postgresql') {
+                    const isPostgresAvailable = await this.checkPostgresAvailability();
+                    
+                    if (!isPostgresAvailable) {
+                        console.warn('PostgreSQL service is unavailable, falling back to Firebase storage');
+                        // Fall back to Firebase
+                        this.imageSaveMethod = 'firebase';
+                        
+                        // Show a warning to the user
+                        alert('PostgreSQL image service is unavailable. Your images will be saved using Firebase Storage instead.');
+                    }
+                }
 
-                // Get amenities from checkboxes
-                const amenityCheckboxes = document.querySelectorAll('input[name="amenity"]:checked');
-                const selectedAmenities = Array.from(amenityCheckboxes).map(cb => cb.value);
+                // Generate a unique ID for the lodge (timestamp + random number)
+                const newLodgeId = Date.now().toString() + Math.floor(Math.random() * 1000);
 
-                // Create room data object with structure matching client-side
-                const roomData = {
-                    name: `${establishment.name} - Room ${this.newRoom.roomNumber}`,
-                    location: establishment.location,
-                    barangay: this.newRoom.establishment === 'lodge1' ? 'Camp 7' : 'Session Road',
-                    price: parseFloat(this.newRoom.price),
-                    amenities: selectedAmenities,
-                    rating: 4.5, // Default rating for new rooms
-                    propertyType: this.newRoom.roomType.toLowerCase(),
+                // Create lodge data object with structure matching client-side
+                const lodgeData = {
+                    id: parseInt(newLodgeId.slice(-5)), // Use last 5 digits as numeric ID
+                    name: this.newLodge.name,
+                    location: this.newLodge.location,
+                    barangay: this.newLodge.barangay,
+                    price: parseFloat(this.newLodge.price),
+                    promoPrice: this.newLodge.promoPrice ? parseFloat(this.newLodge.promoPrice) : null,
+                    amenities: [...this.newLodge.amenities],
+                    rating: parseFloat(this.newLodge.rating),
+                    propertyType: this.newLodge.propertyType,
                     coordinates: {
-                        lat: this.newRoom.establishment === 'lodge1' ? 16.4096 : 16.4145,
-                        lng: this.newRoom.establishment === 'lodge1' ? 120.6010 : 120.5960
+                        lat: parseFloat(this.newLodge.coordinates.lat),
+                        lng: parseFloat(this.newLodge.coordinates.lng)
                     },
+                    description: this.newLodge.description,
                     propertyDetails: {
-                        roomNumber: this.newRoom.roomNumber,
-                        roomType: this.newRoom.roomType,
-                        floorLevel: this.newRoom.floorLevel,
-                        name: establishment.name,
-                        location: establishment.location
+                        roomNumber: this.newLodge.roomNumber || 'N/A',
+                        roomType: this.newLodge.propertyType,
+                        name: this.newLodge.name,
+                        location: this.newLodge.location
                     },
-                    description: this.newRoom.description,
                     status: 'Available',
-                    establishment: this.newRoom.establishment,
-                    showOnClient: true, // Flag to show on client side
                     createdAt: new Date(),
-                    updatedAt: new Date()
+                    updatedAt: new Date(),
+                    showOnClient: true // Flag to show on client side
                 };
 
                 // Add to Firestore
-                const roomsRef = collection(db, 'rooms');
-                const docRef = await addDoc(roomsRef, roomData);
-
+                const lodgesRef = collection(db, 'lodges');
+                const docRef = await addDoc(lodgesRef, lodgeData);
+                
+                // Initialize image URLs array
+                let imageUrls = [];
+                
                 // Upload images if any
                 if (this.selectedImages.length > 0) {
-                    const imageUrls = await this.uploadImages(docRef.id);
-                    // Update room document with image URLs
+                    try {
+                        if (this.imageSaveMethod === 'postgresql') {
+                            // Try uploading to PostgreSQL
+                            imageUrls = await this.uploadImagesToPG(newLodgeId);
+                        } else {
+                            // Use Firebase Storage
+                            imageUrls = await this.uploadImages(newLodgeId);
+                        }
+                    } catch (uploadError) {
+                        console.error('Error during image upload:', uploadError);
+                        
+                        // If PostgreSQL fails, try Firebase as fallback
+                        if (this.imageSaveMethod === 'postgresql') {
+                            console.warn('Failed to upload to PostgreSQL, trying Firebase instead');
+                            alert('PostgreSQL upload failed. Trying Firebase Storage as a fallback...');
+                            this.imageSaveMethod = 'firebase';
+                            imageUrls = await this.uploadImages(newLodgeId);
+                        } else {
+                            // If Firebase also fails, rethrow the error
+                            throw uploadError;
+                        }
+                    }
+                    
+                    // Update lodge document with image URLs
                     await updateDoc(docRef, { 
                         image: imageUrls[0], // Main image for card display
-                        additionalImages: imageUrls // All images for detail view
+                        additionalImages: imageUrls, // All images for detail view
+                        imageStorage: this.imageSaveMethod // Track where images are stored
                     });
                     
-                    // Add this room to client rooms list
-                    roomData.id = docRef.id;
-                    roomData.image = imageUrls[0];
-                    this.clientRooms.push(roomData);
+                    // Update the lodge data with image URL
+                    lodgeData.image = imageUrls[0];
+                    lodgeData.additionalImages = imageUrls;
+                    lodgeData.imageStorage = this.imageSaveMethod;
                 }
 
+                // Create a room reference in the rooms collection to connect the systems
+                const roomsRef = collection(db, 'rooms');
+                await addDoc(roomsRef, {
+                    lodgeId: docRef.id,
+                    ...lodgeData,
+                });
+
                 // Reset form and close modal
-                this.resetNewRoomForm();
+                this.resetNewLodgeForm();
                 this.closeAddRoomModal();
                 
-                // Refresh the rooms list
-                await this.fetchBookings();
+                alert('Lodge added successfully! It will now appear on the client website.');
+                await logRoomActivity('lodge_add', `Added new lodge "${lodgeData.name}" to client website using ${this.imageSaveMethod} storage`);
                 
-                alert('Room added successfully! It will now appear on the client website.');
-                await logRoomActivity('room_add', `Added new room ${roomData.propertyDetails.roomNumber} visible on client website`);
+                // Refresh the client lodges list if the modal is open
+                if (this.showClientRoomsModal) {
+                    await this.fetchClientLodges();
+                }
             } catch (error) {
-                console.error('Error adding room:', error);
-                alert('Failed to add room: ' + error.message);
-                await logRoomActivity('room_error', `Failed to add room: ${error.message}`);
+                console.error('Error adding lodge:', error);
+                alert('Failed to add lodge: ' + error.message);
+                await logRoomActivity('lodge_error', `Failed to add lodge: ${error.message}`);
             } finally {
                 this.loading = false;
             }
         },
 
-        resetNewRoomForm() {
-            this.newRoom = {
-                establishment: '',
-                roomNumber: '',
-                roomType: '',
-                floorLevel: '',
+        resetNewLodgeForm() {
+            this.newLodge = {
+                name: '',
+                location: '',
+                barangay: '',
                 price: '',
+                promoPrice: '',
+                amenities: [],
+                rating: 4.5,
+                propertyType: '',
                 description: '',
-                status: 'Available'
+                roomNumber: '',
+                coordinates: {
+                    lat: 16.4023, // Default Baguio City coordinates
+                    lng: 120.5960
+                }
             };
             this.selectedImages = [];
         },
 
         closeAddRoomModal() {
             this.showAddRoomModal = false;
-            this.resetNewRoomForm();
+            this.resetNewLodgeForm();
         },
 
         async handleImageUpload(event) {
@@ -537,13 +646,21 @@ new Vue({
                     continue;
                 }
 
-                // Create preview URL
-                const url = URL.createObjectURL(file);
-                this.selectedImages.push({
-                    file,
-                    url,
-                    name: file.name
-                });
+                // Read file as DataURL for preview and PostgreSQL upload
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const url = URL.createObjectURL(file);
+                    this.selectedImages.push({
+                        file,
+                        url,          // For preview (Object URL)
+                        dataUrl: e.target.result,  // For PostgreSQL storage
+                        name: file.name,
+                        type: file.type,
+                        size: file.size,
+                        progress: 0   // Upload progress
+                    });
+                };
+                reader.readAsDataURL(file);
             }
         },
 
@@ -552,6 +669,60 @@ new Vue({
             this.selectedImages.splice(index, 1);
         },
 
+        // Add new method to upload images to PostgreSQL
+        async uploadImagesToPG(lodgeId) {
+            const imageUrls = [];
+            this.uploadProgress = this.selectedImages.map(() => 0);
+            
+            try {
+                // For each image, upload to PostgreSQL through our backend API
+                for (let i = 0; i < this.selectedImages.length; i++) {
+                    const image = this.selectedImages[i];
+                    
+                    // Update progress for UI feedback
+                    this.uploadProgress[i] = 10;
+                    
+                    try {
+                        // Extract the base64 image data (remove data:image/jpeg;base64, prefix)
+                        const base64Data = image.dataUrl.split(',')[1];
+                        
+                        // Prepare data for PostgreSQL insertion
+                        const imageData = {
+                            lodge_id: lodgeId,
+                            image_name: image.name,
+                            image_data: base64Data,
+                            image_type: image.type,
+                            image_size: image.size,
+                            is_primary: i === 0 // First image is primary
+                        };
+                        
+                        // Call the PostgreSQL service to store the image
+                        this.uploadProgress[i] = 50;
+                        
+                        const response = await pgService.saveImage(imageData);
+                        
+                        this.uploadProgress[i] = 100;
+                        
+                        // Create a URL that will fetch this image from our API
+                        const imageUrl = `/api/lodges/${lodgeId}/images/${response.image_id}`;
+                        imageUrls.push(imageUrl);
+                        
+                        console.log(`Uploaded image ${i+1}/${this.selectedImages.length} to PostgreSQL`);
+                    } catch (err) {
+                        console.error(`Error uploading image ${i+1}:`, err);
+                        throw new Error(`Failed to upload image ${i+1}: ${err.message}`);
+                    }
+                }
+                
+                return imageUrls;
+                
+            } catch (error) {
+                console.error('Error uploading images to PostgreSQL:', error);
+                throw new Error(`PostgreSQL image upload failed: ${error.message}`);
+            }
+        },
+
+        // Keep existing Firebase uploadImages method as backup
         async uploadImages(roomId) {
             const imageUrls = [];
             
@@ -569,6 +740,12 @@ new Vue({
             }
             
             return imageUrls;
+        },
+
+        // Add method to toggle between Firebase and PostgreSQL storage
+        toggleImageStorage() {
+            this.imageSaveMethod = this.imageSaveMethod === 'firebase' ? 'postgresql' : 'firebase';
+            console.log(`Image storage method changed to: ${this.imageSaveMethod}`);
         },
 
         openManualBookingModal() {
@@ -738,6 +915,33 @@ new Vue({
             try {
                 this.loading = true;
                 
+                // First, fetch lodges from Firestore that we've added
+                const lodgesRef = collection(db, 'lodges');
+                const lodgesQuery = query(lodgesRef, where('showOnClient', '==', true));
+                const lodgesSnapshot = await getDocs(lodgesQuery);
+                
+                // Map Firestore lodges
+                const firestoreLodges = lodgesSnapshot.docs.map(doc => {
+                    const data = doc.data();
+                    
+                    // Handle PostgreSQL image URLs
+                    let imageUrl = data.image;
+                    if (data.imageStorage === 'postgresql' && imageUrl && !imageUrl.startsWith('http')) {
+                        // Prepend API base URL if it's a relative PostgreSQL image path
+                        imageUrl = `${window.location.origin}${imageUrl}`;
+                    }
+                    
+                    return {
+                        id: doc.id,
+                        ...data,
+                        image: imageUrl,
+                        // Convert any server timestamps to JS dates
+                        createdAt: data.createdAt?.toDate?.() || data.createdAt,
+                        updatedAt: data.updatedAt?.toDate?.() || data.updatedAt
+                    };
+                });
+                
+                // Continue with existing code to fetch client-side lodges
                 // Try to fetch the actual lodges from the client-side rooms.html
                 try {
                     // First, try to fetch the HTML content
@@ -907,187 +1111,17 @@ new Vue({
                     this.allClientLodges = [];
                 }
 
-                // Add additional lodges from the Lodge folder
-                const additionalLodges = [
-                    {
-                        id: 'lodge3',
-                        name: "Baguio Hillside Retreat",
-                        location: "Burnham Park, Baguio City",
-                        barangay: "Burnham-Legarda",
-                        image: "../../ClientSide/components/3.jpg",
-                        price: 4800,
-                        amenities: ["Mountain View", "Kitchen", "WiFi", "Parking"],
-                        rating: 4.7,
-                        propertyType: "vacation-home",
-                        coordinates: {
-                            lat: 16.4123,
-                            lng: 120.5925
-                        },
-                        description: "A beautiful retreat with stunning mountain views and modern amenities."
-                    },
-                    {
-                        id: 'lodge4',
-                        name: "The Forest Lodge",
-                        location: "Session Road Area, Baguio City",
-                        barangay: "Session Road",
-                        image: "../../ClientSide/components/4.jpg",
-                        price: 2800,
-                        amenities: ["City View", "WiFi", "Restaurant"],
-                        rating: 4.3,
-                        propertyType: "hotel",
-                        coordinates: {
-                            lat: 16.4156,
-                            lng: 120.5964
-                        },
-                        description: "Comfortable accommodation in the heart of Baguio City with excellent city views."
-                    },
-                    {
-                        id: 'lodge5',
-                        name: "Super Apartment - Room 6",
-                        location: "City Center, Baguio City",
-                        barangay: "City Camp Central",
-                        image: "../../ClientSide/components/SuperApartmentRoom6.jpg",
-                        price: 6000,
-                        amenities: ["City View", "WiFi", "Kitchen", "Near Eatery"],
-                        rating: 4.4,
-                        propertyType: "apartment",
-                        description: "Located in Upper Bonifacion Street, offering affordable rooms with comfort and security."
-                    },
-                    {
-                        id: 'lodge6',
-                        name: "Wright Park Manor",
-                        location: "Wright Park, Baguio City",
-                        barangay: "Kisad",
-                        image: "../../ClientSide/components/7.jpg",
-                        price: 5200,
-                        amenities: ["Mountain View", "Kitchen", "Parking", "Pet Friendly"],
-                        rating: 4.6,
-                        propertyType: "bed-breakfast",
-                        coordinates: {
-                            lat: 16.4105,
-                            lng: 120.6287
-                        },
-                        description: "Charming bed & breakfast near the famous Wright Park with pet-friendly accommodations."
-                    },
-                    {
-                        id: 'lodge7',
-                        name: "Highland Haven",
-                        location: "Burnham Park, Baguio City",
-                        barangay: "Burnham-Legarda",
-                        image: "../../ClientSide/components/8.jpg",
-                        price: 4100,
-                        amenities: ["City View", "WiFi", "Fitness Center"],
-                        rating: 4.4,
-                        propertyType: "hotel",
-                        coordinates: {
-                            lat: 16.4115,
-                            lng: 120.5932
-                        },
-                        description: "Modern hotel with fitness center and great views of Burnham Park."
-                    },
-                    {
-                        id: 'lodge8',
-                        name: "Sunset View Villa",
-                        location: "Camp John Hay, Baguio City",
-                        barangay: "Camp 7",
-                        image: "../../ClientSide/components/9.jpg",
-                        price: 8900,
-                        amenities: ["Mountain View", "Pool", "Kitchen", "Fireplace"],
-                        rating: 4.9,
-                        propertyType: "vacation-home",
-                        coordinates: {
-                            lat: 16.4089,
-                            lng: 120.6015
-                        },
-                        description: "Luxurious villa with private pool and stunning sunset views over the mountains."
-                    },
-                    {
-                        id: 'lodge9',
-                        name: "Cozy Corner B&B",
-                        location: "Wright Park, Baguio City",
-                        barangay: "Kisad",
-                        image: "../../ClientSide/components/10.jpg",
-                        price: 3500,
-                        amenities: ["Garden View", "Free Breakfast", "WiFi"],
-                        rating: 4.5,
-                        propertyType: "bed-breakfast",
-                        coordinates: {
-                            lat: 16.4112,
-                            lng: 120.6291
-                        },
-                        description: "Homey bed & breakfast with beautiful garden views and complimentary breakfast."
-                    },
-                    {
-                        id: 'lodge10',
-                        name: "The Manor Hotel",
-                        location: "Camp John Hay, Baguio City",
-                        barangay: "Camp 7",
-                        image: "../../ClientSide/components/11.jpg",
-                        price: 9500,
-                        amenities: ["Mountain View", "Spa", "Restaurant", "Room Service"],
-                        rating: 4.8,
-                        propertyType: "hotel",
-                        coordinates: {
-                            lat: 16.4098,
-                            lng: 120.6018
-                        },
-                        description: "Prestigious hotel in Camp John Hay with full-service spa and gourmet dining."
-                    },
-                    {
-                        id: 'lodge11',
-                        name: "Session Suites",
-                        location: "Session Road, Baguio City",
-                        barangay: "Session Road",
-                        image: "../../ClientSide/components/5.jpg",
-                        price: 5800,
-                        amenities: ["City View", "WiFi", "24/7 Security", "Kitchen"],
-                        rating: 4.6,
-                        propertyType: "apartment",
-                        description: "Modern suites in the heart of Baguio's commercial district with 24/7 security."
-                    },
-                    {
-                        id: 'lodge12',
-                        name: "Burnham Lake House",
-                        location: "Burnham Park, Baguio City",
-                        barangay: "Burnham-Legarda",
-                        image: "../../ClientSide/components/2.jpg",
-                        price: 4200,
-                        amenities: ["Lake View", "Free Parking", "WiFi", "Garden"],
-                        rating: 4.4,
-                        propertyType: "guest-house",
-                        description: "Charming guest house with beautiful views of Burnham Lake and a private garden."
-                    },
-                    {
-                        id: 'lodge13',
-                        name: "Ever Lodge",
-                        location: "Baguio City Center, Baguio City",
-                        barangay: "Session Road",
-                        image: "../../ClientSide/components/6.jpg",
-                        price: 1300,
-                        promoPrice: 580,
-                        amenities: ["Mountain View", "High-speed WiFi", "Fitness Center", "Coffee Shop"],
-                        rating: 4.9,
-                        propertyType: "hotel",
-                        coordinates: {
-                            lat: 16.4088,
-                            lng: 120.6013
-                        },
-                        description: "Affordable and modern accommodation with promotional night rates and excellent amenities."
-                    }
-                ];
-                
-                // Merge the additional lodges with any existing lodges
-                // Make sure we don't have duplicates by checking IDs
+                // Add our Firestore lodges to the mix and deduplicate
                 const existingIds = new Set(this.allClientLodges.map(lodge => lodge.id));
                 
-                for (const lodge of additionalLodges) {
+                for (const lodge of firestoreLodges) {
                     if (!existingIds.has(lodge.id)) {
                         this.allClientLodges.push(lodge);
                         existingIds.add(lodge.id);
                     }
                 }
                 
-                console.log(`Successfully loaded ${this.allClientLodges.length} lodges (including Lodge folder ones)`);
+                console.log(`Successfully loaded ${this.allClientLodges.length} lodges (including Firestore ones)`);
                 
             } catch (error) {
                 console.error('Error fetching client lodges:', error);
@@ -1117,8 +1151,18 @@ new Vue({
 
         // Handle image loading errors with fallback to a local image
         handleImageError(e) {
-            console.log("Image loading error, using local default image");
-            // Use image from components folder
+            console.log("Image loading error, trying to fix source URL");
+            
+            const imgSrc = e.target.src;
+            
+            // Check if this might be a PostgreSQL image path with missing base URL
+            if (imgSrc && !imgSrc.startsWith('http') && imgSrc.includes('/api/lodges/')) {
+                // Add origin to relative URL
+                e.target.src = `${window.location.origin}${imgSrc}`;
+                return;
+            }
+            
+            // Fallback to default image if the above fix didn't work
             e.target.src = "../../ClientSide/components/default-room.jpg";
             
             // If the default image also fails, use a simpler fallback
@@ -1147,7 +1191,6 @@ new Vue({
         viewHomepageLodge(lodge) {
             // Create a simple modal to display lodge information
             const modalHtml = `
-        handleImageError(e) {
                 <div id="homepageLodgeModal" class="fixed inset-0 bg-black bg-opacity-50 z-[1001] flex items-center justify-center">
                     <div class="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6">
                         <div class="flex justify-between items-center mb-4">
@@ -1201,8 +1244,52 @@ new Vue({
                 document.getElementById('homepageLodgeModal').remove();
             });
         },
+        
+        // Add this method to preload default images
+        preloadDefaultImages() {
+            // Create an array of all possible default image paths
+            const imagePaths = [
+                '../images/default-room.jpg',
+                '../../ClientSide/components/default-room.jpg',
+                '../images/LodgeEaseLogo.png',
+                '../../ClientSide/components/LodgeEaseLogo.png'
+            ];
+            
+            // Preload these images
+            imagePaths.forEach(path => {
+                const img = new Image();
+                img.src = path;
+            });
+        },
+
+        useDefaultCoordinates() {
+            this.newLodge.coordinates = {
+                lat: 16.4023,
+                lng: 120.5960
+            };
+        },
+        
+        openMapsInNewTab() {
+            const url = `https://www.google.com/maps/search/?api=1&query=Baguio+City+Philippines`;
+            window.open(url, '_blank');
+        },
+
+        // Add this method to check if PostgreSQL service is available
+        async checkPostgresAvailability() {
+            try {
+                const isAvailable = await pgService.checkConnection();
+                console.log(`PostgreSQL service is ${isAvailable ? 'available' : 'unavailable'}`);
+                return isAvailable;
+            } catch (error) {
+                console.error('Error checking PostgreSQL availability:', error);
+                return false;
+            }
+        },
     },
     async mounted() {
         this.checkAuthState(); // This will handle auth check and fetch bookings
+        
+        // Preload default images
+        this.preloadDefaultImages();
     }
 });

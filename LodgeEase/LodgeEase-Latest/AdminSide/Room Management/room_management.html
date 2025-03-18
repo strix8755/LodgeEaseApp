@@ -209,101 +209,309 @@
 
             <!-- Add Room Modal -->
             <div v-if="showAddRoomModal" class="modal" @click.self="closeAddRoomModal">
-                <div class="modal-content">
+                <div class="modal-content lodge-form-content">
                     <button class="close-btn" @click="closeAddRoomModal">&times;</button>
-                    <h2>Add New Room</h2>
-                    <form @submit.prevent="addNewRoom" class="add-room-form">
-                        <div class="form-group">
-                            <label for="establishment">Establishment*</label>
-                            <select id="establishment" v-model="newRoom.establishment" required>
-                                <option value="">Select establishment</option>
-                                <option value="lodge1">Pine Haven Lodge</option>
-                                <option value="lodge2">Mountain View Lodge</option>
-                            </select>
+                    <h2>Add New Lodge</h2>
+                    <p class="text-gray-600 mb-4">This lodge will be displayed on the client website homepage</p>
+                    
+                    <form @submit.prevent="addNewLodge" class="add-lodge-form">
+                        <!-- Basic Information -->
+                        <div class="form-section">
+                            <h3>Basic Information</h3>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="lodgeName">Lodge Name*</label>
+                                    <input 
+                                        type="text" 
+                                        id="lodgeName" 
+                                        v-model="newLodge.name" 
+                                        required 
+                                        placeholder="Enter lodge name"
+                                    >
+                                </div>
+                                <div class="form-group">
+                                    <label for="propertyType">Property Type*</label>
+                                    <select id="propertyType" v-model="newLodge.propertyType" required>
+                                        <option value="">Select property type</option>
+                                        <option value="hotel">Hotel</option>
+                                        <option value="resort">Resort</option>
+                                        <option value="vacation-home">Vacation Home</option>
+                                        <option value="apartment">Apartment</option>
+                                        <option value="bed-breakfast">Bed & Breakfast</option>
+                                        <option value="guest-house">Guest House</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="location">Location*</label>
+                                    <input 
+                                        type="text" 
+                                        id="location" 
+                                        v-model="newLodge.location" 
+                                        required 
+                                        placeholder="e.g., Camp John Hay, Baguio City"
+                                    >
+                                </div>
+                                <div class="form-group">
+                                    <label for="barangay">Barangay*</label>
+                                    <select id="barangay" v-model="newLodge.barangay" required>
+                                        <option value="">Select barangay</option>
+                                        <option v-for="barangay in barangays" :key="barangay" :value="barangay">
+                                            {{ barangay }}
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="price">Regular Price (per night)*</label>
+                                    <div class="input-with-prefix">
+                                        <span class="input-prefix">₱</span>
+                                        <input 
+                                            type="number" 
+                                            id="price" 
+                                            v-model="newLodge.price" 
+                                            required 
+                                            min="0" 
+                                            step="0.01"
+                                            placeholder="Regular rate per night"
+                                        >
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="promoPrice">Promo Price <small>(optional)</small></label>
+                                    <div class="input-with-prefix">
+                                        <span class="input-prefix">₱</span>
+                                        <input 
+                                            type="number" 
+                                            id="promoPrice" 
+                                            v-model="newLodge.promoPrice" 
+                                            min="0" 
+                                            step="0.01"
+                                            placeholder="Special promo rate"
+                                        >
+                                    </div>
+                                    <small class="form-help-text">Leave blank if no promotion is offered</small>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="description">Description*</label>
+                                <textarea 
+                                    id="description" 
+                                    v-model="newLodge.description" 
+                                    rows="3"
+                                    required
+                                    placeholder="Describe this lodge and its unique features"
+                                ></textarea>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="rating">Rating (1-5)*</label>
+                                    <input 
+                                        type="number" 
+                                        id="rating" 
+                                        v-model="newLodge.rating" 
+                                        required 
+                                        min="1" 
+                                        max="5" 
+                                        step="0.1"
+                                        placeholder="Ex: 4.5"
+                                    >
+                                </div>
+                                <div class="form-group">
+                                    <label for="roomNumber">Room Number (optional)</label>
+                                    <input 
+                                        type="text" 
+                                        id="roomNumber" 
+                                        v-model="newLodge.roomNumber" 
+                                        placeholder="E.g., Room 101"
+                                    >
+                                </div>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label for="roomNumber">Room Number*</label>
-                            <input 
-                                type="text" 
-                                id="roomNumber" 
-                                v-model="newRoom.roomNumber" 
-                                required 
-                                placeholder="Enter room number"
-                            >
+                        
+                        <!-- Map Coordinates -->
+                        <div class="form-section">
+                            <h3>Map Coordinates</h3>
+                            <p class="text-sm text-gray-600 mb-2">These coordinates determine where the lodge appears on the map</p>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="latitude">Latitude*</label>
+                                    <input 
+                                        type="number" 
+                                        id="latitude" 
+                                        v-model="newLodge.coordinates.lat" 
+                                        required 
+                                        step="any"
+                                        placeholder="E.g., 16.4023"
+                                    >
+                                </div>
+                                <div class="form-group">
+                                    <label for="longitude">Longitude*</label>
+                                    <input 
+                                        type="number" 
+                                        id="longitude" 
+                                        v-model="newLodge.coordinates.lng" 
+                                        required 
+                                        step="any"
+                                        placeholder="E.g., 120.5960"
+                                    >
+                                </div>
+                            </div>
+                            <div class="coordinate-helper">
+                                <button type="button" class="btn secondary-btn" @click="useDefaultCoordinates">
+                                    <i class="fas fa-map-marker-alt"></i> Use Baguio City Default
+                                </button>
+                                <button type="button" class="btn secondary-btn" @click="openMapsInNewTab">
+                                    <i class="fas fa-external-link-alt"></i> Open Google Maps
+                                </button>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label for="roomType">Room Type*</label>
-                            <select id="roomType" v-model="newRoom.roomType" required>
-                                <option value="">Select room type</option>
-                                <option value="Standard">Standard</option>
-                                <option value="Deluxe">Deluxe</option>
-                                <option value="Suite">Suite</option>
-                                <option value="Family">Family</option>
-                            </select>
+                        
+                        <!-- Amenities -->
+                        <div class="form-section">
+                            <h3>Amenities</h3>
+                            <p class="text-sm text-gray-600 mb-2">Select at least 2 amenities that this lodge offers</p>
+                            <div class="amenities-grid">
+                                <label class="amenity-checkbox" v-for="amenity in availableAmenities" :key="amenity">
+                                    <input type="checkbox" :value="amenity" v-model="newLodge.amenities">
+                                    <span>{{ amenity }}</span>
+                                </label>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label for="floorLevel">Floor Level*</label>
-                            <input 
-                                type="text" 
-                                id="floorLevel" 
-                                v-model="newRoom.floorLevel" 
-                                required 
-                                placeholder="Enter floor level"
-                            >
-                        </div>
-                        <div class="form-group">
-                            <label for="price">Price per Night*</label>
-                            <input 
-                                type="number" 
-                                id="price" 
-                                v-model="newRoom.price" 
-                                required 
-                                min="0" 
-                                step="0.01"
-                                placeholder="Enter price per night"
-                            >
-                        </div>
-                        <div class="form-group">
-                            <label for="description">Description</label>
-                            <textarea 
-                                id="description" 
-                                v-model="newRoom.description" 
-                                rows="3"
-                                placeholder="Enter room description"
-                            ></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label for="roomImages">Room Images</label>
+                        
+                        <!-- Image Upload -->
+                        <div class="form-section">
+                            <h3>Lodge Images</h3>
+                            <div class="storage-toggle mb-3">
+                                <p class="text-sm text-gray-600 mb-2">Image Storage Method:</p>
+                                <div class="flex items-center">
+                                    <button 
+                                        type="button" 
+                                        @click="toggleImageStorage" 
+                                        class="storage-toggle-btn"
+                                        :class="{'active': imageSaveMethod === 'postgresql'}"
+                                    >
+                                        <i class="fas fa-database mr-1"></i> 
+                                        PostgreSQL Database
+                                        <span v-if="imageSaveMethod === 'postgresql'" class="text-xs text-green-500 ml-1">(active)</span>
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        @click="toggleImageStorage" 
+                                        class="storage-toggle-btn ml-3"
+                                        :class="{'active': imageSaveMethod === 'firebase'}"
+                                    >
+                                        <i class="fas fa-cloud mr-1"></i> 
+                                        Firebase Storage
+                                        <span v-if="imageSaveMethod === 'firebase'" class="text-xs text-green-500 ml-1">(active)</span>
+                                    </button>
+                                </div>
+                                
+                                <!-- Add this warning message -->
+                                <div v-if="pgService?.useMockStorage && imageSaveMethod === 'postgresql'" class="mt-2 p-2 bg-yellow-100 text-yellow-700 rounded text-sm">
+                                    <i class="fas fa-exclamation-triangle mr-1"></i>
+                                    PostgreSQL service is not available. A mock implementation is being used for demonstration.
+                                    <button @click="imageSaveMethod = 'firebase'" class="underline ml-1">Use Firebase instead</button>
+                                </div>
+                            </div>
+                            
                             <div class="image-upload-container">
                                 <input 
                                     type="file" 
-                                    id="roomImages" 
+                                    id="lodgeImages" 
                                     @change="handleImageUpload" 
                                     accept="image/*" 
                                     multiple
                                     class="image-input"
                                 >
-                                <label for="roomImages" class="image-upload-label">
+                                <label for="lodgeImages" class="image-upload-label">
                                     <i class="fas fa-cloud-upload-alt"></i>
                                     <span>Click to upload images</span>
                                     <small>or drag and drop images here</small>
                                 </label>
                             </div>
+                            
                             <!-- Preview selected images -->
                             <div v-if="selectedImages.length" class="image-preview-container">
                                 <div v-for="(image, index) in selectedImages" :key="index" class="image-preview">
-                                    <img :src="image.url" :alt="'Room image ' + (index + 1)">
+                                    <img :src="image.url" :alt="'Lodge image ' + (index + 1)">
                                     <button type="button" @click="removeImage(index)" class="remove-image">
                                         <i class="fas fa-times"></i>
                                     </button>
+                                    <div v-if="index === 0" class="main-image-badge">Main Image</div>
+                                    
+                                    <!-- Upload progress indicator -->
+                                    <div v-if="uploadProgress[index]" class="upload-progress" :style="{width: uploadProgress[index] + '%'}"></div>
                                 </div>
                             </div>
-                            <small class="image-help-text">You can upload up to 5 images (max 5MB each)</small>
+                            
+                            <small class="image-help-text">
+                                First image will be the main display image. You can upload up to 5 images (max 5MB each).
+                                <br>
+                                <span class="font-semibold">Using {{imageSaveMethod === 'postgresql' ? 'PostgreSQL Database' : 'Firebase Storage'}}:</span> {{imageSaveMethod === 'postgresql' ? 'Better performance, supports larger files' : 'Standard storage, slower for large images'}}
+                            </small>
                         </div>
+                        
+                        <!-- Preview -->
+                        <div class="form-section">
+                            <h3>Lodge Card Preview</h3>
+                            <div class="lodge-preview-container">
+                                <div class="lodge-card preview">
+                                    <div class="relative overflow-hidden">
+                                        <img 
+                                            :src="previewImage || '../images/default-room.jpg'" 
+                                            alt="Lodge Preview" 
+                                            class="lodge-image w-full h-48 object-cover"
+                                            @error="e => e.target.src = '../images/LodgeEaseLogo.png'"
+                                        >
+                                        <div class="best-value-badge" v-if="isPreviewBestValue">BEST VALUE</div>
+                                        <div class="promo-tag" v-if="newLodge.promoPrice">
+                                            <span class="promo-tag-label">NIGHT PROMO</span>
+                                            <span class="promo-tag-price">₱{{ newLodge.promoPrice }}</span>
+                                        </div>
+                                        <button class="favorite-btn">
+                                            <i class="ri-heart-line"></i>
+                                        </button>
+                                    </div>
+                                    <div class="content p-4">
+                                        <h2 class="text-xl font-semibold mb-2">{{ newLodge.name || 'Lodge Name' }}</h2>
+                                        <div class="location flex items-center text-gray-600 mb-2">
+                                            <i class="ri-map-pin-line mr-1"></i>
+                                            <span>{{ newLodge.location || 'Location' }}</span>
+                                        </div>
+                                        <div class="amenities flex flex-wrap gap-2 mb-4">
+                                            <span v-for="amenity in newLodge.amenities.slice(0, 3)" :key="amenity" class="amenity-tag">
+                                                {{ amenity }}
+                                            </span>
+                                            <span v-if="newLodge.amenities.length > 3" class="amenity-tag">
+                                                +{{ newLodge.amenities.length - 3 }} more
+                                            </span>
+                                        </div>
+                                        <div class="flex items-center justify-between">
+                                            <div class="rating flex items-center">
+                                                <span class="text-yellow-400 mr-1">★</span>
+                                                <span class="font-medium">{{ newLodge.rating || '0.0' }}</span>
+                                            </div>
+                                            <div class="price text-lg font-bold" :class="{'text-green-600': isPreviewBestValue}">
+                                                ₱{{ newLodge.price ? parseFloat(newLodge.price).toLocaleString() : '0' }}
+                                                <span class="text-sm font-normal text-gray-600">/night</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="form-actions">
                             <button type="button" class="btn cancel-btn" @click="closeAddRoomModal">Cancel</button>
-                            <button type="submit" class="btn submit-btn" :disabled="loading">
-                                {{ loading ? 'Adding...' : 'Add Room' }}
+                            <button type="submit" class="btn submit-btn" :disabled="loading || !isFormValid">
+                                {{ loading ? 'Adding...' : 'Add Lodge to Website' }}
                             </button>
                         </div>
                     </form>
@@ -494,7 +702,7 @@
                         <div v-for="lodge in allClientLodges" :key="'lodge-'+lodge.id" class="lodge-card">
                             <div class="lodge-image">
                                 <img 
-                                    :src="lodge.image || '../../ClientSide/components/default-room.jpg'" 
+                                    :src="lodge.image || '../images/default-room.jpg'" 
                                     :alt="lodge.name"
                                     @error="handleImageError"
                                 >
@@ -620,6 +828,34 @@
             </div>
         </main>
     </div>
-</body>
+    
+    <!-- Fix the misplaced script tag -->
+    <script>
+        // Add this right before the Vue instance to update the defaultImage path
+        document.addEventListener('DOMContentLoaded', () => {
+            // Fix potential image path issues by ensuring we use the right paths
+            if (window.app) {
+                app.defaultImage = window.location.origin + '/LodgeEase/LodgeEase-Latest/ClientSide/components/default-room.jpg';
+            }
+        });
+    </script>
 
+    <!-- Add this script import after the existing imports but before Vue initialization -->
+
+    <script type="module">
+        // Import the production integration
+        import { enhanceVueWithProduction } from './production-integration.js';
+        
+        // Wait for the Vue instance to be created
+        document.addEventListener('DOMContentLoaded', () => {
+            // Find the Vue instance and enhance it with production capabilities
+            setTimeout(() => {
+                if (window.app && typeof enhanceVueWithProduction === 'function') {
+                    enhanceVueWithProduction(window.app);
+                    console.log('Enhanced Vue instance with production database integration');
+                }
+            }, 500); // Small delay to ensure Vue instance is ready
+        });
+    </script>
+</body>
 </html>

@@ -1381,3 +1381,358 @@ body {
     z-index: 10;
 }
 
+/* Lodge Form Styles */
+.lodge-form-content {
+    max-width: 900px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.add-lodge-form .form-section {
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.add-lodge-form .form-section h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: #2563eb;
+}
+
+.add-lodge-form .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.add-lodge-form .form-group {
+    margin-bottom: 16px;
+}
+
+.add-lodge-form .input-with-prefix {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.add-lodge-form .input-prefix {
+    position: absolute;
+    left: 12px;
+    pointer-events: none;
+    color: #6b7280;
+}
+
+.add-lodge-form .input-with-prefix input {
+    padding-left: 24px;
+}
+
+.add-lodge-form .form-help-text {
+    display: block;
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-top: 4px;
+}
+
+.add-lodge-form .coordinate-helper {
+    display: flex;
+    justify-content: flex-start;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.add-lodge-form .amenities-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.add-lodge-form .amenity-checkbox {
+    display: flex;
+    align-items: center;
+    padding: 6px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.add-lodge-form .amenity-checkbox:hover {
+    background-color: #f3f4f6;
+}
+
+.add-lodge-form .amenity-checkbox input {
+    margin-right: 8px;
+}
+
+/* Lodge preview styles */
+.lodge-preview-container {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 16px;
+    background-color: #f9fafb;
+}
+
+.lodge-card.preview {
+    width: 320px;
+    margin: 0 auto;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    transition: transform 0.3s ease;
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: white;
+}
+
+.lodge-card.preview:hover {
+    transform: translateY(-5px);
+}
+
+.best-value-badge {
+    position: absolute;
+    top: 12px;
+    left: 0;
+    background-color: #10b981;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    padding: 5px 10px;
+    z-index: 10;
+}
+
+.promo-tag {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(to right, rgba(16, 185, 129, 0.9), rgba(16, 185, 129, 0.8));
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 10px;
+    font-size: 12px;
+}
+
+.promo-tag-label {
+    font-weight: bold;
+}
+
+.promo-tag-price {
+    font-weight: bold;
+}
+
+.favorite-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.amenity-tag {
+    background-color: #f3f4f6;
+    color: #4b5563;
+    font-size: 12px;
+    padding: 3px 8px;
+    border-radius: 4px;
+}
+
+.image-preview-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.image-preview {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.image-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.remove-image {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background-color: rgba(0, 0, 0, 0.6);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.main-image-badge {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: rgba(37, 99, 235, 0.8);
+    color: white;
+    font-size: 10px;
+    text-align: center;
+    padding: 2px 0;
+}
+
+/* Make the form scrollable on smaller screens */
+@media (max-height: 800px) {
+    .lodge-form-content {
+        max-height: 80vh;
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .add-lodge-form .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .add-lodge-form .amenities-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    }
+    
+    .lodge-preview-container {
+        padding: 10px;
+    }
+}
+
+/* Client Rooms Modal Styles */
+.client-rooms-modal {
+    max-width: 90vw;
+    width: 1200px;
+}
+
+.lodge-list-item {
+    transition: transform 0.2s ease;
+}
+
+.lodge-list-item:hover {
+    transform: translateY(-2px);
+}
+
+.lodge-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+/* PostgreSQL Integration Styles */
+.storage-toggle {
+    margin-bottom: 16px;
+}
+
+.storage-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    background-color: #f8fafc;
+    color: #64748b;
+    transition: all 0.2s ease;
+}
+
+.storage-toggle-btn.active {
+    background-color: #ebf4ff;
+    color: #3b82f6;
+    border-color: #93c5fd;
+    font-weight: 500;
+}
+
+.storage-toggle-btn:hover {
+    background-color: #f1f5f9;
+}
+
+.upload-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 4px;
+    background-color: #3b82f6;
+    transition: width 0.3s ease;
+}
+
+.image-preview {
+    position: relative;
+    overflow: hidden;
+}
+
+.postgres-badge {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    background-color: rgba(79, 70, 229, 0.8);
+    color: white;
+    font-size: 8px;
+    padding: 2px 4px;
+    border-radius: 4px;
+}
+
+.firebase-badge {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    background-color: rgba(246, 173, 85, 0.8);
+    color: white;
+    font-size: 8px;
+    padding: 2px 4px;
+    border-radius: 4px;
+}
+
+/* PostgreSQL Image Display in Client Rooms */
+.pg-image-container {
+    position: relative;
+}
+
+.pg-image-container::after {
+    content: 'PG';
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    background-color: rgba(79, 70, 229, 0.8);
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+/* Firebase Image Display */
+.fb-image-container {
+    position: relative;
+}
+
+.fb-image-container::after {
+    content: 'FB';
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    background-color: rgba(246, 173, 85, 0.8);
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
