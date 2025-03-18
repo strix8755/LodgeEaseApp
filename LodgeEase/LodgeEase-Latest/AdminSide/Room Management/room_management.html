@@ -388,38 +388,6 @@
                         <!-- Image Upload -->
                         <div class="form-section">
                             <h3>Lodge Images</h3>
-                            <div class="storage-toggle mb-3">
-                                <p class="text-sm text-gray-600 mb-2">Image Storage Method:</p>
-                                <div class="flex items-center">
-                                    <button 
-                                        type="button" 
-                                        @click="toggleImageStorage" 
-                                        class="storage-toggle-btn"
-                                        :class="{'active': imageSaveMethod === 'postgresql'}"
-                                    >
-                                        <i class="fas fa-database mr-1"></i> 
-                                        PostgreSQL Database
-                                        <span v-if="imageSaveMethod === 'postgresql'" class="text-xs text-green-500 ml-1">(active)</span>
-                                    </button>
-                                    <button 
-                                        type="button" 
-                                        @click="toggleImageStorage" 
-                                        class="storage-toggle-btn ml-3"
-                                        :class="{'active': imageSaveMethod === 'firebase'}"
-                                    >
-                                        <i class="fas fa-cloud mr-1"></i> 
-                                        Firebase Storage
-                                        <span v-if="imageSaveMethod === 'firebase'" class="text-xs text-green-500 ml-1">(active)</span>
-                                    </button>
-                                </div>
-                                
-                                <!-- Add this warning message -->
-                                <div v-if="pgService?.useMockStorage && imageSaveMethod === 'postgresql'" class="mt-2 p-2 bg-yellow-100 text-yellow-700 rounded text-sm">
-                                    <i class="fas fa-exclamation-triangle mr-1"></i>
-                                    PostgreSQL service is not available. A mock implementation is being used for demonstration.
-                                    <button @click="imageSaveMethod = 'firebase'" class="underline ml-1">Use Firebase instead</button>
-                                </div>
-                            </div>
                             
                             <div class="image-upload-container">
                                 <input 
@@ -453,8 +421,6 @@
                             
                             <small class="image-help-text">
                                 First image will be the main display image. You can upload up to 5 images (max 5MB each).
-                                <br>
-                                <span class="font-semibold">Using {{imageSaveMethod === 'postgresql' ? 'PostgreSQL Database' : 'Firebase Storage'}}:</span> {{imageSaveMethod === 'postgresql' ? 'Better performance, supports larger files' : 'Standard storage, slower for large images'}}
                             </small>
                         </div>
                         
@@ -852,7 +818,7 @@
             setTimeout(() => {
                 if (window.app && typeof enhanceVueWithProduction === 'function') {
                     enhanceVueWithProduction(window.app);
-                    console.log('Enhanced Vue instance with production database integration');
+                    console.log('Enhanced Vue instance with production integration (Firebase only)');
                 }
             }, 500); // Small delay to ensure Vue instance is ready
         });

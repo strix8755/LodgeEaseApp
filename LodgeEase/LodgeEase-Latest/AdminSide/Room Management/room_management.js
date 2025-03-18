@@ -29,9 +29,6 @@ import { ActivityLogger } from '../ActivityLog/activityLogger.js';
 const storage = getStorage(app);
 const activityLogger = new ActivityLogger();
 
-// PostgreSQL connection service - import the service module
-import { pgService } from '../services/postgres-service.js';
-
 // Add activity logging function
 async function logRoomActivity(actionType, details) {
     try {
@@ -97,7 +94,6 @@ async function deleteRoom(roomId) {
 new Vue({
     el: '#app',
     data: {
-        pgService, // Add the pgService import to data so it's available in templates
         bookings: [],
         rooms: [],  // Remove default rooms, we'll fetch all from Firestore
         searchQuery: '',
@@ -150,8 +146,6 @@ new Vue({
         maxImages: 5,
         maxImageSize: 5 * 1024 * 1024, // 5MB in bytes
         uploadProgress: [], // Track progress for each image upload
-        imageSaveMethod: 'postgresql', // 'firebase' or 'postgresql'
-        showManualBookingModal: false,
         availableRooms: [],
         manualBooking: {
             guestName: '',
@@ -175,8 +169,6 @@ new Vue({
         viewMode: 'grid',
         lastVisible: null,
         defaultImage: '../images/default-room.jpg', // Changed to use an image in the AdminSide/images folder
-        // or alternatively:
-        // defaultImage: 'https://via.placeholder.com/300x200?text=No+Image', // Use a placeholder image service
         roomsToDisplay: [],
         roomSourceTab: 'database', // Default tab selection
     },
@@ -481,20 +473,6 @@ new Vue({
                     return;
                 }
 
-                // Check if PostgreSQL is available if that's the selected method
-                if (this.imageSaveMethod === 'postgresql') {
-                    const isPostgresAvailable = await this.checkPostgresAvailability();
-                    
-                    if (!isPostgresAvailable) {
-                        console.warn('PostgreSQL service is unavailable, falling back to Firebase storage');
-                        // Fall back to Firebase
-                        this.imageSaveMethod = 'firebase';
-                        
-                        // Show a warning to the user
-                        alert('PostgreSQL image service is unavailable. Your images will be saved using Firebase Storage instead.');
-                    }
-                }
-
                 // Generate a unique ID for the lodge (timestamp + random number)
                 const newLodgeId = Date.now().toString() + Math.floor(Math.random() * 1000);
 
@@ -536,39 +514,24 @@ new Vue({
                 // Upload images if any
                 if (this.selectedImages.length > 0) {
                     try {
-                        if (this.imageSaveMethod === 'postgresql') {
-                            // Try uploading to PostgreSQL
-                            imageUrls = await this.uploadImagesToPG(newLodgeId);
-                        } else {
-                            // Use Firebase Storage
-                            imageUrls = await this.uploadImages(newLodgeId);
-                        }
+                        // Always use Firebase storage (removed PostgreSQL option)
+                        imageUrls = await this.uploadImages(newLodgeId);
                     } catch (uploadError) {
                         console.error('Error during image upload:', uploadError);
-                        
-                        // If PostgreSQL fails, try Firebase as fallback
-                        if (this.imageSaveMethod === 'postgresql') {
-                            console.warn('Failed to upload to PostgreSQL, trying Firebase instead');
-                            alert('PostgreSQL upload failed. Trying Firebase Storage as a fallback...');
-                            this.imageSaveMethod = 'firebase';
-                            imageUrls = await this.uploadImages(newLodgeId);
-                        } else {
-                            // If Firebase also fails, rethrow the error
-                            throw uploadError;
-                        }
+                        throw uploadError;
                     }
                     
                     // Update lodge document with image URLs
                     await updateDoc(docRef, { 
                         image: imageUrls[0], // Main image for card display
                         additionalImages: imageUrls, // All images for detail view
-                        imageStorage: this.imageSaveMethod // Track where images are stored
+                        imageStorage: 'firebase' // Always Firebase storage
                     });
                     
                     // Update the lodge data with image URL
                     lodgeData.image = imageUrls[0];
                     lodgeData.additionalImages = imageUrls;
-                    lodgeData.imageStorage = this.imageSaveMethod;
+                    lodgeData.imageStorage = 'firebase';
                 }
 
                 // Create a room reference in the rooms collection to connect the systems
@@ -583,7 +546,7 @@ new Vue({
                 this.closeAddRoomModal();
                 
                 alert('Lodge added successfully! It will now appear on the client website.');
-                await logRoomActivity('lodge_add', `Added new lodge "${lodgeData.name}" to client website using ${this.imageSaveMethod} storage`);
+                await logRoomActivity('lodge_add', `Added new lodge "${lodgeData.name}" to client website using Firebase storage`);
                 
                 // Refresh the client lodges list if the modal is open
                 if (this.showClientRoomsModal) {
@@ -669,83 +632,53 @@ new Vue({
             this.selectedImages.splice(index, 1);
         },
 
-        // Add new method to upload images to PostgreSQL
-        async uploadImagesToPG(lodgeId) {
-            const imageUrls = [];
-            this.uploadProgress = this.selectedImages.map(() => 0);
-            
-            try {
-                // For each image, upload to PostgreSQL through our backend API
-                for (let i = 0; i < this.selectedImages.length; i++) {
-                    const image = this.selectedImages[i];
-                    
-                    // Update progress for UI feedback
-                    this.uploadProgress[i] = 10;
-                    
-                    try {
-                        // Extract the base64 image data (remove data:image/jpeg;base64, prefix)
-                        const base64Data = image.dataUrl.split(',')[1];
-                        
-                        // Prepare data for PostgreSQL insertion
-                        const imageData = {
-                            lodge_id: lodgeId,
-                            image_name: image.name,
-                            image_data: base64Data,
-                            image_type: image.type,
-                            image_size: image.size,
-                            is_primary: i === 0 // First image is primary
-                        };
-                        
-                        // Call the PostgreSQL service to store the image
-                        this.uploadProgress[i] = 50;
-                        
-                        const response = await pgService.saveImage(imageData);
-                        
-                        this.uploadProgress[i] = 100;
-                        
-                        // Create a URL that will fetch this image from our API
-                        const imageUrl = `/api/lodges/${lodgeId}/images/${response.image_id}`;
-                        imageUrls.push(imageUrl);
-                        
-                        console.log(`Uploaded image ${i+1}/${this.selectedImages.length} to PostgreSQL`);
-                    } catch (err) {
-                        console.error(`Error uploading image ${i+1}:`, err);
-                        throw new Error(`Failed to upload image ${i+1}: ${err.message}`);
-                    }
-                }
-                
-                return imageUrls;
-                
-            } catch (error) {
-                console.error('Error uploading images to PostgreSQL:', error);
-                throw new Error(`PostgreSQL image upload failed: ${error.message}`);
-            }
-        },
-
         // Keep existing Firebase uploadImages method as backup
         async uploadImages(roomId) {
             const imageUrls = [];
             
-            for (const image of this.selectedImages) {
-                const storageRef = ref(storage, `rooms/${roomId}/${image.name}`);
-                
-                try {
-                    const snapshot = await uploadBytes(storageRef, image.file);
-                    const url = await getDownloadURL(snapshot.ref);
-                    imageUrls.push(url);
-                } catch (error) {
-                    console.error('Error uploading image:', error);
-                    throw error;
+            try {
+                for (const image of this.selectedImages) {
+                    // Create storage reference with appropriate metadata
+                    const storageRef = ref(storage, `rooms/${roomId}/${image.name}`);
+                    
+                    // Set proper metadata with content type to help with CORS
+                    const metadata = {
+                        contentType: image.type,
+                        // Adding custom metadata to help with CORS issues
+                        customMetadata: {
+                            'origin': window.location.origin,
+                            'uploaded-from': 'admin-panel'
+                        }
+                    };
+                    
+                    try {
+                        console.log(`Uploading image: ${image.name}`);
+                        const snapshot = await uploadBytes(storageRef, image.file, metadata);
+                        console.log('Upload successful!', snapshot);
+                        
+                        // Get download URL
+                        const url = await getDownloadURL(snapshot.ref);
+                        console.log('Download URL:', url);
+                        imageUrls.push(url);
+                    } catch (uploadError) {
+                        console.error('Error uploading individual image:', uploadError);
+                        // Display more specific error info to help debug
+                        if (uploadError.code === 'storage/unauthorized') {
+                            alert(`Upload error: You don't have permission to upload to this bucket. Check your Firebase rules.`);
+                        } else if (uploadError.code === 'storage/cors-error') {
+                            alert('CORS error: Your Firebase Storage CORS configuration needs to be updated.');
+                        } else {
+                            alert(`Upload error: ${uploadError.message}`);
+                        }
+                        throw uploadError;
+                    }
                 }
+                
+                return imageUrls;
+            } catch (error) {
+                console.error('Error in uploadImages function:', error);
+                throw error;
             }
-            
-            return imageUrls;
-        },
-
-        // Add method to toggle between Firebase and PostgreSQL storage
-        toggleImageStorage() {
-            this.imageSaveMethod = this.imageSaveMethod === 'firebase' ? 'postgresql' : 'firebase';
-            console.log(`Image storage method changed to: ${this.imageSaveMethod}`);
         },
 
         openManualBookingModal() {

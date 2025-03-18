@@ -1638,7 +1638,7 @@ body {
     gap: 20px;
 }
 
-/* PostgreSQL Integration Styles */
+/* Remove these PostgreSQL Integration Styles */
 .storage-toggle {
     margin-bottom: 16px;
 }
