@@ -856,6 +856,523 @@ new Vue({
             });
         },
 
+        // Update fetchClientLodges method to include HTML file references
+        async fetchClientLodges() {
+            try {
+                this.loading = true;
+                
+                // First, create entries for lodge1.html through lodge13.html
+                const htmlLodges = Array.from({ length: 13 }, (_, i) => {
+                    const number = i + 1;
+                    const htmlFile = `lodge${number}.html`;
+                    
+                    // Map known lodge names to their numbers
+                    const knownLodgeNames = {
+                        1: 'Pine Haven Lodge',
+                        2: 'Mountain View Lodge',
+                        3: 'Baguio Hillside Retreat',
+                        6: 'Sky View Resort',
+                        7: 'Cozy Mountain Retreat',
+                        13: 'Ever Lodge'
+                    };
+                    
+                    // Use known name or generic name
+                    const name = knownLodgeNames[number] || `Lodge ${number}`;
+                    
+                    return {
+                        id: `lodge${number}`,
+                        name: name,
+                        htmlFile: htmlFile,
+                        location: 'Baguio City',
+                        rating: '4.5',
+                        price: 3000 + (number * 250), // Simple price calculation for variety
+                        amenities: ['WiFi', 'Parking', 'Mountain View'],
+                        image: `../../ClientSide/components/${(number % 10) + 1}.jpg`,
+                        propertyType: 'Lodge',
+                        description: `This lodge is defined in ${htmlFile}`
+                    };
+                });
+                
+                // Then fetch from Firestore to get any additional lodges
+                const lodgesRef = collection(db, 'lodges');
+                const lodgesQuery = query(lodgesRef, where('showOnClient', '==', true));
+                const lodgesSnapshot = await getDocs(lodgesQuery);
+                
+                // Map Firestore lodges
+                const firestoreLodges = lodgesSnapshot.docs.map(doc => {
+                    const data = doc.data();
+                    
+                    // Handle image URLs
+                    let imageUrl = data.image;
+                    if (data.imageStorage === 'postgresql' && imageUrl && !imageUrl.startsWith('http')) {
+                        imageUrl = `${window.location.origin}${imageUrl}`;
+                    }
+                    
+                    return {
+                        id: doc.id,
+                        ...data,
+                        image: imageUrl,
+                        // Convert any server timestamps to JS dates
+                        createdAt: data.createdAt?.toDate?.() || data.createdAt,
+                        updatedAt: data.updatedAt?.toDate?.() || data.updatedAt
+                    };
+                });
+                
+                // Combine HTML lodges with Firestore lodges, avoiding duplication
+                this.allClientLodges = [...htmlLodges];
+                
+                // Add Firestore lodges that don't match our HTML files
+                for (const lodge of firestoreLodges) {
+                    // Check if we should skip this lodge because it's already in our htmlLodges
+                    const existingLodge = this.allClientLodges.find(l => 
+                        l.id === lodge.id || 
+                        (lodge.htmlFile && l.htmlFile === lodge.htmlFile)
+                    );
+                    
+                    if (!existingLodge) {
+                        this.allClientLodges.push(lodge);
+                    }
+                }
+                
+                console.log(`Loaded ${this.allClientLodges.length} lodges total`);
+                
+            } catch (error) {
+                console.error('Error fetching client lodges:', error);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        // Add method to delete a lodge
+        async deleteLodge(lodge) {
+            try {
+                // Show confirmation dialog
+                if (!confirm(`Are you sure you want to delete "${lodge.name}"? This action cannot be undone.`)) {
+                    return;
+                }
+                
+                this.loading = true;
+                
+                // If it's an HTML lodge, show warning
+                if (lodge.htmlFile) {
+                    alert(`Note: This will only remove the lodge from the current view. The lodge HTML file (${lodge.htmlFile}) will not be deleted from the file system.`);
+                    
+                    // Remove from local array only
+                    this.allClientLodges = this.allClientLodges.filter(l => 
+                        l.id !== lodge.id && l.htmlFile !== lodge.htmlFile
+                    );
+                    
+                    return;
+                }
+                
+                // For Firestore lodges, actually delete from the database
+                if (lodge.id) {
+                    // Check if id is a string first to avoid 'startsWith is not a function' error
+                    const isHtmlLodge = typeof lodge.id === 'string' && lodge.id.startsWith('lodge');
+                    
+                    // Only delete from Firestore if it's not an HTML-based lodge
+                    if (!isHtmlLodge) {
+                        // Delete from Firestore
+                        await deleteDoc(doc(db, 'lodges', lodge.id));
+                        
+                        // Log the action
+                        await logRoomActivity('lodge_delete', `Deleted lodge: ${lodge.name}`);
+                        
+                        // Remove from local array
+                        this.allClientLodges = this.allClientLodges.filter(l => l.id !== lodge.id);
+                        
+                        alert('Lodge deleted successfully!');
+                    } else {
+                        // Handle HTML-based lodges (already handled above, but just in case)
+                        this.allClientLodges = this.allClientLodges.filter(l => l.id !== lodge.id);
+                    }
+                }
+            } catch (error) {
+                console.error('Error deleting lodge:', error);
+                alert('Failed to delete lodge: ' + error.message);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        viewBookingDetails(booking) {
+            this.selectedBooking = booking;
+        },
+
+        closeModal() {
+            this.selectedBooking = null;
+        },
+
+        openAddRoomModal() {
+            this.showAddRoomModal = true;
+        },
+
+        closeAddRoomModal() {
+            this.showAddRoomModal = false;
+        },
+
+        async addNewLodge() {
+            try {
+                this.loading = true;
+
+                if (!this.isFormValid) {
+                    alert('Please fill in all required fields and add at least one image');
+                    return;
+                }
+                
+                // Import the syncLodgeToClient function
+                const { syncLodgeToClient } = await import('./firebase-helper.js');
+
+                // First, compress and upload the images using DirectUploader
+                const { DirectUploader } = await import('./direct-uploader.js');
+                const uploader = new DirectUploader({...this, $options: { db }});
+
+                const newLodgeId = Date.now().toString() + Math.floor(Math.random() * 1000);
+                console.log('Starting image upload with DirectUploader');
+                const imageUrls = await uploader.uploadImages(newLodgeId, this.selectedImages);
+                console.log(`Successfully processed ${imageUrls.length} images`);
+
+                // Create lodge data object
+                const lodgeData = {
+                    id: parseInt(newLodgeId.slice(-5)),
+                    name: this.newLodge.name,
+                    location: this.newLodge.location,
+                    barangay: this.newLodge.barangay,
+                    price: parseFloat(this.newLodge.price),
+                    promoPrice: this.newLodge.promoPrice ? parseFloat(this.newLodge.promoPrice) : null,
+                    amenities: [...this.newLodge.amenities],
+                    rating: parseFloat(this.newLodge.rating),
+                    propertyType: this.newLodge.propertyType,
+                    coordinates: {
+                        lat: parseFloat(this.newLodge.coordinates.lat),
+                        lng: parseFloat(this.newLodge.coordinates.lng)
+                    },
+                    description: this.newLodge.description,
+                    propertyDetails: {
+                        roomNumber: this.newLodge.roomNumber || 'N/A',
+                        roomType: this.newLodge.propertyType,
+                        name: this.newLodge.name,
+                        location: this.newLodge.location
+                    },
+                    status: 'Available',
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                    showOnClient: true,
+                    imageStorage: 'firestore-base64',
+                    hasImages: imageUrls.length > 0
+                };
+
+                // Add to Firestore without the large image data
+                const lodgesRef = collection(db, 'lodges');
+                const docRef = await addDoc(lodgesRef, lodgeData);
+                
+                // Create a separate document for image references to avoid size limits
+                if (imageUrls.length > 0) {
+                    try {
+                        // Create a separate document for image references
+                        const imageRefsRef = collection(db, 'lodgeImages');
+                        await addDoc(imageRefsRef, { 
+                            lodgeId: docRef.id,
+                            mainImage: imageUrls[0],
+                            timestamp: Date.now()
+                        });
+                        
+                        // Update the lodge with a reference to the first image only
+                        await updateDoc(docRef, { 
+                            image: imageUrls[0],
+                            imageCount: imageUrls.length
+                        });
+                        
+                        lodgeData.image = imageUrls[0];
+                    } catch (imageRefError) {
+                        console.error('Error storing image references:', imageRefError);
+                    }
+                }
+
+                // Create a room reference in the rooms collection
+                const roomsRef = collection(db, 'rooms');
+                await addDoc(roomsRef, {
+                    lodgeId: docRef.id,
+                    ...lodgeData,
+                });
+                
+                // Synchronize to client side
+                await syncLodgeToClient(db, {
+                    ...lodgeData,
+                    id: docRef.id,  // Use Firestore document ID as the lodge ID for client sync
+                });
+
+                // Reset form and close modal
+                this.resetNewLodgeForm();
+                this.closeAddRoomModal();
+                
+                alert('Lodge added successfully! It will now appear on the client website.');
+                await logRoomActivity('lodge_add', `Added new lodge "${lodgeData.name}" with ${imageUrls.length} images`);
+                
+                // Refresh the client lodges list if the modal is open
+                if (this.showClientRoomsModal) {
+                    await this.fetchClientLodges();
+                }
+            } catch (error) {
+                console.error('Error adding lodge:', error);
+                alert('Failed to add lodge: ' + error.message);
+                await logRoomActivity('lodge_error', `Failed to add lodge: ${error.message}`);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        resetNewLodgeForm() {
+            this.newLodge = {
+                name: '',
+                location: '',
+                barangay: '',
+                price: '',
+                promoPrice: '',
+                amenities: [],
+                rating: 4.5,
+                propertyType: '',
+                description: '',
+                roomNumber: '',
+                coordinates: {
+                    lat: 16.4023, // Default Baguio City coordinates
+                    lng: 120.5960
+                }
+            };
+            this.selectedImages = [];
+        },
+
+        closeAddRoomModal() {
+            this.showAddRoomModal = false;
+            this.resetNewLodgeForm();
+        },
+
+        async handleImageUpload(event) {
+            const files = Array.from(event.target.files);
+            
+            // Validate number of images
+            if (this.selectedImages.length + files.length > this.maxImages) {
+                alert(`You can only upload up to ${this.maxImages} images`);
+                return;
+            }
+
+            // Process each file
+            for (const file of files) {
+                // Validate file size
+                if (file.size > this.maxImageSize) {
+                    alert(`Image ${file.name} is too large. Maximum size is 5MB`);
+                    continue;
+                }
+
+                // Validate file type
+                if (!file.type.startsWith('image/')) {
+                    alert(`File ${file.name} is not an image`);
+                    continue;
+                }
+
+                // Read file as DataURL for preview and PostgreSQL upload
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const url = URL.createObjectURL(file);
+                    this.selectedImages.push({
+                        file,
+                        url,          // For preview (Object URL)
+                        dataUrl: e.target.result,  // For PostgreSQL storage
+                        name: file.name,
+                        type: file.type,
+                        size: file.size,
+                        progress: 0   // Upload progress
+                    });
+                };
+                reader.readAsDataURL(file);
+            }
+        },
+
+        removeImage(index) {
+            URL.revokeObjectURL(this.selectedImages[index].url);
+            this.selectedImages.splice(index, 1);
+        },
+
+        // Replace the uploadImages method completely with this version
+        async uploadImages(roomId) {
+            try {
+                console.log('Using fallback direct uploader method');
+                
+                // Import the DirectUploader class
+                const { DirectUploader } = await import('./direct-uploader.js');
+                const uploader = new DirectUploader(app);
+                
+                // Use the direct uploader
+                return await uploader.uploadImages(roomId, this.selectedImages);
+            } catch (error) {
+                console.error('Fatal error in direct image upload:', error);
+                alert('Failed to upload images. Please try again or contact support.');
+                throw error;
+            }
+        },
+
+        openManualBookingModal() {
+            this.showManualBookingModal = true;
+            this.resetManualBookingForm();
+        },
+
+        closeManualBookingModal() {
+            this.showManualBookingModal = false;
+            this.resetManualBookingForm();
+        },
+
+        resetManualBookingForm() {
+            this.manualBooking = {
+                guestName: '',
+                email: '',
+                contactNumber: '',
+                establishment: '',
+                roomId: '',
+                checkIn: '',
+                checkOut: '',
+                numberOfGuests: 1,
+                paymentStatus: 'Pending'
+            };
+            this.availableRooms = [];
+        },
+
+        async fetchAvailableRooms() {
+            if (!this.manualBooking.establishment) return;
+
+            try {
+                // Generate 50 rooms for the selected establishment
+                const roomTypes = ['Standard', 'Deluxe', 'Suite', 'Family'];
+                const floorLevels = ['1st Floor', '2nd Floor', '3rd Floor', '4th Floor', '5th Floor'];
+                const prices = {
+                    'Standard': 2500,
+                    'Deluxe': 3500,
+                    'Suite': 5000,
+                    'Family': 4500
+                };
+
+                this.availableRooms = Array.from({ length: 50 }, (_, i) => {
+                    const roomNumber = (i + 1).toString().padStart(2, '0');
+                    const floorLevel = floorLevels[Math.floor(i / 10)]; // 10 rooms per floor
+                    const roomType = roomTypes[i % 4]; // Distribute room types evenly
+                    
+                    return {
+                        id: `room_${this.manualBooking.establishment}_${roomNumber}`,
+                        propertyDetails: {
+                            roomNumber: roomNumber,
+                            roomType: roomType,
+                            floorLevel: floorLevel,
+                            name: this.establishments[this.manualBooking.establishment].name,
+                            location: this.establishments[this.manualBooking.establishment].location
+                        },
+                        price: prices[roomType],
+                        status: 'Available'
+                    };
+                });
+
+                // Check existing bookings to mark rooms as unavailable
+                const bookingsRef = collection(db, 'bookings');
+                const bookingsSnapshot = await getDocs(
+                    query(
+                        bookingsRef,
+                        where('establishment', '==', this.manualBooking.establishment),
+                        where('status', 'in', ['Confirmed', 'Checked In'])
+                    )
+                );
+
+                const bookedRoomIds = bookingsSnapshot.docs.map(doc => doc.data().roomId);
+                this.availableRooms = this.availableRooms.filter(room => !bookedRoomIds.includes(room.id));
+
+            } catch (error) {
+                console.error('Error fetching available rooms:', error);
+                alert('Failed to fetch available rooms');
+            }
+        },
+
+        async submitManualBooking() {
+            try {
+                this.loading = true;
+
+                const selectedRoom = this.availableRooms.find(room => room.id === this.manualBooking.roomId);
+                if (!selectedRoom) {
+                    alert('Please select a valid room');
+                    return;
+                }
+
+                const bookingData = {
+                    guestName: this.manualBooking.guestName,
+                    email: this.manualBooking.email,
+                    contactNumber: this.manualBooking.contactNumber,
+                    establishment: this.manualBooking.establishment,
+                    roomId: this.manualBooking.roomId,
+                    propertyDetails: selectedRoom.propertyDetails,
+                    checkIn: new Date(this.manualBooking.checkIn),
+                    checkOut: new Date(this.manualBooking.checkOut),
+                    numberOfGuests: parseInt(this.manualBooking.numberOfGuests),
+                    numberOfNights: this.calculateNights,
+                    nightlyRate: this.calculateRoomRate,
+                    serviceFee: this.calculateServiceFee,
+                    totalPrice: this.calculateTotal,
+                    paymentStatus: this.manualBooking.paymentStatus,
+                    status: 'Confirmed',
+                    bookingType: 'Walk-in',
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                };
+
+                // First, create or update the room document
+                const roomRef = doc(db, 'rooms', this.manualBooking.roomId);
+                await setDoc(roomRef, {
+                    propertyDetails: selectedRoom.propertyDetails,
+                    price: selectedRoom.price,
+                    status: 'Occupied',
+                    establishment: this.manualBooking.establishment,
+                    currentBooking: bookingData,
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                });
+
+                // Then add the booking
+                const bookingsRef = collection(db, 'bookings');
+                await addDoc(bookingsRef, bookingData);
+
+                // Reset form and close modal
+                this.closeManualBookingModal();
+                
+                // Refresh bookings list
+                await this.fetchBookings();
+                
+                alert('Booking created successfully!');
+            } catch (error) {
+                console.error('Error creating booking:', error);
+                alert('Failed to create booking: ' + error.message);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async handleLogout() {
+            try {
+                await signOut(auth);
+                window.location.href = '../Login/index.html';
+            } catch (error) {
+                console.error('Error signing out:', error);
+                alert('Error signing out. Please try again.');
+            }
+        },
+
+        checkAuthState() {
+            auth.onAuthStateChanged(user => {
+                this.isAuthenticated = !!user;
+                if (!user) {
+                    window.location.href = '../Login/index.html';
+                } else {
+
+                    this.fetchBookings(); // Fetch bookings when user is authenticated
+                }
+                this.loading = false;
+            });
+        },
+
         // Update fetchClientLodges method to extract lodge cards directly from the DOM
         async fetchClientLodges() {
             try {
@@ -1108,14 +1625,29 @@ new Vue({
                 return;
             }
             
-            // Fallback to default image if the above fix didn't work
-            e.target.src = "../../ClientSide/components/default-room.jpg";
+            // Try alternative paths for default images
+            const alternativePaths = [
+                '../images/default-room.jpg',
+                '../images/LodgeEaseLogo.png',
+                '../../ClientSide/components/default-room.jpg',
+                '../../ClientSide/components/LodgeEaseLogo.png',
+                '../../ClientSide/components/1.jpg'
+            ];
             
-            // If the default image also fails, use a simpler fallback
-            e.target.onerror = function() {
-                e.target.src = "../../ClientSide/components/LodgeEaseLogo.png";
-                e.target.onerror = null; // Prevent infinite loop
+            // Try each path until one works
+            const tryNextImage = (index) => {
+                if (index >= alternativePaths.length) {
+                    // If all alternatives fail, use a data URI for a simple placeholder
+                    e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23f0f0f0'/%3E%3Ctext x='50' y='50' font-family='Arial' font-size='12' text-anchor='middle' alignment-baseline='middle' fill='%23999999'%3ENo Image%3C/text%3E%3C/svg%3E";
+                    e.target.onerror = null; // Prevent infinite loop
+                    return;
+                }
+                
+                e.target.src = alternativePaths[index];
+                e.target.onerror = () => tryNextImage(index + 1);
             };
+            
+            tryNextImage(0);
         },
 
         // Toggle between grid and list view
