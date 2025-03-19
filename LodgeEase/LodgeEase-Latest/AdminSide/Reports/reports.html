@@ -74,10 +74,13 @@
                     <button class="btn btn-primary" @click="exportToExcel">
                         <i class="fas fa-download"></i> Export to Excel
                     </button>
-                    <label class="btn btn-secondary">
-                        <i class="fas fa-upload"></i> Import Data
-                        <input type="file" @change="importData" accept=".csv,.xlsx" style="display: none;">
-                    </label>
+                    <div class="import-container" title="Upload CSV or XLSX files with booking data">
+                        <label class="btn btn-secondary">
+                            <i class="fas fa-upload"></i> Import Data
+                            <input type="file" @change="importData" accept=".csv,.xlsx" style="display: none;">
+                        </label>
+                        <span class="import-hint">Accepts CSV or XLSX files</span>
+                    </div>
                 </div>
             </header>
 
