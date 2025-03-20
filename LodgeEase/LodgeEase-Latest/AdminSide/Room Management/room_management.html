@@ -699,14 +699,17 @@
                     <!-- Homepage lodges grid -->
                     <div v-if="viewMode === 'grid'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lodge-container">
                         <div v-for="lodge in allClientLodges" :key="'lodge-'+lodge.id" class="lodge-card">
-                            <div class="lodge-image">
+                            <!-- Lodge image section with overlay elements -->
+                            <div class="relative overflow-hidden" style="height: 180px; max-height: 180px;">
                                 <img 
                                     :src="lodge.image || '../../ClientSide/components/1.jpg'" 
                                     :alt="lodge.name"
                                     @error="handleImageError"
                                     class="w-full h-full object-cover"
+                                    style="object-position: center; max-height: 100%;"
                                 >
-                                <div class="ribbon bg-green-600" v-if="lodge.promoPrice">Promo</div>
+                                <!-- Admin overlay elements -->
+                                <div class="ribbon bg-green-600" v-if="lodge.promoPrice">PROMO</div>
                                 <div class="html-file-tag" v-if="lodge.htmlFile">{{ lodge.htmlFile }}</div>
                                 <div class="actions-overlay">
                                     <button @click.stop="viewHomepageLodge(lodge)" class="admin-action-btn" title="View details">
@@ -716,21 +719,33 @@
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </div>
+                                
+                                <!-- Client-side overlay elements (matching rooms.html) -->
+                                <div class="best-value-badge" v-if="lodge.promoPrice && lodge.price && lodge.promoPrice < (lodge.price * 0.8)">
+                                    BEST VALUE
+                                </div>
+                                <div class="promo-tag" v-if="lodge.promoPrice">
+                                    <span class="promo-tag-label">NIGHT PROMO</span>
+                                    <span class="promo-tag-price">₱{{ lodge.promoPrice?.toLocaleString() }}</span>
+                                </div>
+                                <button class="favorite-btn">
+                                    <i class="fas fa-heart"></i>
+                                </button>
                             </div>
                             
-                            <!-- Add the lodge information content -->
-                            <div class="lodge-content p-4">
+                            <!-- Lodge content section (matching rooms.html) -->
+                            <div class="content p-4">
                                 <div class="flex justify-between items-start mb-2">
-                                    <h3 class="text-lg font-semibold">{{ lodge.name }}</h3>
-                                    <div class="flex items-center text-yellow-500">
+                                    <h2 class="text-lg font-semibold lodge-title">{{ lodge.name }}</h2>
+                                    <div class="flex items-center text-yellow-500 lodge-rating">
                                         <i class="fas fa-star mr-1"></i>
-                                        <span>{{ lodge.rating }}</span>
+                                        <span>{{ lodge.rating || '4.5' }}</span>
                                     </div>
                                 </div>
                                 
-                                <div class="text-gray-600 mb-2">
+                                <div class="flex items-center text-gray-600 mb-2 lodge-location">
                                     <i class="fas fa-map-marker-alt mr-1"></i>
-                                    {{ lodge.location }}
+                                    <span>{{ lodge.location || 'Baguio City' }}</span>
                                 </div>
                                 
                                 <div v-if="lodge.htmlFile" class="text-blue-600 text-sm mb-2">
@@ -740,7 +755,7 @@
                                 
                                 <div class="flex flex-wrap gap-2 mb-3">
                                     <span v-for="(amenity, index) in (lodge.amenities || []).slice(0, 3)" :key="index"
-                                          class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                                          class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded amenity">
                                         {{ amenity }}
                                     </span>
                                     <span v-if="(lodge.amenities || []).length > 3" 
@@ -749,18 +764,16 @@
                                     </span>
                                 </div>
                                 
-                                <div class="flex justify-between items-center">
-                                    <span class="text-gray-500 text-sm">
+                                <div class="flex justify-between items-center mt-2">
+                                    <div class="text-sm text-gray-600">
                                         {{ lodge.propertyType || 'Lodge' }}
-                                    </span>
-                                    <div class="text-right">
-                                        <div v-if="lodge.promoPrice" class="text-green-600 font-bold">
-                                            ₱{{ lodge.promoPrice?.toLocaleString() }}
-                                            <span class="text-gray-400 text-xs line-through">
-                                                ₱{{ lodge.price?.toLocaleString() }}
-                                            </span>
+                                    </div>
+                                    <div class="lodge-price">
+                                        <div v-if="lodge.promoPrice" class="flex flex-col items-end">
+                                            <span class="text-green-600 font-bold price">₱{{ lodge.promoPrice?.toLocaleString() }}</span>
+                                            <span class="text-gray-400 text-sm line-through">₱{{ lodge.price?.toLocaleString() }}</span>
                                         </div>
-                                        <div v-else class="text-gray-800 font-bold">
+                                        <div v-else class="text-gray-800 font-bold price">
                                             ₱{{ lodge.price?.toLocaleString() }}
                                             <span class="text-gray-500 text-xs">/night</span>
                                         </div>
@@ -773,12 +786,13 @@
                     <!-- List view for lodges -->
                     <div v-else class="lodge-list">
                         <div v-for="lodge in allClientLodges" :key="'lodge-list-'+lodge.id" class="lodge-list-item bg-white rounded-lg shadow-md mb-4 flex overflow-hidden">
-                            <div class="lodge-list-image w-1/4">
+                            <div class="lodge-list-image w-1/4" style="height: 140px; max-width: 180px; min-width: 120px;">
                                 <img 
                                     :src="lodge.image || '../../ClientSide/components/1.jpg'" 
                                     :alt="lodge.name"
                                     @error="handleImageError"
                                     class="h-full w-full object-cover"
+                                    style="object-position: center;"
                                 >
                             </div>
                             <!-- ...existing code... -->
