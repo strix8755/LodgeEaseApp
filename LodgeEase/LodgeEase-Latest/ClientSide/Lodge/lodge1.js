@@ -457,6 +457,18 @@ document.addEventListener('DOMContentLoaded', () => {
       window.location.href = '../Login/index.html';
     }
   });
+
+  // Add auth state observer to handle login button visibility
+  auth.onAuthStateChanged((user) => {
+    const loginButton = document.getElementById('loginButton');
+    if (loginButton) {
+      if (user) {
+        loginButton.classList.add('hidden'); // Hide login button if user is logged in
+      } else {
+        loginButton.classList.remove('hidden'); // Show login button if user is logged out
+      }
+    }
+  });
 });
 
 function initializeEventListeners() {

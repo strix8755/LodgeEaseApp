@@ -178,6 +178,8 @@ calendarModal?.addEventListener('click', (e) => {
   }
 });
 
+
+
 // Get current user data
 async function getCurrentUserData() {
     try {
@@ -480,6 +482,16 @@ document.addEventListener('DOMContentLoaded', () => {
   auth.onAuthStateChanged((user) => {
     if (!user) {
       window.location.href = '../Login/index.html';
+    }
+  });
+  auth.onAuthStateChanged((user) => {
+    const loginButton = document.getElementById('loginButton');
+    if (loginButton) {
+      if (user) {
+        loginButton.classList.add('hidden'); // Hide login button if user is logged in
+      } else {
+        loginButton.classList.remove('hidden'); // Show login button if user is logged out
+      }
     }
   });
 });
