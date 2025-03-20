@@ -718,7 +718,55 @@
                                 </div>
                             </div>
                             
-                            <!-- ...existing code... -->
+                            <!-- Add the lodge information content -->
+                            <div class="lodge-content p-4">
+                                <div class="flex justify-between items-start mb-2">
+                                    <h3 class="text-lg font-semibold">{{ lodge.name }}</h3>
+                                    <div class="flex items-center text-yellow-500">
+                                        <i class="fas fa-star mr-1"></i>
+                                        <span>{{ lodge.rating }}</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="text-gray-600 mb-2">
+                                    <i class="fas fa-map-marker-alt mr-1"></i>
+                                    {{ lodge.location }}
+                                </div>
+                                
+                                <div v-if="lodge.htmlFile" class="text-blue-600 text-sm mb-2">
+                                    <i class="fas fa-file-code mr-1"></i>
+                                    {{ lodge.htmlFile }}
+                                </div>
+                                
+                                <div class="flex flex-wrap gap-2 mb-3">
+                                    <span v-for="(amenity, index) in (lodge.amenities || []).slice(0, 3)" :key="index"
+                                          class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                                        {{ amenity }}
+                                    </span>
+                                    <span v-if="(lodge.amenities || []).length > 3" 
+                                          class="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">
+                                        +{{ (lodge.amenities || []).length - 3 }} more
+                                    </span>
+                                </div>
+                                
+                                <div class="flex justify-between items-center">
+                                    <span class="text-gray-500 text-sm">
+                                        {{ lodge.propertyType || 'Lodge' }}
+                                    </span>
+                                    <div class="text-right">
+                                        <div v-if="lodge.promoPrice" class="text-green-600 font-bold">
+                                            ₱{{ lodge.promoPrice?.toLocaleString() }}
+                                            <span class="text-gray-400 text-xs line-through">
+                                                ₱{{ lodge.price?.toLocaleString() }}
+                                            </span>
+                                        </div>
+                                        <div v-else class="text-gray-800 font-bold">
+                                            ₱{{ lodge.price?.toLocaleString() }}
+                                            <span class="text-gray-500 text-xs">/night</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
