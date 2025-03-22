@@ -698,7 +698,12 @@
                     
                     <!-- Homepage lodges grid -->
                     <div v-if="viewMode === 'grid'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lodge-container">
-                        <div v-for="lodge in allClientLodges" :key="'lodge-'+lodge.id" class="lodge-card">
+                        <!-- Use consistent ID patterns for each lodge card -->
+                        <div v-for="lodge in allClientLodges" 
+                             :key="'lodge-'+lodge.id" 
+                             class="lodge-card" 
+                             :id="'lodge-card-'+lodge.id">
+                             
                             <!-- Lodge image section with overlay elements -->
                             <div class="relative overflow-hidden" style="height: 160px; max-height: 160px;">
                                 <img 
@@ -711,11 +716,19 @@
                                 <!-- Admin overlay elements -->
                                 <div class="ribbon bg-green-600" v-if="lodge.promoPrice">PROMO</div>
                                 <div class="html-file-tag" v-if="lodge.htmlFile">{{ lodge.htmlFile }}</div>
+                                <!-- Add storage badge -->
+                                <div :class="['storage-badge', lodge.htmlFile ? 'html' : 'firestore']">
+                                    {{ lodge.htmlFile ? 'HTML' : 'Firestore DB' }}
+                                </div>
                                 <div class="actions-overlay">
                                     <button @click.stop="viewHomepageLodge(lodge)" class="admin-action-btn" title="View details">
                                         <i class="fas fa-eye"></i>
                                     </button>
-                                    <button @click.stop="deleteLodge(lodge)" class="admin-action-btn delete-action-btn" title="Delete lodge">
+                                    <!-- Add data attributes for better selection -->
+                                    <button @click.stop="deleteLodge(lodge)" 
+                                            class="admin-action-btn delete-action-btn" 
+                                            :data-lodge-id="lodge.id"
+                                            title="Delete lodge">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </div>
@@ -785,7 +798,10 @@
                     
                     <!-- List view for lodges -->
                     <div v-else class="lodge-list">
-                        <div v-for="lodge in allClientLodges" :key="'lodge-list-'+lodge.id" class="lodge-list-item bg-white rounded-lg shadow-md mb-4 flex overflow-hidden">
+                        <div v-for="lodge in allClientLodges" 
+                             :key="'lodge-list-'+lodge.id" 
+                             class="lodge-list-item bg-white rounded-lg shadow-md mb-4 flex overflow-hidden" 
+                             :id="'lodge-list-'+lodge.id">
                             <div class="lodge-list-image w-1/4" style="height: 140px; max-width: 160px; min-width: 120px;">
                                 <img 
                                     :src="lodge.image || '../../ClientSide/components/1.jpg'" 
@@ -821,7 +837,10 @@
                                 <button @click="viewHomepageLodge(lodge)" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 mb-2">
                                     <i class="fas fa-eye mr-1"></i> View
                                 </button>
-                                <button @click="deleteLodge(lodge)" class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700">
+                                <!-- Add data attributes for better selection -->
+                                <button @click="deleteLodge(lodge)" 
+                                        class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700"
+                                        :data-lodge-id="lodge.id">
                                     <i class="fas fa-trash mr-1"></i> Delete
                                 </button>
                             </div>
@@ -1144,6 +1163,99 @@
             object-fit: contain;
             background-color: #f0f0f0;
         }
+        
+        /* Add animation for lodge cards being deleted */
+        .lodge-card, .lodge-list-item {
+            transition: all 0.3s ease;
+        }
+        
+        .lodge-card.deleting, .lodge-list-item.deleting {
+            opacity: 0.5;
+            transform: scale(0.95);
+            pointer-events: none;
+        }
+        
+        /* Extra styles to make the delete button more prominent */
+        .delete-action-btn:hover {
+            background-color: rgba(220, 38, 38, 0.9) !important;
+            transform: scale(1.1);
+        }
+        
+        /* Improve deletion animation */
+        .lodge-card.deleting, .lodge-list-item.deleting {
+            opacity: 0.5;
+            transform: scale(0.95);
+            pointer-events: none;
+            position: relative;
+        }
+        
+        /* Add spinner to elements being deleted */
+        .lodge-card.deleting::after, .lodge-list-item.deleting::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 30px;
+            height: 30px;
+            margin: -15px 0 0 -15px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #1e3c72;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
+
+    <script>
+    // Add this helper function to debug lodge card rendering issues
+    document.addEventListener('DOMContentLoaded', () => {
+        // After Vue has initialized (with a slight delay)
+        setTimeout(() => {
+            // Register a MutationObserver to watch for changes to the lodge cards
+            const lodgeContainer = document.querySelector('.lodge-container');
+            if (lodgeContainer) {
+                const observer = new MutationObserver((mutations) => {
+                    // Check newly added nodes
+                    mutations.forEach(mutation => {
+                        if (mutation.type === 'childList') {
+                            mutation.addedNodes.forEach(node => {
+                                if (node.classList && node.classList.contains('lodge-card')) {
+                                    console.log('Lodge card added to DOM:', node.id);
+                                }
+                            });
+                            mutation.removedNodes.forEach(node => {
+                                if (node.classList && node.classList.contains('lodge-card')) {
+                                    console.log('Lodge card removed from DOM:', node.id);
+                                }
+                            });
+                        }
+                    });
+                });
+                
+                // Start observing changes
+                observer.observe(lodgeContainer, { childList: true, subtree: true });
+                console.log('DOM observer for lodge cards initialized');
+            }
+        }, 2000);
+                                }
+    });
+    </script>
+</body>
+</html>
+                            });
+                        }
+                    });
+                });
+                
+                // Start observing changes
+                observer.observe(lodgeContainer, { childList: true, subtree: true });
+                console.log('DOM observer for lodge cards initialized');
+            }
+        }, 2000);
+    });
+    </script>
 </body>
 </html>

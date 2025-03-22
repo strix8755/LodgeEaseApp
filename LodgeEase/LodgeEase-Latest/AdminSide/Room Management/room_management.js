@@ -24,6 +24,8 @@ import {
 import { signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { PageLogger } from '../js/pageLogger.js';
 import { ActivityLogger } from '../ActivityLog/activityLogger.js';
+import { ensureLodgeDeletionUI, verifyLodgeDeletion } from './lodge-cleanup.js';
+import { markLodgeAsDeleted, isLodgeDeleted, filterDeletedLodges, syncDeletedLodges } from './deleted-lodges-tracker.js';
 
 // Initialize Firebase Storage with existing app instance
 const storage = getStorage(app);
@@ -893,6 +895,10 @@ new Vue({
                     };
                 });
                 
+                // Filter out HTML lodges that have been marked as deleted
+                const filteredHtmlLodges = filterDeletedLodges(htmlLodges);
+                console.log(`Filtered HTML lodges: ${filteredHtmlLodges.length} of ${htmlLodges.length} remained after removing deleted ones`);
+                
                 // Then fetch from Firestore to get any additional lodges
                 const lodgesRef = collection(db, 'lodges');
                 const lodgesQuery = query(lodgesRef, where('showOnClient', '==', true));
@@ -918,11 +924,14 @@ new Vue({
                     };
                 });
                 
+                // Filter out Firestore lodges that might have been locally marked as deleted
+                const filteredFirestoreLodges = filterDeletedLodges(firestoreLodges);
+                
                 // Combine HTML lodges with Firestore lodges, avoiding duplication
-                this.allClientLodges = [...htmlLodges];
+                this.allClientLodges = [...filteredHtmlLodges];
                 
                 // Add Firestore lodges that don't match our HTML files
-                for (const lodge of firestoreLodges) {
+                for (const lodge of filteredFirestoreLodges) {
                     // Check if we should skip this lodge because it's already in our htmlLodges
                     const existingLodge = this.allClientLodges.find(l => 
                         l.id === lodge.id || 
@@ -934,7 +943,7 @@ new Vue({
                     }
                 }
                 
-                console.log(`Loaded ${this.allClientLodges.length} lodges total`);
+                console.log(`Loaded ${this.allClientLodges.length} lodges total after filtering out deleted lodges`);
                 
             } catch (error) {
                 console.error('Error fetching client lodges:', error);
@@ -943,53 +952,172 @@ new Vue({
             }
         },
 
-        // Add method to delete a lodge
+        // Fix the deleteLodge method with better ID handling
         async deleteLodge(lodge) {
+            console.log("Starting lodge deletion process for:", lodge);
+            
+            // Find the DOM element using ID
+            const lodgeElement = document.getElementById(`lodge-card-${lodge.id}`) || 
+                                document.getElementById(`lodge-list-${lodge.id}`);
+            
+            // Apply deleting class for visual feedback
+            if (lodgeElement) {
+                lodgeElement.classList.add('deleting');
+                console.log("Added deleting class to element:", lodgeElement);
+            } else {
+                console.warn("Lodge element not found in DOM with ID:", lodge.id);
+            }
+            
             try {
                 // Show confirmation dialog
                 if (!confirm(`Are you sure you want to delete "${lodge.name}"? This action cannot be undone.`)) {
+                    // Remove the visual feedback if cancelled
+                    if (lodgeElement) {
+                        lodgeElement.classList.remove('deleting');
+                    }
+                    console.log("Deletion cancelled by user");
                     return;
                 }
                 
                 this.loading = true;
+                console.log('Proceeding with deletion for lodge:', lodge);
                 
-                // If it's an HTML lodge, show warning
-                if (lodge.htmlFile) {
-                    alert(`Note: This will only remove the lodge from the current view. The lodge HTML file (${lodge.htmlFile}) will not be deleted from the file system.`);
+                // Check if this is an HTML-based lodge
+                const isHtmlLodge = lodge.htmlFile && typeof lodge.id === 'string' && 
+                                  (lodge.id.startsWith('lodge') || lodge.id.startsWith('dom-lodge'));
+                
+                // If it's an HTML lodge, handle differently
+                if (isHtmlLodge) {
+                    // Inform the user about what's happening
+                    alert(`Note: This will hide lodge "${lodge.name}" (${lodge.htmlFile}) from view. The HTML file cannot be physically deleted.`);
                     
-                    // Remove from local array only
-                    this.allClientLodges = this.allClientLodges.filter(l => 
-                        l.id !== lodge.id && l.htmlFile !== lodge.htmlFile
-                    );
+                    // Mark the lodge as deleted in our tracker
+                    await markLodgeAsDeleted(lodge);
+                    console.log(`HTML lodge marked as deleted: ${lodge.name} (${lodge.htmlFile})`);
                     
+                    // Remove from local array
+                    await ensureLodgeDeletionUI(this, lodge.id);
+                    
+                    alert(`Lodge "${lodge.name}" has been hidden successfully.`);
                     return;
                 }
                 
-                // For Firestore lodges, actually delete from the database
-                if (lodge.id) {
-                    // Check if id is a string first to avoid 'startsWith is not a function' error
-                    const isHtmlLodge = typeof lodge.id === 'string' && lodge.id.startsWith('lodge');
+                // For Firestore lodges, delete from database
+                
+                // Ensure we have a valid ID for Firestore
+                let lodgeId = lodge.id;
+                
+                if (!lodgeId) {
+                    throw new Error('Lodge ID is missing');
+                }
+                
+                // Convert numerical IDs to strings
+                if (typeof lodgeId === 'number') {
+                    lodgeId = String(lodgeId);
+                }
+                
+                if (typeof lodgeId !== 'string') {
+                    throw new Error(`Invalid lodge ID type: ${typeof lodgeId}`);
+                }
+                
+                console.log('Attempting to delete Firestore document with ID:', lodgeId);
+                
+                // Delete from Firestore
+                const docRef = doc(db, 'lodges', lodgeId);
+                await deleteDoc(docRef);
+                
+                // Verify deletion and retry if needed
+                const isDeleted = await verifyLodgeDeletion(db, lodgeId);
+                
+                if (!isDeleted) {
+                    console.warn(`Lodge document ${lodgeId} was not actually deleted. Retrying...`);
+                    await deleteDoc(docRef);
                     
-                    // Only delete from Firestore if it's not an HTML-based lodge
-                    if (!isHtmlLodge) {
-                        // Delete from Firestore
-                        await deleteDoc(doc(db, 'lodges', lodge.id));
-                        
-                        // Log the action
-                        await logRoomActivity('lodge_delete', `Deleted lodge: ${lodge.name}`);
-                        
-                        // Remove from local array
-                        this.allClientLodges = this.allClientLodges.filter(l => l.id !== lodge.id);
-                        
-                        alert('Lodge deleted successfully!');
-                    } else {
-                        // Handle HTML-based lodges (already handled above, but just in case)
-                        this.allClientLodges = this.allClientLodges.filter(l => l.id !== lodge.id);
+                    const retryDeleted = await verifyLodgeDeletion(db, lodgeId);
+                    if (!retryDeleted) {
+                        throw new Error('Failed to delete lodge after retry');
                     }
                 }
+                
+                // Also delete any associated images
+                try {
+                    const imageQuery = query(
+                        collection(db, 'lodgeImages'), 
+                        where('lodgeId', '==', lodgeId),
+                        limit(20)
+                    );
+                    const imageSnap = await getDocs(imageQuery);
+                    
+                    if (!imageSnap.empty) {
+                        const deletePromises = [];
+                        imageSnap.forEach(imgDoc => {
+                            console.log(`Found image doc to delete: ${imgDoc.id}`);
+                            deletePromises.push(deleteDoc(imgDoc.ref));
+                        });
+                        
+                        if (deletePromises.length > 0) {
+                            await Promise.all(deletePromises);
+                            console.log(`Deleted ${deletePromises.length} associated image records`);
+                        }
+                    }
+                } catch (imageError) {
+                    console.warn('Error cleaning up image records:', imageError);
+                }
+                
+                // Delete related rooms if any
+                try {
+                    const roomsQuery = query(
+                        collection(db, 'rooms'),
+                        where('lodgeId', '==', lodgeId),
+                        limit(20)
+                    );
+                    const roomsSnap = await getDocs(roomsQuery);
+                    
+                    if (!roomsSnap.empty) {
+                        const roomDeletePromises = [];
+                        roomsSnap.forEach(roomDoc => {
+                            console.log(`Found room to delete: ${roomDoc.id}`);
+                            roomDeletePromises.push(deleteDoc(roomDoc.ref));
+                        });
+                        
+                        if (roomDeletePromises.length > 0) {
+                            await Promise.all(roomDeletePromises);
+                            console.log(`Deleted ${roomDeletePromises.length} related room records`);
+                        }
+                    }
+                } catch (roomError) {
+                    console.warn('Error cleaning up related rooms:', roomError);
+                }
+                
+                // Log the deletion
+                await logRoomActivity('lodge_delete', `Deleted lodge: ${lodge.name} (ID: ${lodgeId})`);
+                
+                // For good measure, also mark it in our tracking system
+                await markLodgeAsDeleted(lodge);
+                
+                // Update UI
+                await ensureLodgeDeletionUI(this, lodgeId);
+                
+                alert('Lodge deleted successfully!');
+                
             } catch (error) {
-                console.error('Error deleting lodge:', error);
-                alert('Failed to delete lodge: ' + error.message);
+                console.error('Error deleting lodge:', error, 'Lodge:', lodge);
+                
+                if (error.code === 'permission-denied') {
+                    alert('You do not have permission to delete this lodge.');
+                } else if (error.code === 'not-found') {
+                    // If it's not found, mark it as deleted locally to avoid reload issues
+                    await markLodgeAsDeleted(lodge);
+                    await ensureLodgeDeletionUI(this, lodge.id);
+                    alert('Lodge has already been deleted or was not found in the database.');
+                } else {
+                    alert(`Failed to delete lodge: ${error.message}`);
+                }
+                
+                // Remove visual feedback
+                if (lodgeElement) {
+                    lodgeElement.classList.remove('deleting');
+                }
             } finally {
                 this.loading = false;
             }
@@ -1984,6 +2112,9 @@ new Vue({
         },
     },
     async mounted() {
+        // First, sync the deleted lodges list between IndexedDB and localStorage
+        await syncDeletedLodges();
+        // Then continue with normal initialization
         this.checkAuthState(); // This will handle auth check and fetch bookings
         
         // Preload default images
