@@ -150,7 +150,7 @@
             
             
             const bestValueBadge = isEverLodge ? 
-                `<div class="best-value-badge">BEST VALUE</div>` : '';
+                `<div class="best-value-badge"></div>` : '';
     
             
             const promoTag = lodge.promoPrice ? 
