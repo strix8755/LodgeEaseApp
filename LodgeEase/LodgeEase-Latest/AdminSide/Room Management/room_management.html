@@ -700,13 +700,13 @@
                     <div v-if="viewMode === 'grid'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lodge-container">
                         <div v-for="lodge in allClientLodges" :key="'lodge-'+lodge.id" class="lodge-card">
                             <!-- Lodge image section with overlay elements -->
-                            <div class="relative overflow-hidden" style="height: 180px; max-height: 180px;">
+                            <div class="relative overflow-hidden" style="height: 160px; max-height: 160px;">
                                 <img 
                                     :src="lodge.image || '../../ClientSide/components/1.jpg'" 
                                     :alt="lodge.name"
                                     @error="handleImageError"
                                     class="w-full h-full object-cover"
-                                    style="object-position: center; max-height: 100%;"
+                                    style="object-position: center; max-height: 100%; display: block;"
                                 >
                                 <!-- Admin overlay elements -->
                                 <div class="ribbon bg-green-600" v-if="lodge.promoPrice">PROMO</div>
@@ -786,13 +786,13 @@
                     <!-- List view for lodges -->
                     <div v-else class="lodge-list">
                         <div v-for="lodge in allClientLodges" :key="'lodge-list-'+lodge.id" class="lodge-list-item bg-white rounded-lg shadow-md mb-4 flex overflow-hidden">
-                            <div class="lodge-list-image w-1/4" style="height: 140px; max-width: 180px; min-width: 120px;">
+                            <div class="lodge-list-image w-1/4" style="height: 140px; max-width: 160px; min-width: 120px;">
                                 <img 
                                     :src="lodge.image || '../../ClientSide/components/1.jpg'" 
                                     :alt="lodge.name"
                                     @error="handleImageError"
                                     class="h-full w-full object-cover"
-                                    style="object-position: center;"
+                                    style="object-position: center; display: block;"
                                 >
                             </div>
                             <!-- ...existing code... -->
@@ -1112,5 +1112,38 @@
             }
         });
     </script>
+
+    <!-- Add this style block before closing </body> tag -->
+    <style>
+        /* Fix lodge card image sizing */
+        .lodge-card {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        .lodge-card .relative {
+            flex: 0 0 160px;
+        }
+        
+        .lodge-card .content {
+            flex: 1;
+        }
+        
+        /* Ensure images maintain proper ratio */
+        .lodge-card img, .lodge-list-image img {
+            object-fit: cover;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        
+        /* Better error handling for failed images */
+        img.error {
+            object-fit: contain;
+            background-color: #f0f0f0;
+        }
+    </style>
 </body>
 </html>
