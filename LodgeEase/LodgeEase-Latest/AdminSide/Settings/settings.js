@@ -1,71 +1,38 @@
-import { auth, db, collection, addDoc, Timestamp, doc, updateDoc } from '../firebase.js';
-import { PageLogger } from '../js/pageLogger.js';
-import { 
-    updatePassword, 
-    reauthenticateWithCredential,
-    EmailAuthProvider,
-    signOut 
-} from "https://www.gstatic.com/firebasejs/9.18.0/firebase-auth.js";
-import { getDoc } from "https://www.gstatic.com/firebasejs/9.18.0/firebase-firestore.js";
+import { auth, db } from '../firebase.js';
+import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-// Add activity logging function
-async function logSettingsActivity(actionType, details) {
-    try {
-        const user = auth.currentUser;
-        if (!user) return;
+// Configure Vue for production
+Vue.config.productionTip = false;
 
-        await addDoc(collection(db, 'activityLogs'), {
-            userId: user.uid,
-            userName: user.email,
-            actionType,
-            details,
-            timestamp: Timestamp.now(),
-            userRole: 'admin',
-            module: 'Settings'
-        });
-    } catch (error) {
-        console.error('Error logging settings activity:', error);
-    }
-}
-
-// Initialize Vue instance
 new Vue({
     el: '#app',
     data: {
-        // Hotel Information
         hotelInfo: {
             name: 'Lodge Ease Hotel',
             address: '123 Main Street, City, Country',
             phone: '+1 234 567 8900',
             email: 'contact@lodgeease.com'
         },
-        
-        // System Settings
         systemSettings: {
             checkInTime: '14:00',
             checkOutTime: '11:00',
             currency: 'USD',
             dateFormat: 'MM/DD/YYYY',
             language: 'English',
-            preferLongTerm: false // Add new setting
+            preferLongTerm: false
         },
-
-        // Notification Settings
         notifications: {
             emailAlerts: true,
             smsAlerts: false,
             bookingConfirmations: true,
             paymentAlerts: true,
         },
-
-        // Security Settings
         security: {
             passwordExpiry: 90,
             twoFactorAuth: false,
             loginAlerts: true
         },
-
-        // New data properties for account settings
         userProfile: {
             fullname: '',
             email: '',
@@ -85,48 +52,40 @@ new Vue({
         },
         loading: false,
         activeSessions: [],
-
-        // Flag to show success message
         showSuccessMessage: false,
-
-        // Flag to track if settings have been modified
         settingsModified: false,
-
         isAuthenticated: false,
     },
 
     computed: {
         isPasswordValid() {
-            return this.passwords.new && 
-                   this.passwords.new === this.passwords.confirm && 
-                   this.passwordStrength !== 'weak';
+            return this.passwords.current && 
+                   this.passwords.new && 
+                   this.passwords.confirm && 
+                   this.passwords.new === this.passwords.confirm &&
+                   this.passwords.new.length >= 8;
         },
         passwordStrength() {
-            if (!this.passwords.new) return '';
-            
             const password = this.passwords.new;
-            const hasUpperCase = /[A-Z]/.test(password);
-            const hasLowerCase = /[a-z]/.test(password);
-            const hasNumbers = /\d/.test(password);
-            const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-            
+            if (!password) return '';
             if (password.length < 8) return 'weak';
-            if (hasUpperCase && hasLowerCase && hasNumbers && hasSpecialChar) return 'strong';
-            if ((hasUpperCase || hasLowerCase) && hasNumbers) return 'medium';
-            return 'weak';
+            if (/[A-Z]/.test(password) && 
+                /[a-z]/.test(password) && 
+                /[0-9]/.test(password) && 
+                /[^A-Za-z0-9]/.test(password)) {
+                return 'strong';
+            }
+            return 'medium';
         },
         passwordStrengthText() {
-            const strength = this.passwordStrength;
-            if (!strength) return '';
-            return {
-                weak: 'Weak - Use at least 8 characters with numbers and letters',
-                medium: 'Medium - Add special characters for stronger password',
-                strong: 'Strong password'
-            }[strength];
+            switch (this.passwordStrength) {
+                case 'strong': return 'Strong';
+                case 'medium': return 'Medium';
+                case 'weak': return 'Weak';
+                default: return '';
+            }
         }
     },
-
-    // Watch for changes in settings
     watch: {
         hotelInfo: {
             handler() {
@@ -153,28 +112,13 @@ new Vue({
             deep: true
         }
     },
-
-    // Methods for handling settings actions
     methods: {
-        // Load settings from localStorage or API
-        loadSettings() {
-            // Try to load saved settings from localStorage
-            const savedSettings = localStorage.getItem('lodgeEaseSettings');
-            if (savedSettings) {
-                const settings = JSON.parse(savedSettings);
-                this.hotelInfo = { ...this.hotelInfo, ...settings.hotelInfo };
-                this.systemSettings = { ...this.systemSettings, ...settings.systemSettings };
-                this.notifications = { ...this.notifications, ...settings.notifications };
-                this.security = { ...this.security, ...settings.security };
-            }
-
-            // In a real application, you might want to load from an API instead:
-            // this.loadSettingsFromAPI();
+        togglePasswordVisibility(field) {
+            this.showPassword[field] = !this.showPassword[field];
         },
-
-        // Save settings
         async saveSettings() {
             try {
+                this.loading = true;
                 const settings = {
                     hotelInfo: this.hotelInfo,
                     systemSettings: this.systemSettings,
@@ -207,175 +151,14 @@ new Vue({
 
                 this.showSuccessAlert();
                 this.settingsModified = false;
-                await logSettingsActivity('settings_update', 'Updated system settings');
             } catch (error) {
                 console.error('Error saving settings:', error);
                 this.showErrorAlert();
-                await logSettingsActivity('settings_error', `Failed to save settings: ${error.message}`);
-            }
-        },
-
-        // Show success alert
-        showSuccessAlert() {
-            // Create alert element
-            const alert = document.createElement('div');
-            alert.className = 'analysis-feedback';
-            alert.innerHTML = `
-                <h4>Success!</h4>
-                <p>Your settings have been saved successfully.</p>
-            `;
-
-            // Add to document
-            document.querySelector('.main-content').appendChild(alert);
-
-            // Remove after 3 seconds
-            setTimeout(() => {
-                alert.remove();
-            }, 3000);
-        },
-
-        // Show error alert
-        showErrorAlert() {
-            // Create alert element
-            const alert = document.createElement('div');
-            alert.className = 'analysis-feedback';
-            alert.style.borderLeft = '5px solid #f94449';
-            alert.innerHTML = `
-                <h4>Error</h4>
-                <p>There was an error saving your settings. Please try again.</p>
-            `;
-
-            // Add to document
-            document.querySelector('.main-content').appendChild(alert);
-
-            // Remove after 3 seconds
-            setTimeout(() => {
-                alert.remove();
-            }, 3000);
-        },
-
-        // Load settings from API (mock function)
-        async loadSettingsFromAPI() {
-            try {
-                // In a real application, this would be an API call
-                const response = await fetch('/api/settings');
-                const settings = await response.json();
-                
-                // Update settings
-                this.hotelInfo = settings.hotelInfo;
-                this.systemSettings = settings.systemSettings;
-                this.notifications = settings.notifications;
-                this.security = settings.security;
-            } catch (error) {
-                console.error('Error loading settings:', error);
-                this.showErrorAlert();
-            }
-        },
-
-        // Save settings to API (mock function)
-        async saveSettingsToAPI(settings) {
-            // In a real application, this would be an API call
-            const response = await fetch('/api/settings', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(settings)
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to save settings');
-            }
-
-            return await response.json();
-        },
-
-        async loadUserProfile() {
-            try {
-                const user = auth.currentUser;
-                if (!user) return;
-
-                const userDoc = await getDoc(doc(db, "admin_users", user.uid));
-                if (userDoc.exists()) {
-                    const userData = userDoc.data();
-                    this.userProfile = {
-                        fullname: userData.fullname,
-                        email: user.email,
-                        username: userData.username,
-                        role: userData.role,
-                        photoURL: user.photoURL || null
-                    };
-                }
-            } catch (error) {
-                console.error('Error loading user profile:', error);
-            }
-        },
-
-        togglePasswordVisibility(field) {
-            this.showPassword[field] = !this.showPassword[field];
-        },
-
-        async changePassword() {
-            if (!this.isPasswordValid) return;
-            
-            this.loading = true;
-            try {
-                const user = auth.currentUser;
-                const credential = EmailAuthProvider.credential(
-                    user.email,
-                    this.passwords.current
-                );
-
-                // Reauthenticate user
-                await reauthenticateWithCredential(user, credential);
-                
-                // Update password
-                await updatePassword(user, this.passwords.new);
-                
-                // Reset form
-                this.passwords = { current: '', new: '', confirm: '' };
-                alert('Password updated successfully!');
-                await logSettingsActivity('password_change', 'Changed account password');
-            } catch (error) {
-                console.error('Error changing password:', error);
-                alert(error.message);
-                await logSettingsActivity('password_error', `Failed to change password: ${error.message}`);
             } finally {
                 this.loading = false;
             }
         },
-
-        async updateProfilePhoto() {
-            // Implement profile photo update functionality
-            alert('Profile photo update functionality will be implemented soon');
-        },
-
-        async terminateSession(sessionId) {
-            try {
-                // Implement session termination functionality
-                alert('Session termination functionality will be implemented soon');
-                await logSettingsActivity('session_terminated', `Terminated session ${sessionId}`);
-            } catch (error) {
-                console.error('Error terminating session:', error);
-                await logSettingsActivity('session_error', `Failed to terminate session: ${error.message}`);
-            }
-        },
-
-        // Mock function to load active sessions
-        loadActiveSessions() {
-            this.activeSessions = [
-                {
-                    id: 'current',
-                    deviceName: 'Current Browser',
-                    deviceIcon: 'fas fa-laptop',
-                    location: 'Current Location',
-                    lastActive: 'Now',
-                    isCurrent: true
-                }
-                // Add more mock sessions if needed
-            ];
-        },
-
+        
         async handleLogout() {
             try {
                 await signOut(auth);
@@ -386,59 +169,134 @@ new Vue({
             }
         },
 
-        checkAuthState() {
-            auth.onAuthStateChanged(user => {
-                this.isAuthenticated = !!user;
+        showSuccessAlert() {
+            this.showSuccessMessage = true;
+            setTimeout(() => {
+                this.showSuccessMessage = false;
+            }, 3000);
+        },
+
+        showErrorAlert() {
+            alert('An error occurred while saving settings. Please try again.');
+        },
+
+        updateProfilePhoto() {
+            alert('Profile photo update functionality will be implemented soon.');
+        },
+
+        async changePassword() {
+            alert('Password change functionality will be implemented soon.');
+        },
+
+        terminateSession(sessionId) {
+            // Confirm before terminating
+            if (!confirm('Are you sure you want to terminate this session?')) {
+                return;
+            }
+            
+            // Filter out the terminated session
+            this.activeSessions = this.activeSessions.filter(session => session.id !== sessionId);
+            alert('Session terminated successfully.');
+        },
+
+        async loadUserProfile() {
+            try {
+                const user = auth.currentUser;
                 if (!user) {
-                    window.location.href = '../Login/index.html';
-                } else {
-                    this.loadUserProfile();
+                    console.log('No user signed in');
+                    return;
                 }
-            });
+
+                // Create a proper reference using the string-based path
+                const userDocRef = doc(db, 'users', user.uid);
+                const userSnapshot = await getDoc(userDocRef);
+
+                if (userSnapshot.exists()) {
+                    const userData = userSnapshot.data();
+                    this.userProfile = {
+                        fullname: userData.fullname || userData.displayName || 'User',
+                        email: userData.email || user.email,
+                        username: userData.username || user.displayName || 'user',
+                        role: userData.role || 'Admin',
+                        photoURL: userData.photoURL || user.photoURL
+                    };
+                    
+                    console.log('User profile loaded:', this.userProfile);
+                } else {
+                    console.log('No user data found');
+                    this.userProfile = {
+                        fullname: user.displayName || 'User',
+                        email: user.email,
+                        username: user.displayName || 'user',
+                        role: 'Admin',
+                        photoURL: user.photoURL
+                    };
+                }
+                
+                // Load mock active sessions
+                this.loadMockSessions();
+            } catch (error) {
+                console.error('Error loading user profile:', error);
+            }
+        },
+
+        loadMockSessions() {
+            this.activeSessions = [
+                {
+                    id: 'current-session',
+                    deviceName: 'Current Browser',
+                    deviceIcon: 'fas fa-laptop',
+                    location: 'Current Location',
+                    lastActive: 'Now',
+                    isCurrent: true
+                },
+                {
+                    id: 'session-1',
+                    deviceName: 'Chrome on Windows',
+                    deviceIcon: 'fab fa-chrome',
+                    location: 'Manila, Philippines',
+                    lastActive: '2 days ago',
+                    isCurrent: false
+                },
+                {
+                    id: 'session-2',
+                    deviceName: 'Safari on iPhone',
+                    deviceIcon: 'fab fa-safari',
+                    location: 'Cebu, Philippines',
+                    lastActive: '5 days ago',
+                    isCurrent: false
+                }
+            ];
+        },
+
+        loadSettings() {
+            const savedSettings = localStorage.getItem('lodgeEaseSettings');
+            if (savedSettings) {
+                try {
+                    const settings = JSON.parse(savedSettings);
+                    if (settings.hotelInfo) this.hotelInfo = { ...this.hotelInfo, ...settings.hotelInfo };
+                    if (settings.systemSettings) this.systemSettings = { ...this.systemSettings, ...settings.systemSettings };
+                    if (settings.notifications) this.notifications = { ...this.notifications, ...settings.notifications };
+                    if (settings.security) this.security = { ...this.security, ...settings.security };
+                    
+                    console.log('Settings loaded from localStorage');
+                } catch (error) {
+                    console.error('Error parsing settings from localStorage:', error);
+                }
+            }
         }
     },
-
-    // Load settings when component is mounted
     mounted() {
-        this.checkAuthState();
-        this.loadSettings();
-        this.loadActiveSessions();
-
-        // Apply initial visibility based on saved preference
-        const savedSettings = localStorage.getItem('lodgeEaseSettings');
-        if (savedSettings) {
-            const { systemSettings } = JSON.parse(savedSettings);
-            if (systemSettings.preferLongTerm) {
-                const sidebarLinks = document.querySelectorAll('.sidebar a');
-                sidebarLinks.forEach(link => {
-                    if (link.textContent.includes('Room Management')) {
-                        link.parentElement.style.display = 'none';
-                    }
-                    if (link.textContent.includes('Long-term Stays')) {
-                        link.parentElement.style.display = 'block';
-                    }
-                });
-            }
-        }
-
-        // Add warning before leaving page with unsaved changes
-        window.addEventListener('beforeunload', (e) => {
-            if (this.settingsModified) {
-                e.preventDefault();
-                e.returnValue = '';
+        // Check authentication status
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                this.isAuthenticated = true;
+                this.loadUserProfile();
+                this.loadSettings();
+            } else {
+                this.isAuthenticated = false;
+                window.location.href = '../Login/index.html';
             }
         });
-    }
+    },
 });
-
-// Initialize page logging
-auth.onAuthStateChanged((user) => {
-    if (user) {
-        PageLogger.logNavigation('Settings');
-    }
-});
-
-// Export any necessary functions
-export {
-    logSettingsActivity
-};
