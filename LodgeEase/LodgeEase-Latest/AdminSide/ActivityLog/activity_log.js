@@ -122,24 +122,20 @@ new Vue({
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('Activity log page loaded');
     
-    let unsubscribe = null;
-
     auth.onAuthStateChanged(async (user) => {
         try {
             if (!user) {
                 console.log('No user detected, redirecting to login...');
-                if (unsubscribe) unsubscribe();
+                if (window.currentUnsubscribe) window.currentUnsubscribe();
                 window.location.href = '../Login/index.html';
                 return;
             }
-
-            // Remove the createActivityLog call since PageLogger will handle navigation logging
 
             // Verify admin status
             const userDoc = await getDoc(doc(db, "users", user.uid));
             if (!userDoc.exists() || userDoc.data().role !== 'admin') {
                 console.log('User is not an admin, redirecting...');
-                if (unsubscribe) unsubscribe();
+                if (window.currentUnsubscribe) window.currentUnsubscribe();
                 window.location.href = '../Login/index.html';
                 return;
             }
@@ -147,16 +143,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Initialize filters
             await setupFilters();
 
-            // Setup real-time listener
-            unsubscribe = setupActivityLogListener();
+            // Setup real-time listener and store the unsubscribe function
+            window.currentUnsubscribe = setupActivityLogListener();
 
             // Add filter change event listeners
-            ['userFilter', 'actionFilter', 'dateFilter'].forEach(filterId => {
-                document.getElementById(filterId)?.addEventListener('change', () => {
-                    if (unsubscribe) unsubscribe();
-                    unsubscribe = setupActivityLogListener();
-                });
-            });
+            document.getElementById('userFilter')?.addEventListener('change', applyFilters);
+            document.getElementById('actionFilter')?.addEventListener('change', applyFilters);
+            document.getElementById('dateFilter')?.addEventListener('change', applyFilters);
 
         } catch (error) {
             console.error('Error in auth state change:', error);
@@ -165,7 +158,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Cleanup on page unload
     window.addEventListener('unload', () => {
-        if (unsubscribe) unsubscribe();
+        if (window.currentUnsubscribe) window.currentUnsubscribe();
     });
 
     // Update the action filter options in activity_log.html
@@ -220,11 +213,10 @@ async function setupFilters() {
     }
 }
 
-// Update the setupActivityLogListener function to include room deletions
+// Completely rewrite the setupActivityLogListener function to avoid index requirements
 function setupActivityLogListener() {
     const logsContainer = document.getElementById('activityLogTable');
     const loadingState = document.getElementById('loadingState');
-    
     
     if (!logsContainer || !loadingState) {
         console.error('Required DOM elements not found');
@@ -234,27 +226,12 @@ function setupActivityLogListener() {
     try {
         loadingState.classList.remove('hidden');
         
-        
+        // Create a simple query with only timestamp ordering
+        // This avoids needing composite indexes for multiple filter conditions
         const logsRef = collection(db, 'activityLogs');
-        // Create base query
-        let baseQuery = [orderBy('timestamp', 'desc')];
-
-        // Add filters
-        const userFilter = document.getElementById('userFilter')?.value;
-        const actionFilter = document.getElementById('actionFilter')?.value;
-        const dateFilter = document.getElementById('dateFilter')?.value;
-
-        if (userFilter) {
-            baseQuery.push(where('userId', '==', userFilter));
-        }
-
-        if (actionFilter) {
-            baseQuery.push(where('actionType', '==', actionFilter));
-        }
-
-        // Create the query with all conditions
-        let logsQuery = query(logsRef, ...baseQuery);
-
+        const logsQuery = query(logsRef, orderBy('timestamp', 'desc'));
+        
+        // Set up listener with in-memory filtering
         return onSnapshot(logsQuery, (snapshot) => {
             loadingState.classList.add('hidden');
             
@@ -269,18 +246,62 @@ function setupActivityLogListener() {
                 return;
             }
 
-            const logsHtml = [];
-
-            snapshot.forEach(doc => {
-                const log = doc.data();
-                const timestamp = log.timestamp?.toDate() || new Date();
-
-                // Date filter handling
-                if (dateFilter) {
-                    const logDate = timestamp.toISOString().split('T')[0];
-                    if (logDate !== dateFilter) return;
-                }
-
+            // Get filter values for in-memory filtering
+            const userFilter = document.getElementById('userFilter')?.value || '';
+            const actionFilter = document.getElementById('actionFilter')?.value || '';
+            const dateFilter = document.getElementById('dateFilter')?.value || '';
+            
+            console.log('Applying filters:', { userFilter, actionFilter, dateFilter });
+            
+            // Apply filters in memory
+            let filteredLogs = snapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    ...data,
+                    timestampDate: data.timestamp?.toDate() || new Date(),
+                    formattedDate: data.timestamp?.toDate().toISOString().split('T')[0] || ''
+                };
+            });
+            
+            // User filter
+            if (userFilter) {
+                filteredLogs = filteredLogs.filter(log => {
+                    // Check both userId and userName for more flexibility
+                    return (log.userId === userFilter) || (log.userName === userFilter);
+                });
+            }
+            
+            // Action filter
+            if (actionFilter) {
+                filteredLogs = filteredLogs.filter(log => 
+                    log.actionType === actionFilter
+                );
+            }
+            
+            // Date filter
+            if (dateFilter) {
+                filteredLogs = filteredLogs.filter(log => 
+                    log.formattedDate === dateFilter
+                );
+            }
+            
+            // Log filtered results for debugging
+            console.log(`Filtered logs: ${filteredLogs.length} of ${snapshot.docs.length} total`);
+            
+            if (filteredLogs.length === 0) {
+                logsContainer.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="px-6 py-4 text-center text-gray-500">
+                            No activity logs match the selected filters
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            // Generate HTML for filtered logs
+            const logsHtml = filteredLogs.map(log => {
                 // Enhanced styling for room deletions
                 let actionClass = getActionColor(log.actionType);
                 let actionDetails = log.details || 'No details';
@@ -291,15 +312,15 @@ function setupActivityLogListener() {
                     actionDetails = `🗑️ ${actionDetails}`; // Add deletion icon
                 }
 
-                logsHtml.push(`
+                return `
                     <tr class="hover:bg-gray-50">
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            ${timestamp.toLocaleString()}
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900" data-date="${log.formattedDate}">
+                            ${log.timestampDate.toLocaleString()}
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900" data-user="${log.userName || ''}">
                             ${log.userName || 'Unknown User'}
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm" data-action="${log.actionType || ''}">
                             <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${actionClass}">
                                 ${(log.actionType || 'UNKNOWN').toUpperCase()}
                             </span>
@@ -309,19 +330,27 @@ function setupActivityLogListener() {
                             ${log.module ? `<br><span class="text-xs text-gray-400">(${log.module})</span>` : ''}
                         </td>
                     </tr>
-                `);
-            });
-
-            logsContainer.innerHTML = logsHtml.join('');
+                `;
+            }).join('');
+            
+            logsContainer.innerHTML = logsHtml;
+            
+            // Populate user filter if not already set
+            if (!userFilter) {
+                populateUserFilter(filteredLogs);
+            }
+            
+            // Update filter status
+            updateFilterStatus(filteredLogs.length, snapshot.docs.length);
         }, (error) => {
             console.error('Error in activity log listener:', error);
             handleError(error, logsContainer, loadingState);
         });
 
-
     } catch (error) {
         console.error('Error setting up activity log listener:', error);
         handleError(error, logsContainer, loadingState);
+        return () => {}; // Return empty function as fallback
     }
 }
 
@@ -425,3 +454,127 @@ console.log('Room activity logger initialized:', roomActivityLogger);
 //     roomType: 'Standard' 
 //   } 
 // });
+
+// Filter functions
+function applyFilters() {
+    try {
+        console.log('Applying filters...');
+        // Get the current unsubscribe function if it exists
+        if (window.currentUnsubscribe && typeof window.currentUnsubscribe === 'function') {
+            window.currentUnsubscribe();
+        }
+        
+        // Set up a new listener with the current filters
+        window.currentUnsubscribe = setupActivityLogListener();
+    } catch (error) {
+        console.error('Error applying filters:', error);
+        alert('Error applying filters. Please check the console for details.');
+    }
+}
+
+function clearFilters() {
+    try {
+        // Reset all filter inputs
+        document.getElementById('userFilter').value = '';
+        document.getElementById('actionFilter').value = '';
+        document.getElementById('dateFilter').value = '';
+        
+        // Apply the cleared filters
+        applyFilters();
+    } catch (error) {
+        console.error('Error clearing filters:', error);
+    }
+}
+
+// Update the updateFilterStatus function to accept counts
+function updateFilterStatus(visibleCount, totalCount) {
+    // If there's a status element, update it
+    const statusElement = document.getElementById('filterStatus');
+    if (statusElement) {
+        statusElement.textContent = `Showing ${visibleCount} of ${totalCount} records`;
+    }
+}
+
+// Populate user filter with unique users when data is loaded
+function populateUserFilter(activityLogs) {
+    const userFilter = document.getElementById('userFilter');
+    if (!userFilter) return;
+    
+    // Get unique userNames from the logs
+    const users = new Set();
+    activityLogs.forEach(log => {
+        if (log.userName) {
+            users.add(log.userName);
+        }
+    });
+    
+    // Keep only the default option
+    while (userFilter.options.length > 1) {
+        userFilter.remove(1);
+    }
+    
+    // Add user options alphabetically
+    [...users].sort().forEach(userName => {
+        const option = document.createElement('option');
+        option.value = userName;
+        option.textContent = userName;
+        userFilter.appendChild(option);
+    });
+}
+
+// Update the existing function that renders activity logs
+function renderActivityLogs(logs) {
+    // ...existing code...
+    
+    // Add data attributes for filtering
+    tableBody.innerHTML = logs.map(log => `
+        <tr>
+            <td class="px-6 py-4 whitespace-nowrap" data-date="${formatDateForFilter(log.timestamp)}">
+                ${formatTimestamp(log.timestamp)}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap" data-user="${log.user?.email || ''}">
+                ${log.user?.email || 'Unknown User'}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap" data-action="${log.action || ''}">
+                ${formatAction(log.action)}
+            </td>
+            <td class="px-6 py-4">
+                ${log.details || 'No details provided'}
+            </td>
+        </tr>
+    `).join('');
+    
+    // Populate user filter after loading data
+    populateUserFilter(logs);
+    
+    // Initialize filter status
+    updateFilterStatus();
+}
+
+// Helper function to format date for filter
+function formatDateForFilter(timestamp) {
+    if (!timestamp) return '';
+    
+    try {
+        let date;
+        if (timestamp instanceof Timestamp) {
+            date = timestamp.toDate();
+        } else if (timestamp instanceof Date) {
+            date = timestamp;
+        } else if (typeof timestamp === 'object' && timestamp.seconds) {
+            // Firebase Timestamp object format
+            date = new Date(timestamp.seconds * 1000);
+        } else {
+            date = new Date(timestamp);
+        }
+        
+        return date.toISOString().split('T')[0]; // Returns YYYY-MM-DD format
+    } catch (error) {
+        console.error('Error formatting date for filter:', error);
+        return '';
+    }
+}
+
+// Expose filter functions to global scope for the onclick/onchange handlers
+window.applyFilters = applyFilters;
+window.clearFilters = clearFilters;
