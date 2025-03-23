@@ -8,7 +8,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="module" src="../firebase.js"></script>
     <script type="module" src="../AInalysis/auth-check.js"></script>
-    <script type="module" src="longterm_management.js"></script>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="../Dashboard/styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -46,6 +45,9 @@
 
         <!-- Main Content -->
         <main class="main-content">
+            <!-- Alert Container for notifications -->
+            <div id="alertContainer" class="fixed top-4 right-4 z-50 w-96"></div>
+
             <div id="loadingScreen" class="flex items-center justify-center h-screen">
                 <div class="text-center">
                     <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
@@ -74,7 +76,7 @@
                         <i class="fas fa-users"></i>
                         <div class="metric-content">
                             <h3>Active Tenants</h3>
-                            <p class="metric-value">24</p>
+                            <p class="metric-value">0</p>
                             <span class="metric-period">Current</span>
                         </div>
                     </div>
@@ -82,7 +84,7 @@
                         <i class="fas fa-clock"></i>
                         <div class="metric-content">
                             <h3>Pending Payments</h3>
-                            <p class="metric-value">8</p>
+                            <p class="metric-value">0</p>
                             <span class="metric-period">This Month</span>
                         </div>
                     </div>
@@ -90,7 +92,7 @@
                         <i class="fas fa-money-bill-wave"></i>
                         <div class="metric-content">
                             <h3>Monthly Revenue</h3>
-                            <p class="metric-value">₱144,000</p>
+                            <p class="metric-value">₱0</p>
                             <span class="metric-period">This Month</span>
                         </div>
                     </div>
@@ -98,7 +100,7 @@
                         <i class="fas fa-percentage"></i>
                         <div class="metric-content">
                             <h3>Occupancy Rate</h3>
-                            <p class="metric-value">92%</p>
+                            <p class="metric-value">0%</p>
                             <span class="metric-period">Current</span>
                         </div>
                     </div>
@@ -154,51 +156,12 @@
                                         </tr>
                                     </thead>
                                     <tbody class="bg-white divide-y divide-gray-200">
-                                        <!-- Sample tenant row -->
+                                        <!-- Tenant rows will be inserted here dynamically -->
                                         <tr>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <div class="flex items-center">
-                                                    <div class="flex-shrink-0 h-10 w-10">
-                                                        <img class="h-10 w-10 rounded-full" src="../images/default-avatar.png" alt="User avatar">
-                                                    </div>
-                                                    <div class="ml-4">
-                                                        <div class="text-sm font-medium text-gray-900">John Doe</div>
-                                                        <div class="text-sm text-gray-500">john@example.com</div>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <div class="text-sm text-gray-900">Room 6</div>
-                                                <div class="text-sm text-gray-500">Super Apartment</div>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <div class="text-sm text-gray-900">Jan 2024 - Dec 2024</div>
-                                                <div class="text-sm text-gray-500">12 months</div>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <div class="text-sm text-gray-900">₱6,000</div>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                                    Paid
-                                                </span>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                Feb 5, 2024
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                <button class="text-blue-600 hover:text-blue-900 mr-3" title="View Details">
-                                                    <i class="fas fa-eye"></i>
-                                                </button>
-                                                <button class="text-green-600 hover:text-green-900 mr-3" title="Record Payment">
-                                                    <i class="fas fa-money-bill-wave"></i>
-                                                </button>
-                                                <button class="text-red-600 hover:text-red-900" title="Terminate Contract">
-                                                    <i class="fas fa-times-circle"></i>
-                                                </button>
+                                            <td colspan="7" class="px-6 py-4 text-center text-gray-500">
+                                                Loading tenants...
                                             </td>
                                         </tr>
-                                        <!-- Add more tenant rows here -->
                                     </tbody>
                                 </table>
                             </div>
@@ -210,30 +173,32 @@
     </div>
 
     <!-- Payment Record Modal -->
-    <div id="paymentModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden">
+    <div id="paymentModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden modal">
         <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div class="mt-3 text-center">
-                <h3 class="text-lg leading-6 font-medium text-gray-900">Record Monthly Payment</h3>
-                <div class="mt-2 px-7 py-3">
+            <div class="mt-3">
+                <h3 class="text-lg leading-6 font-medium text-gray-900 text-center">Record Monthly Payment</h3>
+                <p class="text-sm text-center mt-1">Tenant: <span id="paymentTenantName" class="font-medium">-</span></p>
+                <div class="mt-4 px-3">
                     <form id="paymentForm">
                         <div class="mb-4">
                             <label class="block text-gray-700 text-sm font-bold mb-2">Payment Amount</label>
-                            <input type="number" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                            <input id="paymentAmount" type="number" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
                         </div>
                         <div class="mb-4">
                             <label class="block text-gray-700 text-sm font-bold mb-2">Payment Date</label>
-                            <input type="date" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                            <input id="paymentDate" type="date" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
                         </div>
                         <div class="mb-4">
                             <label class="block text-gray-700 text-sm font-bold mb-2">Payment Method</label>
-                            <select class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                                <option value="cash">Cash</option>
-                                <option value="bank_transfer">Bank Transfer</option>
-                                <option value="gcash">GCash</option>
+                            <select id="paymentMethod" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                                <option value="Cash">Cash</option>
+                                <option value="Bank Transfer">Bank Transfer</option>
+                                <option value="GCash">GCash</option>
+                                <option value="Credit Card">Credit Card</option>
                             </select>
                         </div>
-                        <div class="flex items-center justify-between mt-4">
-                            <button type="button" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
+                        <div class="flex items-center justify-between mt-6">
+                            <button type="button" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 modal-close-btn">Cancel</button>
                             <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">Record Payment</button>
                         </div>
                     </form>
@@ -242,7 +207,176 @@
         </div>
     </div>
 
-    <!-- Keep only the margin and padding settings from Dashboard.html -->
+    <!-- Add/Edit Tenant Modal -->
+    <div id="tenantModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden modal">
+        <div class="relative top-10 mx-auto p-5 border w-3/4 max-w-3xl shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <h3 id="tenantModalTitle" class="text-lg leading-6 font-medium text-gray-900 text-center">Add New Tenant</h3>
+                <div class="mt-4">
+                    <form id="tenantForm" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Personal Information -->
+                            <div class="space-y-4">
+                                <h4 class="font-medium text-gray-600">Personal Information</h4>
+                                <div>
+                                    <label class="block text-gray-700 text-sm font-bold mb-2">Name</label>
+                                    <input name="tenantName" type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 text-sm font-bold mb-2">Email</label>
+                                    <input name="tenantEmail" type="email" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 text-sm font-bold mb-2">Phone</label>
+                                    <input name="tenantPhone" type="tel" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                                </div>
+                            </div>
+
+                            <!-- Room Details -->
+                            <div class="space-y-4">
+                                <h4 class="font-medium text-gray-600">Room Details</h4>
+                                <div>
+                                    <label class="block text-gray-700 text-sm font-bold mb-2">Room Number</label>
+                                    <input name="roomNumber" type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 text-sm font-bold mb-2">Room Type</label>
+                                    <select name="roomType" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                                        <option value="Standard">Standard</option>
+                                        <option value="Deluxe">Deluxe</option>
+                                        <option value="Suite">Suite</option>
+                                        <option value="Family">Family</option>
+                                        <option value="Studio">Studio Apartment</option>
+                                        <option value="Premium">Premium</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 text-sm font-bold mb-2">Monthly Rent (₱)</label>
+                                    <input name="monthlyRent" type="number" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Contract Details -->
+                        <div class="space-y-4">
+                            <h4 class="font-medium text-gray-600">Contract Details</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-gray-700 text-sm font-bold mb-2">Start Date</label>
+                                    <input name="startDate" type="date" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 text-sm font-bold mb-2">End Date</label>
+                                    <input name="endDate" type="date" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 text-sm font-bold mb-2">Due Date</label>
+                                    <input name="dueDate" type="date" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 text-sm font-bold mb-2">Payment Status</label>
+                                <select name="paymentStatus" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                                    <option value="Pending">Pending</option>
+                                    <option value="Paid">Paid</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between mt-6">
+                            <button type="button" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 modal-close-btn">Cancel</button>
+                            <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">Save Tenant</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tenant Details Modal -->
+    <div id="tenantDetailsModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden modal">
+        <div class="relative top-10 mx-auto p-5 border w-3/4 max-w-3xl shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <div class="flex justify-between">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">Tenant Details</h3>
+                    <button class="modal-close-btn text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="mt-4 space-y-6">
+                    <!-- Tenant Info -->
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="font-medium text-gray-600 mb-3">Personal Information</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-sm text-gray-600">Name</p>
+                                <p id="detailsTenantName" class="font-medium">-</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">Email</p>
+                                <p id="detailsTenantEmail" class="font-medium">-</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">Phone</p>
+                                <p id="detailsTenantPhone" class="font-medium">-</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Room Info -->
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="font-medium text-gray-600 mb-3">Room Details</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <p class="text-sm text-gray-600">Room Number</p>
+                                <p id="detailsRoomNumber" class="font-medium">-</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">Room Type</p>
+                                <p id="detailsRoomType" class="font-medium">-</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">Monthly Rent</p>
+                                <p id="detailsMonthlyRent" class="font-medium">-</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Contract Info -->
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="font-medium text-gray-600 mb-3">Contract Details</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-sm text-gray-600">Start Date</p>
+                                <p id="detailsStartDate" class="font-medium">-</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">End Date</p>
+                                <p id="detailsEndDate" class="font-medium">-</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">Due Date</p>
+                                <p id="detailsDueDate" class="font-medium">-</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">Payment Status</p>
+                                <p id="detailsPaymentStatus" class="font-medium">-</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Payment History -->
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="font-medium text-gray-600 mb-3">Payment History</h4>
+                        <div id="paymentHistoryContainer" class="overflow-x-auto">
+                            <div class="text-gray-500 text-center">No payment history found</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <style>
         /* Only keep margin and padding settings from Dashboard.html */
         .sidebar ul {
@@ -260,6 +394,14 @@
         .sidebar ul li a i {
             margin-right: 0.75rem;
         }
+        
+        /* Add our custom styles */
+        .modal {
+            z-index: 100;
+        }
     </style>
+    
+    <script type="module" src="tenantService.js"></script>
+    <script type="module" src="longterm_management.js"></script>
 </body>
 </html>
