@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Business Analytics - Lodge Ease</title>
+    <!-- Firebase and Auth Check must be first -->
+    <script type="module" src="../firebase.js"></script>
+    <script type="module" src="../AInalysis/auth-check.js"></script>
+    <script type="module" src="../js/pageLogger.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600&family=Roboto:wght@400&display=swap" rel="stylesheet">
+    <style>
+        /* Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Base Styles */
+        body {
+            font-family: 'Roboto', sans-serif;
+            color: #333;
+            overflow: auto;
+        }
+
+        h1, h2, h3, h4 {
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        /* App Container */
+        #app {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+            overflow: auto;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 250px;
+            background-color: rgba(44, 62, 80, 0.9);
+            color: white;
+            padding: 20px;
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        /* Logo Section */
+        .logo-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 0 10px;
+        }
+
+        .logo {
+            width: 60px;
+            height: 40px;
+            margin-right: 10px;
+        }
+
+        .sidebar h2 {
+            font-size: 20px;
+            color: white;
+        }
+
+        /* Navigation */
+        .sidebar ul {
+            list-style: none;
+            margin-top: 20px;
+        }
+
+        .sidebar ul li {
+            margin-bottom: 15px;
+        }
+
+        .sidebar ul li a {
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            transition: background-color 0.3s;
+        }
+
+        .sidebar ul li a:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar ul li a.active {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .sidebar ul li a i {
+            margin-right: 12px;
+            font-size: 18px;
+            width: 20px;
+            text-align: center;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-left: 250px;
+            padding: 20px;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        /* Auth Buttons */
+        .auth-buttons {
+            margin-top: auto;
+            padding: 20px 10px;
+        }
+
+        .logout-btn {
+            width: 100%;
+            padding: 12px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: background-color 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: #c0392b;
+        }
+
+        /* Analytics Specific Styles */
+        .metrics-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .metric-card.primary { border-top: 4px solid #2196F3; }
+        .metric-card.success { border-top: 4px solid #4CAF50; }
+        .metric-card.info { border-top: 4px solid #00BCD4; }
+        .metric-card.warning { border-top: 4px solid #FFC107; }
+        .metric-card.secondary { border-top: 4px solid #9C27B0; }
+
+        .metric-card h3 {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-card .value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin: 0.5rem 0;
+        }
+
+        .metric-card .trend {
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .trend.positive { color: #4CAF50; }
+        .trend.negative { color: #F44336; }
+
+        .score-gauge {
+            width: 100%;
+            max-width: 150px;
+            margin: 0 auto;
+        }
+
+        .subtext {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 0.5rem;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            min-height: 300px;
+            max-height: 400px;
+            width: 100%;
+            position: relative;
+        }
+
+        .chart-container canvas {
+            width: 100% !important;
+            height: 100% !important;
+            max-height: 350px;
+        }
+
+        .chart-container h3 {
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+            color: #333;
+        }
+
+        @media (max-width: 1200px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Filters */
+        .filters {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        select {
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            min-width: 200px;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 70px;
+                padding: 15px 10px;
+            }
+
+            .logo-container h2,
+            .sidebar ul li a span,
+            .auth-buttons span {
+                display: none;
+            }
+
+            .main-content {
+                margin-left: 70px;
+            }
+
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .filters {
+                flex-direction: column;
+            }
+
+            .form-group {
+                width: 100%;
+            }
+
+            select {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app" v-cloak>
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo-container">
+                <img src="../images/LodgeEaseLogo.png" alt="Lodge Ease Logo" class="logo">
+                <h2>Lodge Ease</h2>
+            </div>
+            <ul>
+                <li><a href="../Dashboard/Dashboard.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                <li><a href="../Room Management/room_management.html"><i class="fas fa-bed"></i> Room Management</a></li>
+                <li><a href="../Requests/booking_requests.html"><i class="fas fa-clock"></i> Booking Requests</a></li>
+                <li><a href="../Billing/billing.html"><i class="fas fa-money-bill-wave"></i> Billing</a></li>
+                <li><a href="../Reports/reports.html"><i class="fas fa-chart-line"></i> Reports</a></li>
+                <li><a href="../BusinessAnalytics/business_analytics.html" class="active"><i class="fas fa-chart-pie"></i> Business Analytics</a></li>
+                <li><a href="../ActivityLog/activity_log.html"><i class="fas fa-history"></i> Activity Log</a></li>
+                <li><a href="../Settings/settings.html"><i class="fas fa-cog"></i> Settings</a></li>
+                <li><a href="../LongTerm/longterm_management.html"><i class="fas fa-home"></i> Long-term Stays</a></li>
+                <li><a href="../AInalysis/AInalysis.html"><i class="fas fa-robot"></i> ChatBot</a></li>
+            </ul>
+            
+            <div class="auth-buttons">
+                <button v-if="isAuthenticated" @click="handleLogout" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> 
+                    <span>Logout</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div v-if="error" class="error-message">{{ error }}</div>
+            
+            <div class="filters">
+                <div class="form-group">
+                    <label for="establishment">Establishment:</label>
+                    <select id="establishment" v-model="selectedEstablishment" @change="handleEstablishmentChange">
+                        <option v-for="est in establishments" :key="est" :value="est">{{ est }}</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="dateRange">Date Range:</label>
+                    <select id="dateRange" v-model="dateRange" @change="handleDateRangeChange">
+                        <option value="week">Last Week</option>
+                        <option value="month">Last Month</option>
+                        <option value="quarter">Last Quarter</option>
+                        <option value="year">Last Year</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Enhanced Metrics Summary -->
+            <div class="metrics-summary">
+                <div class="metric-card primary">
+                    <h3>Total Revenue</h3>
+                    <p class="value">₱{{ formatCurrency(metrics.totalRevenue || 0) }}</p>
+                    <p class="trend" :class="{ positive: (metrics.revenueGrowth || 0) > 0, negative: (metrics.revenueGrowth || 0) < 0 }">
+                        {{ (metrics.revenueGrowth || 0) > 0 ? '▲' : '▼' }} {{ Math.abs(metrics.revenueGrowth || 0).toFixed(1) }}%
+                    </p>
+                </div>
+                <div class="metric-card success">
+                    <h3>Average Occupancy</h3>
+                    <p class="value">{{ metrics.averageOccupancy.toFixed(1) }}%</p>
+                    <p class="subtext">Target: 80%</p>
+                </div>
+                <div class="metric-card info">
+                    <h3>RevPAR</h3>
+                    <p class="value">₱{{ formatCurrency(metrics.revPAR) }}</p>
+                    <p class="trend" :class="{ positive: metrics.revPARGrowth > 0 }">
+                        {{ metrics.revPARGrowth > 0 ? '▲' : '▼' }} {{ Math.abs(metrics.revPARGrowth).toFixed(1) }}%
+                    </p>
+                </div>
+                <div class="metric-card warning">
+                    <h3>Booking Efficiency</h3>
+                    <p class="value">{{ metrics.bookingEfficiency.toFixed(1) }}%</p>
+                    <p class="subtext">Conversion Rate</p>
+                </div>
+                <div class="metric-card secondary">
+                    <h3>Performance Score</h3>
+                    <div class="score-gauge">
+                        <svg viewBox="0 0 100 60">
+                            <path d="M10,50 A40,40 0 1,1 90,50" fill="none" stroke="#ddd" stroke-width="10"/>
+                            <path :d="getScoreArc(metrics.performanceScore)" fill="none" :stroke="getScoreColor(metrics.performanceScore)" stroke-width="10"/>
+                            <text x="50" y="45" text-anchor="middle" font-size="20">{{ metrics.performanceScore.toFixed(0) }}</text>
+                        </svg>
+                    </div>
+                </div>
+                <div class="metric-card info">
+                    <h3>Growth Index</h3>
+                    <p class="value">{{ (metrics.growthIndex || 0).toFixed(1) }}%</p>
+                    <p class="trend" :class="{ positive: (metrics.growthIndex || 0) > 0 }">
+                        {{ (metrics.growthIndex || 0) > 0 ? '▲' : '▼' }} Year-over-Year
+                    </p>
+                </div>
+                <div class="metric-card warning">
+                    <h3>Stability Score</h3>
+                    <p class="value">{{ (metrics.stabilityScore || 0).toFixed(1) }}</p>
+                    <p class="subtext">Volatility: {{ (metrics.volatilityIndex || 0).toFixed(1) }}%</p>
+                </div>
+            </div>
+
+            <!-- Charts Grid -->
+            <div class="charts-grid">
+                <div class="chart-container">
+                    <h3>Room Types Distribution</h3>
+                    <canvas id="roomTypeChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Occupancy Trends</h3>
+                    <canvas id="occupancyChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Revenue Analysis</h3>
+                    <canvas id="revenueChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Booking Trends</h3>
+                    <canvas id="bookingsChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Seasonal Patterns</h3>
+                    <canvas id="seasonalTrendsChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Revenue per Room Type</h3>
+                    <canvas id="revenuePerRoomChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Analysis Modal -->
+            <div v-if="showAnalysisModal" class="analysis-modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Detailed Analysis - {{ selectedPeriod }}</h3>
+                        <button @click="showAnalysisModal = false" class="close-btn">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="analysis-metrics">
+                            <div class="metric">
+                                <h4>Value</h4>
+                                <p>{{ formatMetricValue(selectedValue) }}</p>
+                            </div>
+                            <div class="metric">
+                                <h4>YoY Growth</h4>
+                                <p>{{ calculateGrowth(selectedPeriod) }}%</p>
+                            </div>
+                            <div class="metric">
+                                <h4>Contributing Factors</h4>
+                                <ul>
+                                    <li v-for="factor in getContributingFactors(selectedPeriod)" :key="factor.name">
+                                        {{ factor.name }}: {{ factor.value }}
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="trend-analysis">
+                            <h4>Trend Analysis</h4>
+                            <canvas ref="trendChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart Legend Templates -->
+            <template id="chart-legend-template">
+                <div class="custom-legend">
+                    <div v-for="item in items" :key="item.text" class="legend-item">
+                        <span class="legend-color" :style="{ backgroundColor: item.fillStyle }"></span>
+                        <span class="legend-text">{{ item.text }}</span>
+                    </div>
+                </div>
+            </template>
+        </main>
+    </div>
+    <script type="module" src="business_analytics.js"></script>
+</body>
+</html>

@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LodgeEase - Baguio City Hotels</title>
+  <link rel="icon" type="image/x-icon" href="../components/favicon.ico">
+  <link href="../../dist/output.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="transitions.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script async defer 
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAaKZC47lvxIv0ej9bECXhUyaoL3FYuDM8&libraries=places,geometry,routes&loading=async" 
+    referrerpolicy="strict-origin-when-cross-origin">
+  </script>
+  <script src="rooms.js" type="module"></script>
+  <!-- Add the Admin Connector script -->
+  <script src="admin-connector.js" defer></script>
+</head>
+
+<body class="text-gray-800">
+  <header class="main-header fixed w-full z-50">
+    <nav class="container mx-auto h-full px-4 lg:px-6 flex items-center justify-between">
+      <!-- Logo -->
+      <a href="../Homepage/rooms.html" class="logo flex items-center space-x-2">
+        <img src="../components/LodgeEaseLogo.png" alt="LodgeEase" class="h-12">
+      </a>
+
+      <!-- Navigation Links -->
+      <div class="flex items-center space-x-4">
+        <a href="../Homepage/rooms.html" class="nav-button active" title="Go to homepage">
+          <i class="ri-home-line"></i>
+          <span>Home</span>
+        </a>
+        <button id="loginButton" class="nav-button">
+          <i class="ri-login-box-line"></i>
+          <span>Log in</span>
+        </button>
+        <button id="userIconBtn" class="menu-button">
+          <i class="ri-menu-line"></i>
+          <i class="ri-user-line"></i>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Mobile Menu -->
+    <div id="mobile-menu" class="md:hidden bg-white border-t border-gray-100 shadow-sm">
+      <div class="container mx-auto px-4 py-3 space-y-3">
+        <div class="relative">
+          <input type="text" 
+                 placeholder="Search lodges..." 
+                 class="w-full h-10 px-4 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+          >
+          <i class="ri-search-line absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+        </div>
+        <a href="../Homepage/rooms.html" class="block px-4 py-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors">
+          <i class="ri-home-line mr-2"></i>Home
+        </a>
+        <a href="../Login/index.html" id="mobileLoginButton" class="block px-4 py-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors">
+          <i class="ri-login-box-line mr-2"></i>Log In
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <div class="container mx-auto max-w-6xl px-4 pt-20">
+    <section class="hero-section rounded-xl overflow-hidden mb-8">
+      <div class="hero-bg"></div>
+      
+      <div class="hero-content">
+        <h1 class="hero-title">Discover Baguio City</h1>
+        <p class="hero-subtitle">Find your perfect mountain retreat</p>
+        
+        <div class="search-container-wrapper relative z-50">
+          <div class="search-container">
+            <!-- Location Search -->
+            <div class="search-input-group relative">
+              <div class="input-wrapper">
+                <i class="ri-map-pin-line"></i>
+                <button id="barangayDropdownBtn" class="w-full text-left focus:outline-none">
+                  <span id="barangayText" class="text-gray-500">Where are you going?</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Date Range -->
+            <div class="search-input-group relative">
+              <div class="input-wrapper">
+                <i class="ri-calendar-line"></i>
+                <input 
+                    type="text" 
+                    id="datePickerBtn"
+                    class="w-full text-left bg-transparent border-none focus:outline-none cursor-pointer"
+                    placeholder="Check in - Check out"
+                    readonly
+                >
+              </div>
+            </div>
+
+            <!-- Guests -->
+            <div class="search-input-group">
+              <div class="input-wrapper">
+                <i class="ri-user-line"></i>
+                <button id="guestsDropdownBtn" class="w-full text-left">
+                  <span id="guestsText" class="text-gray-500">Add guests</span>
+                </button>
+              </div>
+
+              <!-- Guests Dropdown -->
+              <div id="guestsDropdown" class="hidden absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-50">
+                <!-- Adults -->
+                <div class="flex items-center justify-between mb-4">
+                  <div>
+                    <div class="font-medium">Adults</div>
+                    <div class="text-sm text-gray-500">Ages 13+</div>
+                  </div>
+                  <div class="flex items-center space-x-4">
+                    <button class="guest-btn" data-type="adults" data-action="decrement">
+                      <i class="ri-subtract-line"></i>
+                    </button>
+                    <span class="guest-count" data-type="adults">1</span>
+                    <button class="guest-btn" data-type="adults" data-action="increment">
+                      <i class="ri-add-line"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Children -->
+                <div class="flex items-center justify-between mb-4">
+                  <div>
+                    <div class="font-medium">Children</div>
+                    <div class="text-sm text-gray-500">Ages 2-12</div>
+                  </div>
+                  <div class="flex items-center space-x-4">
+                    <button class="guest-btn" data-type="children" data-action="decrement">
+                      <i class="ri-subtract-line"></i>
+                    </button>
+                    <span class="guest-count" data-type="children">0</span>
+                    <button class="guest-btn" data-type="children" data-action="increment">
+                      <i class="ri-add-line"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Infants -->
+                <div class="flex items-center justify-between mb-4">
+                  <div>
+                    <div class="font-medium">Infants</div>
+                    <div class="text-sm text-gray-500">Under 2</div>
+                  </div>
+                  <div class="flex items-center space-x-4">
+                    <button class="guest-btn" data-type="infants" data-action="decrement">
+                      <i class="ri-subtract-line"></i>
+                    </button>
+                    <span class="guest-count" data-type="infants">0</span>
+                    <button class="guest-btn" data-type="infants" data-action="increment">
+                      <i class="ri-add-line"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <button id="applyGuests" class="w-full mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                  Apply
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Content -->
+    <div class="flex space-x-6">
+      <!-- Enhanced Filters Sidebar -->
+      <aside class="w-1/4 bg-white shadow-md rounded-xl p-6">
+        <div class="mb-6">
+          <button id="showMap" class="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition shadow-md">
+            <i class="ri-map-pin-line text-lg"></i>
+            <span class="font-medium">Show Map</span>
+          </button>
+        </div>
+
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-xl font-bold">Filters</h2>
+          <button class="text-blue-600 hover:bg-blue-50 p-2 rounded-full">
+            <i class="ri-refresh-line"></i>
+          </button>
+        </div>
+
+        <!-- Price Range Slider -->
+        <div class="mb-6">
+          <label class="block text-sm font-semibold mb-3">Price Range (per night)</label>
+          <input 
+            type="range" 
+            min="0" 
+            max="25000" 
+            class="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
+          >
+          <div class="flex justify-between text-sm text-gray-600 mt-2">
+            <span>₱0</span>
+            <span>₱25,000</span>
+          </div>
+        </div>
+
+        <!-- Enhanced Filter Sections -->
+
+        <div class="space-y-4">
+          <div class="mb-6">
+            <h3 class="font-semibold mb-3">Stay duration</h3>
+            <div class="space-y-2">
+              <label class="flex items-center">
+                <input type="checkbox" name="stayDuration" value="Short term" class="form-checkbox">
+                <span class="ml-2">Short term</span>
+              </label>
+              <label class="flex items-center">
+                <input type="checkbox" name="stayDuration" value="Long term/Dorms" class="form-checkbox">
+                <span class="ml-2">Long term/Dorms</span>
+              </div>
+          </div>
+
+          <div class="space-y-4">
+            <div class="mb-6">
+              <h3 class="font-semibold mb-3">Neighborhoods</h3>
+              <div class="space-y-2">
+                <label class="flex items-center">
+                  <input type="checkbox" name="neighborhood" value="Camp John Hay" class="form-checkbox">
+                  <span class="ml-2">Camp John Hay</span>
+                </label>
+                <label class="flex items-center">
+                  <input type="checkbox" name="neighborhood" value="Session Road" class="form-checkbox">
+                  <span class="ml-2">Session Road</span>
+                </label>
+                <label class="flex items-center">
+                  <input type="checkbox" name="neighborhood" value="Burnham Park" class="form-checkbox">
+                  <span class="ml-2">Burnham Park</span>
+                </label>
+                <label class="flex items-center">
+                  <input type="checkbox" name="neighborhood" value="Wright Park" class="form-checkbox">
+                  <span class="ml-2">Wright Park</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="mb-6">
+              <h3 class="font-semibold mb-3">Amenities</h3>
+              <div class="space-y-2">
+                <label class="flex items-center">
+                  <input type="checkbox" name="amenity" value="Fireplace" class="form-checkbox">
+                  <span class="ml-2">Fireplace</span>
+                </label>
+                <label class="flex items-center">
+                  <input type="checkbox" name="amenity" value="Mountain View" class="form-checkbox">
+                  <span class="ml-2">Mountain View</span>
+                </label>
+                <label class="flex items-center">
+                  <input type="checkbox" name="amenity" value="WiFi" class="form-checkbox">
+                  <span class="ml-2">WiFi</span>
+                </label>
+                <label class="flex items-center">
+                  <input type="checkbox" name="amenity" value="Kitchen" class="form-checkbox">
+                  <span class="ml-2">Kitchen</span>
+                </label>
+                <label class="flex items-center">
+                  <input type="checkbox" name="amenity" value="Parking" class="form-checkbox">
+                  <span class="ml-2">Parking</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Add these new filter sections inside the filters sidebar -->
+            <div class="space-y-4">
+              <!-- Property Type -->
+              <div data-filter="property-type">
+                <h3 class="font-semibold mb-3">Property Type</h3>
+                <div class="space-y-2">
+                  <label class="flex items-center space-x-2">
+                    <input type="checkbox" class="form-checkbox text-blue-600" value="hotel">
+                    <span>Hotels</span>
+                  </label>
+                  <label class="flex items-center space-x-2">
+                    <input type="checkbox" class="form-checkbox text-blue-600" value="resort">
+                    <span>Resorts</span>
+                  </label>
+                  <label class="flex items-center space-x-2">
+                    <input type="checkbox" class="form-checkbox text-blue-600" value="bed-breakfast">
+                    <span>Bed & Breakfast</span>
+                  </label>
+                  <label class="flex items-center space-x-2">
+                    <input type="checkbox" class="form-checkbox text-blue-600" value="vacation-home">
+                    <span>Vacation Homes</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Guest Rating -->
+              <div>
+                <h3 class="font-semibold mb-3">Guest Rating</h3>
+                <div class="space-y-2">
+                  <label class="flex items-center space-x-2">
+                    <input type="checkbox" class="form-checkbox text-blue-600">
+                    <span>9+ Exceptional</span>
+                  </label>
+                  <label class="flex items-center space-x-2">
+                    <input type="checkbox" class="form-checkbox text-blue-600">
+                    <span>8+ Excellent</span>
+                  </label>
+                  <label class="flex items-center space-x-2">
+                    <input type="checkbox" class="form-checkbox text-blue-600">
+                    <span>7+ Very Good</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- More Amenities -->
+              <div>
+                <h3 class="font-semibold mb-3">More Amenities</h3>
+                <div class="space-y-2">
+                  <label class="flex items-center space-x-2">
+                    <input type="checkbox" class="form-checkbox text-blue-600">
+                    <span>Swimming Pool</span>
+                  </label>
+                  <label class="flex items-center space-x-2">
+                    <input type="checkbox" class="form-checkbox text-blue-600">
+                    <span>Restaurant</span>
+                  </label>
+                  <label class="flex items-center space-x-2">
+                    <input type="checkbox" class="form-checkbox text-blue-600">
+                    <span>Spa & Wellness</span>
+                  </label>
+                  <label class="flex items-center space-x-2">
+                    <input type="checkbox" class="form-checkbox text-blue-600">
+                    <span>Room Service</span>
+                  </label>
+                  <label class="flex items-center space-x-2">
+                    <input type="checkbox" class="form-checkbox text-blue-600">
+                    <span>Fitness Center</span>
+                  </label>
+                  <label class="flex items-center space-x-2">
+                    <input type="checkbox" class="form-checkbox text-blue-600">
+                    <span>Pet Friendly</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Room Types -->
+              <div>
+                <h3 class="font-semibold mb-3">Room Types</h3>
+                <div class="space-y-2">
+                  <label class="flex items-center space-x-2">
+                    <input type="checkbox" class="form-checkbox text-blue-600">
+                    <span>Single Room</span>
+                  </label>
+                  <label class="flex items-center space-x-2">
+                    <input type="checkbox" class="form-checkbox text-blue-600">
+                    <span>Double Room</span>
+                  </label>
+                  <label class="flex items-center space-x-2">
+                    <input type="checkbox" class="form-checkbox text-blue-600">
+                    <span>Suite</span>
+                  </label>
+                  <label class="flex items-center space-x-2">
+                    <input type="checkbox" class="form-checkbox text-blue-600">
+                    <span>Family Room</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <!-- Hotel Listings -->
+        <main class="w-3/4">
+          <!-- Sorting and count display -->
+          <div class="flex justify-between items-center mb-6 bg-white p-4 rounded-lg shadow-md">
+            <div class="text-sm text-gray-600 lodge-count">
+              Showing 2 of 50 lodges
+            </div>
+            <div class="flex items-center space-x-4">
+              <span class="text-sm text-gray-600">Sort by:</span>
+              <select class="border rounded-lg px-3 py-2 text-sm">
+                <option>Recommended</option>
+                <option>Price: Low to High</option>
+                <option>Price: High to Low</option>
+                <option>Top Rated</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Lodge cards grid container -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 lodge-container">
+            <!-- Lodge cards will be here -->
+          </div>
+        </main>
+      </div>
+
+      <!-- Map View Container -->
+      <div id="mapView" class="fixed inset-0 bg-white z-50 hidden">
+        <div class="h-full relative">
+          <button id="closeMap" class="absolute top-4 right-4 z-10 bg-white p-2 rounded-full shadow-lg hover:bg-gray-100">
+            <i class="ri-close-line text-xl"></i>
+          </button>
+          <div id="map" class="w-full h-full"></div>
+        </div>
+      </div>
+
+      <div 
+      id="userDrawer" 
+      class="fixed top-0 right-0 w-80 h-full bg-white shadow-xl transform transition-transform duration-300 z-50 translate-x-full"
+      >
+        <div class="drawer-content">
+          <!-- Content will be dynamically inserted by JavaScript -->
+        </div>
+      </div>
+
+      <div id="compareDrawer" class="fixed bottom-0 left-0 w-full bg-white shadow-xl transform translate-y-full transition-transform duration-300 z-50">
+        <div class="container mx-auto max-w-6xl px-4 py-6">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold">Compare Lodges</h3>
+            <button id="closeCompare" class="text-gray-500 hover:text-gray-700">
+              <i class="ri-close-line text-2xl"></i>
+            </button>
+          </div>
+          <div id="compareLodges" class="grid grid-cols-3 gap-6">
+            <!-- Compare slots will be populated dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <footer class="bg-gray-900 text-white py-12">
+        <div class="container mx-auto px-6 text-center">
+          <div class="mb-8">
+            <h3 class="text-3xl font-bold text-blue-500 mb-4">LodgeEase</h3>
+            <p class="text-gray-300">Aspiras palispis highway, Baguio City, Benguet, 2600 Philippines</p>
+            <p class="text-gray-300">Contact: +(63) 9129 912 6584 | lodgeease.baguio@email.com</p>
+          </div>
+          <div class="flex justify-center space-x-6">
+            <a href="#" class="text-2xl text-blue-400 hover:text-white transition-colors">
+              <i class="fab fa-instagram"></i>
+            </a>
+            <a href="#" class="text-2xl text-blue-400 hover:text-white transition-colors">
+              <i class="fab fa-facebook"></i>
+            </a>
+            <a href="#" class="text-2xl text-blue-400 hover:text-white transition-colors">
+              <i class="fab fa-twitter"></i>
+            </a>
+          </div>
+        </div>
+      </footer>
+
+      <div id="barangayDropdown" class="hidden fixed bg-white shadow-lg border border-gray-200" style="z-index: 99999;">
+        <div id="barangayList" class="py-2 max-h-[300px] overflow-y-auto">
+          <!-- Barangay items will be populated by JavaScript -->
+        </div>
+      </div>
+
+    </body>
+  </html>

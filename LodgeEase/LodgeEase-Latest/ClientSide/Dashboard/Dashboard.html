@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hotel Client Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../Homepage/styles.css">
+    <script src="https://raw.githack.com/eKoopmans/html2pdf/master/dist/html2pdf.bundle.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+
+<body class="text-gray-800">
+    <header class="main-header fixed w-full z-50">
+        <nav class="container mx-auto h-full px-4 lg:px-6 flex items-center justify-between">
+          <!-- Logo -->
+          <a href="../Homepage/rooms.html" class="logo flex items-center space-x-2">
+            <img src="../components/LodgeEaseLogo.png" alt="LodgeEase" class="h-12">
+          </a>
+    
+          <!-- Navigation Links -->
+          <div class="flex items-center space-x-4">
+            <a href="../Homepage/rooms.html" class="nav-button active" title="Go to homepage">
+              <i class="ri-home-line"></i>
+              <span>Home</span>
+            </a>
+            <button id="loginButton" class="nav-button">
+              <i class="ri-login-box-line"></i>
+              <span>Log in</span>
+            </button>
+            <button id="userIconBtn" class="menu-button">
+              <i class="ri-menu-line"></i>
+              <i class="ri-user-line"></i>
+            </button>
+          </div>
+        </nav>
+    </header>
+    <div id="userDrawer" class="fixed top-0 right-0 w-80 h-full bg-white shadow-xl transform transition-transform duration-300 z-50 translate-x-full">
+        <div class="drawer-content">
+            <!-- Content will be dynamically inserted by JavaScript -->
+        </div>
+    </div>
+    <div class="min-h-screen bg-cover bg-center bg-fixed" style="background-image: url('../components/marita-kavelashvili-ugnrXk1129g-unsplash.jpg');">
+        <div class="min-h-screen bg-black/40 backdrop-blur-[2px]">
+            <!-- Main Content -->
+            <main class="container mx-auto flex-1 p-8 pt-24">
+                <!-- Enhanced Welcome Section -->
+                <header class="mb-8 bg-white/80 backdrop-blur-md p-8 rounded-2xl shadow-lg border border-white/20">
+                    <h1 class="text-4xl font-bold text-gray-800 mb-2">Welcome, <span id="guest-name" class="text-blue-600">Guest</span></h1>
+                    <p class="text-gray-600 text-lg" id="booking-status"></p>
+                </header>
+
+                <!-- Reorganized Grid Layout -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Enhanced Booking Info Card - Spans 2 columns -->
+                    <div class="lg:col-span-2 bg-white/90 backdrop-blur-md rounded-2xl shadow-lg p-8 transform transition-all duration-300 hover:scale-[1.02] hover:shadow-xl border border-white/20">
+                        <div class="flex items-center mb-6">
+                            <div class="p-3 bg-blue-100 rounded-lg mr-4">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            <h2 class="text-2xl font-bold text-gray-800">Your Stay Details</h2>
+                        </div>
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div class="space-y-4">
+                                <div class="bg-gray-50 p-4 rounded-xl">
+                                    <p class="text-sm text-gray-500 mb-1">Room Number</p>
+                                    <p class="text-2xl font-bold text-gray-800" id="room-number">---</p>
+                                </div>
+                                <div class="bg-gray-50 p-4 rounded-xl">
+                                    <p class="text-sm text-gray-500 mb-1">Number of Guests</p>
+                                    <p class="text-2xl font-bold text-gray-800" id="guest-count">---</p>
+                                </div>
+                            </div>
+                            <div class="space-y-4">
+                                <div class="bg-gray-50 p-4 rounded-xl">
+                                    <p class="text-sm text-gray-500 mb-1">Check-in Date</p>
+                                    <p class="text-2xl font-bold text-gray-800" id="check-in-date">---</p>
+                                </div>
+                                <div class="bg-gray-50 p-4 rounded-xl">
+                                    <p class="text-sm text-gray-500 mb-1">Check-out Date</p>
+                                    <p class="text-2xl font-bold text-gray-800" id="check-out-date">---</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-6 p-4 bg-blue-50 rounded-xl">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-gray-600">Rate per night</span>
+                                <span class="text-xl font-bold text-blue-600" id="rate-per-night">---</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-600">Total Amount</span>
+                                <span class="text-2xl font-bold text-blue-600" id="total-amount">---</span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 mt-6">
+                            <button id="viewDetailsBtn" class="w-full bg-gray-800 text-white py-3 rounded-xl hover:bg-gray-900 transition-all duration-300 flex items-center justify-center">
+                                <i class="fas fa-file-alt mr-2"></i> View Details
+                            </button>
+                            <button onclick="window.location.href='../Extend/Extend.html'" class="w-full bg-blue-600 text-white py-3 rounded-xl hover:bg-blue-700 transition-all duration-300 flex items-center justify-center">
+                                <i class="fas fa-calendar-plus mr-2"></i> Extend Stay
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Enhanced Weather Card -->
+                    <div class="bg-white/90 backdrop-blur-md rounded-2xl shadow-lg p-8 transform transition-all duration-300 hover:scale-[1.02] hover:shadow-xl border border-white/20">
+                        <div class="flex items-center mb-6">
+                            <div class="p-3 bg-yellow-100 rounded-lg mr-4">
+                                <i class="fas fa-sun text-2xl text-yellow-600"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-2xl font-bold text-gray-800">Weather</h2>
+                                <p class="text-gray-500">Baguio City</p>
+                            </div>
+                        </div>
+                        <div class="text-center mb-6">
+                            <div class="text-5xl font-bold text-gray-800 mb-2">72°F</div>
+                            <div class="text-xl text-gray-600">Sunny</div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-3">
+                            <div class="bg-gray-50 p-3 rounded-xl text-center">
+                                <div class="text-sm text-gray-500 mb-1">Today</div>
+                                <div class="text-lg font-bold text-gray-800">72°</div>
+                            </div>
+                            <div class="bg-gray-50 p-3 rounded-xl text-center">
+                                <div class="text-sm text-gray-500 mb-1">Tomorrow</div>
+                                <div class="text-lg font-bold text-gray-800">68°</div>
+                            </div>
+                            <div class="bg-gray-50 p-3 rounded-xl text-center">
+                                <div class="text-sm text-gray-500 mb-1">Wed</div>
+                                <div class="text-lg font-bold text-gray-800">70°</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Enhanced Tourist Guide - Full Width -->
+                    <div class="lg:col-span-3 bg-white/90 backdrop-blur-md rounded-2xl shadow-lg p-8 transform transition-all duration-300 hover:scale-[1.02] hover:shadow-xl border border-white/20">
+                        <div class="flex items-center mb-6">
+                            <div class="p-3 bg-green-100 rounded-lg mr-4">
+                                <i class="fas fa-map-marked-alt text-2xl text-green-600"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-2xl font-bold text-gray-800">Baguio Tourist Guide</h2>
+                                <p class="text-gray-500">Discover the City of Pines</p>
+                            </div>
+                        </div>
+                        <div class="grid md:grid-cols-3 gap-6">
+                            <div class="bg-gray-50 p-6 rounded-xl hover:bg-gray-100 transition-all duration-300">
+                                <h3 class="text-lg font-bold text-gray-800 mb-4">Popular Attractions</h3>
+                                <ul class="space-y-3">
+                                    <li class="flex items-center text-gray-600">
+                                        <i class="fas fa-mountain text-green-600 mr-2"></i>
+                                        Mines View Park
+                                    </li>
+                                    <li class="flex items-center text-gray-600">
+                                        <i class="fas fa-tree text-green-600 mr-2"></i>
+                                        Burnham Park
+                                    </li>
+                                    <li class="flex items-center text-gray-600">
+                                        <i class="fas fa-campground text-green-600 mr-2"></i>
+                                        Camp John Hay
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="bg-gray-50 p-6 rounded-xl hover:bg-gray-100 transition-all duration-300">
+                                <h3 class="text-lg font-bold text-gray-800 mb-4">Local Markets</h3>
+                                <ul class="space-y-3">
+                                    <li class="flex items-center text-gray-600">
+                                        <i class="fas fa-store text-green-600 mr-2"></i>
+                                        Public Market
+                                    </li>
+                                    <li class="flex items-center text-gray-600">
+                                        <i class="fas fa-moon text-green-600 mr-2"></i>
+                                        Night Market
+                                    </li>
+                                    <li class="flex items-center text-gray-600">
+                                        <i class="fas fa-shopping-bag text-green-600 mr-2"></i>
+                                        Good Shepherd
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="bg-gray-50 p-6 rounded-xl hover:bg-gray-100 transition-all duration-300">
+                                <h3 class="text-lg font-bold text-gray-800 mb-4">Food Spots</h3>
+                                <ul class="space-y-3">
+                                    <li class="flex items-center text-gray-600">
+                                        <i class="fas fa-coffee text-green-600 mr-2"></i>
+                                        Cafe by the Ruins
+                                    </li>
+                                    <li class="flex items-center text-gray-600">
+                                        <i class="fas fa-utensils text-green-600 mr-2"></i>
+                                        Good Taste
+                                    </li>
+                                    <li class="flex items-center text-gray-600">
+                                        <i class="fas fa-leaf text-green-600 mr-2"></i>
+                                        Oh My Gulay
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="mt-6">
+                            <a href="https://www.google.com/maps/search/tourist+spots+in+baguio" 
+                               target="_blank" 
+                               class="w-full bg-green-600 text-white py-4 rounded-xl hover:bg-green-700 transition-all duration-300 flex items-center justify-center text-lg font-semibold">
+                                <i class="fas fa-map-marker-alt mr-2"></i>
+                                Explore All Destinations on Maps
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Content sections remain unchanged -->
+                <div class="mt-8 space-y-6">
+
+                    <!-- View Bill Section -->
+                    <div id="view-bill" class="content-section hidden bg-white/90 backdrop-blur-md rounded-xl shadow-lg p-6 transform transition hover:shadow-xl border border-white/20">
+                        <h2 class="text-2xl font-bold mb-4 text-gray-800">View Bill</h2>
+                        <p class="text-gray-600">Check your current bill to keep track of your expenses.</p>
+                        <button class="mt-4 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition">
+                            View Details
+                        </button>
+                    </div>
+
+                    <!-- Check Out Section -->
+                    <div id="check-out" class="content-section hidden bg-white/90 backdrop-blur-md rounded-xl shadow-lg p-6 transform transition hover:shadow-xl border border-white/20">
+                        <h2 class="text-2xl font-bold mb-4 text-gray-800">Check Out</h2>
+                        <p class="text-gray-600">Ready to leave? Check out and finalize your bill.</p>
+                        <button class="mt-4 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition">
+                            Proceed to Checkout
+                        </button>
+                    </div>
+
+                    <!-- Extend Stay Section -->
+                    <div id="extend-stay" class="content-section hidden bg-white/90 backdrop-blur-md rounded-xl shadow-lg p-6 transform transition hover:shadow-xl border border-white/20">
+                        <h2 class="text-2xl font-bold mb-4 text-gray-800">Extend Stay</h2>
+                        <p class="text-gray-600">Want to stay a bit longer? Extend your booking with ease.</p>
+                        <button class="mt-4 bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition">
+                            Check Availability
+                        </button>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script type="module" src="../../AdminSide/firebase.js"></script>
+    <script type="module" src="../components/userDrawer.js"></script>
+    <script type="module" src="./dashboard.js"></script>
+
+    <div id="bookingModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] flex flex-col"> <!-- added max-h and flex -->
+            <div class="flex justify-between items-center mb-4">
+                <div class="flex items-center space-x-2"> <!-- reduced spacing -->
+                    <img src="../components/lodgeeaselogo.png" alt="LodgeEase Logo" class="h-6 w-6"> <!-- smaller logo -->
+                    <h3 class="text-xl font-bold">Booking Confirmation</h3> <!-- smaller text -->
+                </div>
+                <button id="closeModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div id="modalContent" class="space-y-3 overflow-y-auto flex-grow"> <!-- added overflow and flex-grow -->
+                <!-- Content will be populated by JavaScript -->
+            </div>
+            <div class="mt-4 flex justify-end space-x-4 pt-4 border-t"> <!-- added border-t -->
+                <button id="downloadPDF" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition flex items-center">
+                    <i class="fas fa-download mr-2"></i> Download
+                </button>
+                <button onclick="window.print()" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition flex items-center">
+                    <i class="fas fa-print mr-2"></i> Print
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-gray-900 text-white py-12">
+      <div class="container mx-auto px-6 text-center">
+        <div class="mb-8">
+          <h3 class="text-3xl font-bold text-blue-500 mb-4">LodgeEase</h3>
+          <p class="text-gray-300">Aspiras palispis highway, Baguio City, Benguet, 2600 Philippines</p>
+          <p class="text-gray-300">Contact: +(63) 9129 912 6584 | lodgeease.baguio@email.com</p>
+        </div>
+        <div class="flex justify-center space-x-6">
+          <a href="#" class="text-2xl text-blue-400 hover:text-white transition-colors">
+            <i class="fab fa-instagram"></i>
+          </a>
+          <a href="#" class="text-2xl text-blue-400 hover:text-white transition-colors">
+            <i class="fab fa-facebook"></i>
+          </a>
+          <a href="#" class="text-2xl text-blue-400 hover:text-white transition-colors">
+            <i class="fab fa-twitter"></i>
+          </a>
+        </div>
+      </div>
+    </footer>
+</body>
+</html>
