@@ -67,3 +67,26 @@ node_modules/
 
 # dataconnect generated files
 .dataconnect
+
+# Firebase
+.firebase/
+firebase-debug.log
+
+# Node.js dependencies
+node_modules/
+
+# Build and environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Editor directories and files
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

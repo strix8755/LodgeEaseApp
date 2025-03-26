@@ -1,4 +1,4 @@
-import { auth, db } from '../../AdminSide/firebase.js';
+import { auth, db } from '../js/firebase-helper.js';
 import { doc, getDoc, collection, query, where, getDocs, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { initializeUserDrawer } from '../components/userDrawer.js';
 

@@ -1,3 +1,25 @@
+// Aggressive redirect loop prevention
+(function() {
+  // Mark that we've successfully loaded the rooms page
+  sessionStorage.removeItem('redirectCount');
+  localStorage.removeItem('redirectAttempted');
+  
+  // Set several flags to indicate this page loaded successfully
+  localStorage.setItem('roomsPageLoaded', Date.now().toString());
+  sessionStorage.setItem('currentPage', 'rooms');
+  
+  // Also broadcast to parent window if we're in an iframe
+  try {
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'ROOMS_PAGE_LOADED' }, '*');
+    }
+  } catch (e) {
+    console.error('Error communicating with parent:', e);
+  }
+  
+  console.log('Rooms.js initialized with anti-loop protection');
+})();
+
 // Use an IIFE to avoid global namespace pollution
 (function() {
     // Make these functions globally available for the info window buttons
@@ -64,24 +86,11 @@
             console.log('DOM loaded, initializing functionality...');
             initializeAllFunctionality();
             
-            // Initialize auth state monitoring
-            import('../../AdminSide/firebase.js').then(({ auth }) => {
-                auth.onAuthStateChanged((user) => {
-                    updateLoginButtonVisibility(user);
-                });
-            });
-            
-            // Create lodge cards immediately after initialization
+            // Remove Firebase dependency - this will be handled by admin-connector.js
             console.log('Creating lodge cards after initialization...');
             createLodgeCards();
             
-            // Initialize user drawer
-            import('../../AdminSide/firebase.js').then(({ auth, db }) => {
-                import('../components/userDrawer.js').then(({ initializeUserDrawer }) => {
-                    initializeUserDrawer(auth, db);
-                });
-            });
-
+            // Initialize user drawer - handled separately by admin-connector.js
             // Initialize navigation
             initializeNavigation();
         } catch (error) {
@@ -610,8 +619,6 @@
             </div>
         `;
         
-        document.body.insertAdjacentHTML('beforeend', modalHTML);
-    
         // Add global click handler to close modal when clicking outside
         document.getElementById('lodgeDetailsModal')?.addEventListener('click', (e) => {
             if (e.target.id === 'lodgeDetailsModal') {
@@ -1385,7 +1392,5 @@
         document.querySelectorAll('.nav-button').forEach(button => {
             if (button.getAttribute('href') && button.getAttribute('href').includes(currentPath)) {
                 button.classList.add('active');
-            }
-        });
-    }
+            }        });    }
 })();

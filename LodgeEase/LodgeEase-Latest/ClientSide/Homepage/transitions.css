@@ -1,31 +1,17 @@
-/* Fade In Animation */
+/* Animation Keyframes */
 @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
 }
 
-/* Slide Up Animation */
 @keyframes slideUp {
-    from {
-        transform: translateY(20px);
-        opacity: 0;
-    }
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
-/* Scale In Animation */
 @keyframes scaleIn {
-    from {
-        transform: scale(0.95);
-        opacity: 0;
-    }
-    to {
-        transform: scale(1);
-        opacity: 1;
-    }
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
 }
 
 /* Header Transition */
@@ -39,7 +25,7 @@
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
-/* Hero Section Animation */
+/* Hero Section Animations */
 .hero-section {
     animation: fadeIn 1s ease-out;
 }
@@ -56,14 +42,15 @@
     animation: slideUp 0.8s ease-out 0.6s both;
 }
 
-/* Lodge Card Hover Effects */
+/* Lodge Card Hover Effects with opacity adjustment */
 .lodge-card {
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
 }
 
 .lodge-card:hover {
     transform: translateY(-4px);
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    background-color: rgba(255, 255, 255, 1); /* Full opacity on hover */
 }
 
 /* Filter Sidebar Animations */
@@ -79,6 +66,57 @@
 /* Button Transitions */
 button {
     transition: all 0.2s ease;
+}
+
+/* Drawer Transitions */
+.drawer-content {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Filter change animation */
+.filter-change {
+    animation: pulse 0.5s ease;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+/* Dropdown menu animations */
+.dropdown-menu {
+    animation: slideDown 0.2s ease-out;
+    transform-origin: top center;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: scaleY(0); }
+    to { opacity: 1; transform: scaleY(1); }
+}
+
+/* Lodge cards animations */
+.lodge-container > .lodge-card {
+    opacity: 0;
+}
+
+.lodge-card.animated {
+    animation: scaleIn 0.5s ease-out forwards;
+}
+
+/* Map toggle animation */
+#mapView.showing {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* User drawer animation */
+#userDrawer:not(.translate-x-full) {
+    animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
 }
 
 /* Search Input Focus Effect */
@@ -134,4 +172,13 @@ input[type="range"]:hover {
     background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
     background-size: 200% 100%;
     animation: shimmer 1.5s infinite;
+}
+
+/* Improved backdrop transitions */
+.backdrop-enhanced {
+    transition: background-color 0.5s ease;
+}
+
+.backdrop-enhanced::before {
+    transition: background-color 0.5s ease;
 }

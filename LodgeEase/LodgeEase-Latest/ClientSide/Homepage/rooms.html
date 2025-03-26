@@ -4,21 +4,117 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LodgeEase - Baguio City Hotels</title>
-  <link rel="icon" type="image/x-icon" href="../components/favicon.ico">
-  <link href="../../dist/output.css" rel="stylesheet">
+  <!-- Fix favicon path to use a relative path that exists -->
+  <link rel="icon" type="image/x-icon" href="../assets/favicon.ico">
+  
+  <!-- Improved CSS loading with multiple fallbacks -->
+  <link href="../../dist/output.css" rel="stylesheet" onerror="document.head.appendChild(Object.assign(document.createElement('script'), {src: 'https://cdn.tailwindcss.com', defer: true}));">
+  <link rel="stylesheet" href="../styles/styles-fix.css">
   <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="transitions.css">
+  <link rel="stylesheet" href="style-fix-patch.css">
+  <link rel="stylesheet" href="styles.html" type="text/html">
+  
+  <!-- Add redirect fix script early in the page load -->
+  <script src="room-redirect-fix.js"></script>
+  <script src="../js/common.js"></script>
+  <script src="../js/z-index-manager.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="../components/inline-styles.js"></script>
   <script async defer 
     src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAaKZC47lvxIv0ej9bECXhUyaoL3FYuDM8&libraries=places,geometry,routes&loading=async" 
     referrerpolicy="strict-origin-when-cross-origin">
   </script>
-  <script src="rooms.js" type="module"></script>
-  <!-- Add the Admin Connector script -->
-  <script src="admin-connector.js" defer></script>
+  
+  <!-- Fix module loading approach in correct order -->
+  <script src="admin-connector.js"></script>
+  <script src="direct-style-fix.js"></script>
+  <script src="rooms.js"></script>
+  
+  <!-- Provide a fallback for missing assets and CSS -->
+  <script>
+    // Create missing assets directory if needed
+    document.addEventListener('DOMContentLoaded', function() {
+      // Check if favicon is missing and use a data URI as backup
+      const favicon = document.querySelector('link[rel="icon"]');
+      if (favicon) {
+        favicon.addEventListener('error', function() {
+          this.href = 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏨</text></svg>';
+        });
+      }
+      
+      // Make sure we have Tailwind styles
+      setTimeout(() => {
+        const isTailwindWorking = window.CommonUtils?.ensureTailwindCSS?.() || false;
+        if (!isTailwindWorking) {
+          console.log('Adding Tailwind CSS from CDN as inline script');
+          const script = document.createElement('script');
+          script.src = 'https://cdn.tailwindcss.com';
+          document.head.appendChild(script);
+        }
+      }, 300);
+
+      // Fix background contrast
+      document.body.classList.add('backdrop-enhanced');
+      
+      // Ensure content is above overlay
+      const container = document.querySelector('.container');
+      if (container) container.style.zIndex = '2';
+      
+      // Apply semi-transparent background to sidebar
+      const sidebarEl = document.querySelector('aside.w-1\\/4');
+      if (sidebarEl) {
+        sidebarEl.style.backgroundColor = 'rgba(255, 255, 255, 0.85)';
+        sidebarEl.style.backdropFilter = 'blur(5px)';
+      }
+      
+      // Apply backgrounds to cards
+      const cards = document.querySelectorAll('.lodge-card');
+      cards.forEach(card => {
+        card.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
+        card.style.backdropFilter = 'blur(5px)';
+      });
+
+      // Fix specific style issues
+      document.body.style.position = 'relative';
+      
+      // Create darker overlay
+      const overlay = document.createElement('div');
+      overlay.style.position = 'fixed';
+      overlay.style.top = '0';
+      overlay.style.left = '0';
+      overlay.style.right = '0';
+      overlay.style.bottom = '0';
+      overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.65)';
+      overlay.style.zIndex = '-1';
+      document.body.appendChild(overlay);
+      
+      // Fix sidebar (using the already declared sidebarEl)
+      if (sidebarEl) {
+        sidebarEl.style.backgroundColor = 'rgba(255, 255, 255, 0.95)';
+        sidebarEl.style.backdropFilter = 'blur(10px)';
+        sidebarEl.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+      }
+      
+      // Fix main content
+      const mainContent = document.querySelector('main.w-3\\/4');
+      if (mainContent) {
+        mainContent.style.background = 'transparent';
+      }
+      
+      // Make cards visible
+      setTimeout(function() {
+        const cards = document.querySelectorAll('.lodge-card');
+        cards.forEach(card => {
+          card.style.backgroundColor = 'white';
+          card.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.15)';
+        });
+      }, 500);
+    });
+  </script>
 </head>
 
 <body class="text-gray-800">
@@ -66,7 +162,7 @@
     </div>
   </header>
 
-  <div class="container mx-auto max-w-6xl px-4 pt-20">
+  <div class="container mx-auto max-w-6xl px-4 pt-20" style="background: transparent !important;">
     <section class="hero-section rounded-xl overflow-hidden mb-8">
       <div class="hero-bg"></div>
       
@@ -455,6 +551,19 @@
           <!-- Barangay items will be populated by JavaScript -->
         </div>
       </div>
+
+      <!-- Fix for white rectangular bar -->
+      <style>
+        .flex.space-x-6 {
+          background: transparent !important;
+        }
+        main.w-3\/4 {
+          background: transparent !important;
+        }
+        .container.mx-auto.max-w-6xl.px-4.pt-20 {
+          background: transparent !important;
+        }
+      </style>
 
     </body>
   </html>

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lodge Ease</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      background-color: #f8f9fa;
+    }
+    .loader {
+      width: 50px;
+      height: 50px;
+      border: 5px solid #ddd;
+      border-top-color: #007bff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+    .redirect-text {
+      margin-top: 20px;
+      color: #666;
+    }
+    .manual-link {
+      display: block;
+      margin-top: 20px;
+      padding: 10px 20px;
+      background-color: #007bff;
+      color: white;
+      text-decoration: none;
+      border-radius: 5px;
+      font-weight: bold;
+    }
+    .manual-link:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <div class="loader"></div>
+  <p class="redirect-text">Redirecting to LodgeEase homepage...</p>
+  <a href="./Homepage/rooms.html" class="manual-link">Go to Homepage</a>
+
+  <script>
+    // Simple, direct redirect
+    window.addEventListener('load', function() {
+      localStorage.setItem('redirectAttempted', 'true');
+      // Short timeout to ensure page has loaded
+      setTimeout(function() {
+        window.location.href = './Homepage/rooms.html';
+      }, 500);
+    });
+  </script>
+</body>
+</html>

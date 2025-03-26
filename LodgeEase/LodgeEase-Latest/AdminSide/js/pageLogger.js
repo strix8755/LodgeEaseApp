@@ -1,56 +1,63 @@
 import { auth, db } from '../firebase.js';
-import { collection, addDoc, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
+/**
+ * Utility class to log page navigation activities in the admin dashboard
+ */
 export class PageLogger {
-    static async logNavigation(pageName) {
-        try {
-            const user = auth.currentUser;
-            if (!user) return;
+  /**
+   * Log a page navigation event
+   * @param {string} pageName - The name of the page being accessed
+   */
+  static async logNavigation(pageName) {
+    try {
+      const user = auth.currentUser;
+      if (!user) return;
 
-            await addDoc(collection(db, 'activityLogs'), {
-                userId: user.uid,
-                userName: user.email,
-                actionType: 'navigation',
-                details: `Navigated to ${pageName}`,
-                timestamp: Timestamp.now(),
-                userRole: 'admin',
-                module: pageName
-            });
-            
-            console.log(`Navigation to ${pageName} logged for ${user.email}`);
-        } catch (error) {
-            console.error('Error logging navigation:', error);
-        }
+      await addDoc(collection(db, 'pageNavigations'), {
+        userId: user.uid,
+        userEmail: user.email,
+        pageName: pageName,
+        timestamp: serverTimestamp(),
+        userRole: 'admin',
+        userAgent: navigator.userAgent
+      });
+      
+      console.log(`Logged navigation to: ${pageName}`);
+    } catch (error) {
+      console.error('Error logging navigation:', error);
     }
-    
-    static init() {
-        // Initialize the page logger
-        const currentPage = this.getCurrentPageName();
-        
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                this.logNavigation(currentPage);
-            }
-        });
+  }
+  
+  /**
+   * Log a specific user action
+   * @param {string} actionType - Type of action performed
+   * @param {Object} details - Additional details about the action
+   */
+  static async logAction(actionType, details = {}) {
+    try {
+      const user = auth.currentUser;
+      if (!user) return;
+      
+      await addDoc(collection(db, 'activityLogs'), {
+        userId: user.uid,
+        userEmail: user.email,
+        actionType,
+        details,
+        timestamp: serverTimestamp(),
+        userRole: 'admin'
+      });
+    } catch (error) {
+      console.error('Error logging action:', error);
     }
-    
-    static getCurrentPageName() {
-        // Extract page name from URL
-        const path = window.location.pathname;
-        const segments = path.split('/');
-        const lastSegment = segments[segments.length - 1];
-        
-        // Remove file extension if present
-        const pageName = lastSegment.split('.')[0];
-        
-        return pageName || 'Unknown';
-    }
+  }
 }
 
-// Auto-initialize if loaded directly
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => PageLogger.init());
-} else {
-    PageLogger.init();
-}
+// Initialize page logging when auth state changes
+auth.onAuthStateChanged((user) => {
+  if (user) {
+    // Get current page name from document title or path
+    const pageName = document.title || window.location.pathname;
+    PageLogger.logNavigation(pageName);
+  }
+});

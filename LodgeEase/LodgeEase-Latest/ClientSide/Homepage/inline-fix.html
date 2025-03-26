@@ -1,0 +1,128 @@
+<style>
+  /* Emergency style fixes */
+  body::before {
+    content: '';
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background-color: rgba(0, 0, 0, 0.65) !important;
+    z-index: -1 !important;
+    pointer-events: none;
+  }
+
+  /* Fix the white rectangular bar in center */
+  .flex.space-x-6 {
+    background: transparent !important;
+  }
+
+  /* Make container transparent */
+  .container.mx-auto.max-w-6xl.px-4.pt-20 {
+    background: transparent !important;
+  }
+
+  aside.w-1\/4 {
+    background-color: rgba(255, 255, 255, 0.95) !important;
+    backdrop-filter: blur(10px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  }
+
+  main.w-3\/4 {
+    background: transparent !important;
+  }
+
+  .lodge-card {
+    background-color: white !important;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15) !important;
+  }
+
+  .flex.justify-between.items-center.mb-6 {
+    background-color: rgba(255, 255, 255, 0.95) !important;
+    backdrop-filter: blur(8px) !important;
+  }
+
+  .container {
+    z-index: 2 !important;
+    position: relative !important;
+  }
+
+  /* Override any existing overlay */
+  body::after {
+    display: none !important;
+  }
+</style>
+
+<script>
+  // Apply emergency fixes after page loads
+  window.addEventListener('load', function() {
+    // Create overlay if needed
+    if (!document.getElementById('emergency-overlay')) {
+      const overlay = document.createElement('div');
+      overlay.id = 'emergency-overlay';
+      overlay.style.position = 'fixed';
+      overlay.style.top = '0';
+      overlay.style.left = '0';
+      overlay.style.right = '0';
+      overlay.style.bottom = '0';
+      overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.65)';
+      overlay.style.zIndex = '-1';
+      overlay.style.pointerEvents = 'none';
+      document.body.appendChild(overlay);
+    }
+    
+    // Direct element fixes
+    const styles = {
+      'aside.w-1\\/4': {
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        backdropFilter: 'blur(10px)',
+        border: '1px solid rgba(255, 255, 255, 0.2)'
+      },
+      'main.w-3\\/4': {
+        background: 'transparent'
+      },
+      '.lodge-card': {
+        backgroundColor: 'white',
+        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.15)'
+      },
+      '.flex.justify-between.items-center.mb-6': {
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        backdropFilter: 'blur(8px)'
+      }
+    };
+    
+    // Apply styles
+    for (const selector in styles) {
+      const elements = document.querySelectorAll(selector);
+      elements.forEach(el => {
+        for (const prop in styles[selector]) {
+          el.style[prop] = styles[selector][prop];
+        }
+      });
+    }
+
+    // Remove white bar
+    const fixWhiteBar = () => {
+      const flexContainer = document.querySelector('.flex.space-x-6');
+      if (flexContainer) {
+        flexContainer.style.background = 'transparent';
+      }
+      
+      const mainContainer = document.querySelector('.container.mx-auto.max-w-6xl.px-4.pt-20');
+      if (mainContainer) {
+        mainContainer.style.background = 'transparent';
+      }
+      
+      const mainContent = document.querySelector('main.w-3\\/4');
+      if (mainContent) {
+        mainContent.style.background = 'transparent';
+      }
+    };
+    
+    // Execute immediately
+    fixWhiteBar();
+    
+    // And also on a slight delay to catch dynamically loaded content
+    setTimeout(fixWhiteBar, 500);
+  });
+</script>
