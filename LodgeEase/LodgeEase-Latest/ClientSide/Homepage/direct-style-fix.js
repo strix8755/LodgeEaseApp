@@ -10,8 +10,7 @@
     // Check if output.css failed to load
     const stylesheets = Array.from(document.styleSheets);
     const tailwindLoaded = stylesheets.some(sheet => 
-      sheet.href && sheet.href.includes('output.css') || 
-      sheet.href && sheet.href.includes('tailwindcss')
+      sheet.href && (sheet.href.includes('output.css') || sheet.href.includes('tailwindcss'))
     );
     
     if (!tailwindLoaded) {
@@ -43,6 +42,53 @@
         // If we can't extract the URL, assume it's missing
         applyHeroFallback();
       }
+    }
+
+    // Check if Google Maps failed to load
+    setTimeout(() => {
+      if (typeof google === 'undefined' || !google.maps) {
+        console.log('Google Maps failed to load, applying fallback');
+        // Load the map fallback script
+        const script = document.createElement('script');
+        script.src = 'map-fallback.js';
+        document.head.appendChild(script);
+        
+        // Update the map button
+        const showMapBtn = document.getElementById('showMap');
+        if (showMapBtn) {
+          showMapBtn.innerHTML = '<i class="ri-map-pin-line text-lg"></i><span class="font-medium">View Locations (Basic)</span>';
+          showMapBtn.classList.add('bg-yellow-500');
+          showMapBtn.classList.remove('bg-blue-500');
+        }
+      }
+    }, 3000);
+    
+    // Fix geolocation errors
+    if (navigator.geolocation) {
+      // Attempt to get current position as early as possible
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          // Store the position in a global variable for future use
+          window.userGeoLocation = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          };
+          console.log('Geolocation acquired successfully');
+        },
+        (error) => {
+          console.warn('Geolocation failed:', error.message);
+          // Create a default location (Baguio City center)
+          window.userGeoLocation = {
+            lat: 16.4023, 
+            lng: 120.5960
+          };
+        },
+        {
+          enableHighAccuracy: false,
+          timeout: 5000,
+          maximumAge: 60000
+        }
+      );
     }
   });
   

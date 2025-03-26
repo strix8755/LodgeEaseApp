@@ -24,14 +24,17 @@
   <script src="../js/z-index-manager.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="../components/inline-styles.js"></script>
+  
+  <!-- Fix Google Maps API URL to use region parameter and add a fallback -->
   <script async defer 
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAaKZC47lvxIv0ej9bECXhUyaoL3FYuDM8&libraries=places,geometry,routes&loading=async" 
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAaKZC47lvxIv0ej9bECXhUyaoL3FYuDM8&libraries=places,geometry&region=PH&loading=async" 
+    onerror="console.warn('Google Maps failed to load');"
     referrerpolicy="strict-origin-when-cross-origin">
   </script>
   
   <!-- Fix module loading approach in correct order -->
-  <script src="admin-connector.js"></script>
   <script src="direct-style-fix.js"></script>
+  <script src="admin-connector.js"></script>
   <script src="rooms.js"></script>
   
   <!-- Provide a fallback for missing assets and CSS -->
