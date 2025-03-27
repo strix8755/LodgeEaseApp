@@ -206,3 +206,62 @@ footer {
 #userDrawer {
   top: 50px;
 }
+
+/* Calendar Modal and Flatpickr Styling */
+.flatpickr-calendar {
+  z-index: 999 !important; /* Use TOP_LEVEL z-index value */
+  position: absolute !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2) !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+#calendar-modal,
+.flatpickr-calendar.open {
+  z-index: 999 !important; /* Same as TOP_LEVEL */
+}
+
+/* Fix positioning context for datepicker wrapper */
+.search-input-group.date-input {
+  position: relative !important;
+  z-index: auto !important; /* Allow child elements to define their own stacking context */
+}
+
+.search-input-group.date-input.active {
+  z-index: 1000 !important; /* When active, ensure it's above everything */
+}
+
+/* Calendar Modal and Flatpickr Styling - Extreme Priority */
+.flatpickr-calendar,
+.flatpickr-calendar.open,
+.flatpickr-calendar.inline,
+.flatpickr-calendar.arrowTop,
+.flatpickr-calendar.arrowBottom {
+  z-index: 9999 !important; /* Extremely high z-index */
+  position: absolute !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  background-color: #fff !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Fix the wrapper element too */
+.flatpickr-wrapper {
+  position: relative !important;
+  z-index: 9999 !important;
+}
+
+/* Ensure calendar has proper stacking context */
+body .flatpickr-calendar {
+  z-index: 9999 !important;
+}
+
+/* Make date input field have higher priority */
+.search-input-group.date-input.active,
+.search-input-group:has(#datePickerBtn),
+.search-input-group:has(#datePickerBtn):focus-within {
+  z-index: 9999 !important;
+  position: static !important; /* Remove relative positioning that may create stacking context */
+}

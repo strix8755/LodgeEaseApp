@@ -144,4 +144,124 @@ document.addEventListener('DOMContentLoaded', function() {
     heroContent.style.zIndex = '1';
     heroContent.style.backgroundColor = 'rgba(0, 0, 0, 0.3)'; // Lighter overlay
   }
+
+  // Fix calendar modal z-index issues
+  const datePickerBtn = document.getElementById('datePickerBtn');
+  if (datePickerBtn) {
+    // Add a specific class to the parent for better targeting
+    const dateInputGroup = datePickerBtn.closest('.search-input-group');
+    if (dateInputGroup) {
+      dateInputGroup.classList.add('date-input');
+      
+      // Ensure flatpickr instance has proper z-index when opened
+      datePickerBtn.addEventListener('click', function() {
+        // Set timeout to ensure this runs after flatpickr opens
+        setTimeout(() => {
+          const flatpickrCalendars = document.querySelectorAll('.flatpickr-calendar');
+          flatpickrCalendars.forEach(calendar => {
+            calendar.style.zIndex = '999'; // Use TOP_LEVEL z-index
+          });
+        }, 10);
+      });
+    }
+  }
+
+  // Check for existing calendar modals and fix their z-index
+  const calendarModal = document.getElementById('calendar-modal');
+  if (calendarModal) {
+    calendarModal.style.zIndex = '999'; // Use TOP_LEVEL z-index
+  }
+
+  // Fix calendar z-index
+  fixCalendarZIndex();
+});
+
+// Comprehensive fix for calendar z-index issues
+function fixCalendarZIndex() {
+  // Immediate fix for any existing calendars
+  const calendars = document.querySelectorAll('.flatpickr-calendar');
+  calendars.forEach(calendar => {
+    calendar.style.zIndex = '9999';
+    calendar.style.position = 'absolute';
+    calendar.style.visibility = 'visible';
+    calendar.style.opacity = '1';
+    
+    // Find parent elements and ensure they don't limit z-index
+    let parent = calendar.parentElement;
+    while (parent && parent !== document.body) {
+      const style = window.getComputedStyle(parent);
+      if (style.position !== 'static') {
+        parent.dataset.originalPosition = style.position;
+        parent.style.position = 'static';
+      }
+      parent = parent.parentElement;
+    }
+  });
+  
+  // Fix date picker input
+  const datePickerBtn = document.getElementById('datePickerBtn');
+  if (datePickerBtn) {
+    // Make the input always trigger a high z-index calendar
+    datePickerBtn.addEventListener('click', () => {
+      setTimeout(() => {
+        fixCalendarZIndex();
+      }, 50);
+    });
+    
+    // Remove stacking context from parent elements
+    const dateInputGroup = datePickerBtn.closest('.search-input-group');
+    if (dateInputGroup) {
+      dateInputGroup.classList.add('date-input');
+      dateInputGroup.style.position = 'static';
+      
+      const inputWrapper = datePickerBtn.closest('.input-wrapper');
+      if (inputWrapper) {
+        inputWrapper.style.position = 'static';
+      }
+    }
+  }
+  
+  // Watch for dynamically added calendars with MutationObserver
+  const observer = new MutationObserver(mutations => {
+    mutations.forEach(mutation => {
+      if (mutation.addedNodes.length) {
+        mutation.addedNodes.forEach(node => {
+          if (node.nodeType === 1) { // Element node
+            const calendars = node.classList && node.classList.contains('flatpickr-calendar') ? 
+                              [node] : 
+                              node.querySelectorAll('.flatpickr-calendar');
+            
+            if (calendars.length) {
+              setTimeout(fixCalendarZIndex, 0);
+            }
+          }
+        });
+      }
+    });
+  });
+  
+  observer.observe(document.body, { 
+    childList: true, 
+    subtree: true 
+  });
+}
+
+// Add a global instance of flatpickr with correct z-index
+window.addEventListener('load', function() {
+  if (typeof flatpickr === 'function') {
+    const datePickerBtn = document.getElementById('datePickerBtn');
+    if (datePickerBtn) {
+      flatpickr(datePickerBtn, {
+        mode: 'range',
+        minDate: 'today',
+        altInput: true,
+        altFormat: 'F j, Y',
+        dateFormat: 'Y-m-d',
+        position: 'auto',
+        onOpen: function() {
+          fixCalendarZIndex();
+        }
+      });
+    }
+  }
 });

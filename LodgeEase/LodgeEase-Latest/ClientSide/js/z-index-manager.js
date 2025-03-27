@@ -17,6 +17,7 @@ const ZIndexManager = {
   MODAL: 80,
   MAP_VIEW: 90,
   DROPDOWN: 100,
+  CALENDAR: 950,      // Add specific value for calendar
   
   // Special cases
   TOP_LEVEL: 999,
@@ -60,6 +61,10 @@ document.addEventListener('DOMContentLoaded', function() {
   // Dropdowns
   const dropdowns = document.querySelectorAll('.dropdown, #guestsDropdown, #barangayDropdown');
   dropdowns.forEach(dropdown => ZIndexManager.apply(dropdown, 'DROPDOWN'));
+  
+  // Calendar elements
+  const calendarModals = document.querySelectorAll('#calendar-modal, .flatpickr-calendar');
+  calendarModals.forEach(cal => ZIndexManager.apply(cal, 'CALENDAR'));
   
   // Add overlay style to body
   const overlay = document.createElement('style');
