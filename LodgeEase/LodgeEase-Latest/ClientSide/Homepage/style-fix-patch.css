@@ -31,6 +31,7 @@ main.w-3\/4 {
 /* Add transparency to the main content container */
 .container.mx-auto.max-w-6xl.px-4.pt-20 {
   background: transparent !important;
+  padding-top: 50px !important;
 }
 
 /* Ensure lodge cards are visible */
@@ -71,6 +72,69 @@ footer {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
 }
 
+/* Enhanced Search Container Wrapper */
+.search-container-wrapper {
+  width: 90% !important;
+  max-width: 900px !important;
+  margin: 0 auto !important;
+  padding: 0.75rem !important;
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  border-radius: 16px !important;
+  backdrop-filter: blur(8px) !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2) !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+  position: relative !important;
+  z-index: 20 !important;
+  transform: translateY(0) !important;
+  transition: transform 0.3s ease, box-shadow 0.3s ease !important;
+  margin-top: -10px;
+}
+
+.search-container-wrapper:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.25) !important;
+}
+
+.search-container {
+  display: flex !important;
+  background-color: white !important;
+  border-radius: 12px !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+  overflow: hidden !important;
+}
+
+.search-input-group {
+  flex: 1 !important;
+  position: relative !important;
+  z-index: 2 !important;
+  transition: background-color 0.2s ease !important;
+}
+
+.search-input-group:hover {
+  background-color: rgba(249, 250, 251, 0.8) !important;
+}
+
+.input-wrapper {
+  display: flex !important;
+  align-items: center !important;
+  padding: 0.875rem 1.25rem !important;
+}
+
+.input-wrapper i {
+  color: #4b5563 !important;
+  margin-right: 0.75rem !important;
+  font-size: 1.25rem !important;
+}
+
+/* Make inputs and buttons more noticeable */
+#barangayDropdownBtn, #datePickerBtn, #guestsDropdownBtn {
+  font-weight: 500 !important;
+}
+
+#barangayText, #guestsText {
+  color: #374151 !important;
+}
+
 /* Add simple background to mobile menu */
 #mobile-menu {
   background-color: white !important;
@@ -84,4 +148,61 @@ footer {
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
+}
+
+/* Mobile header adjustments */
+@media (max-width: 768px) {
+  .main-header {
+    height: 45px;
+  }
+  
+  .logo img {
+    height: 22px;
+  }
+  
+  .nav-button {
+    padding: 0.25rem;
+  }
+  
+  #mobile-menu {
+    top: 45px;
+  }
+  
+  .container {
+    padding-top: 30px;
+  }
+  
+  .search-container-wrapper {
+    width: 95% !important;
+    padding: 0.5rem !important;
+  }
+  
+  .search-container {
+    flex-direction: column !important;
+  }
+  
+  .search-input-group {
+    width: 100% !important;
+    border-right: none !important;
+    border-bottom: 1px solid #e5e7eb !important;
+  }
+  
+  .search-input-group:last-child {
+    border-bottom: none !important;
+  }
+  
+  .input-wrapper {
+    padding: 0.75rem 1rem !important;
+  }
+}
+
+/* Ensure content spacing is adjusted to smaller header */
+.hero-section {
+  margin-top: 20px !important;
+}
+
+/* Fix modal positions for smaller header */
+#mapView, 
+#userDrawer {
+  top: 50px;
 }

@@ -136,6 +136,12 @@
       background-color: rgba(255, 255, 255, 0.95) !important;
       backdrop-filter: blur(8px) !important;
       z-index: 100 !important;
+      height: 50px !important; /* Smaller header height */
+    }
+    
+    /* Adjust logo size */
+    .logo img {
+      height: 24px !important;
     }
     
     /* Ensure buttons are clickable */
@@ -158,10 +164,30 @@
       background-color: rgba(0, 0, 0, 0.3) !important;
     }
     
-    /* Ensure proper z-index for search container */
+    /* Enhanced search container wrapper */
     .search-container-wrapper {
       position: relative !important;
-      z-index: 10 !important;
+      z-index: 15 !important;
+      width: 90% !important;
+      max-width: 900px !important;
+      margin: 0 auto !important;
+      background-color: rgba(255, 255, 255, 0.9) !important;
+      backdrop-filter: blur(8px) !important;
+      border-radius: 16px !important;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2) !important;
+      border: 1px solid rgba(255, 255, 255, 0.6) !important;
+      margin-top: -10px !important; /* Pull it slightly upward */
+    }
+
+    /* Reduce gap between header and content */
+    .container.mx-auto.max-w-6xl.px-4.pt-20 {
+      padding-top: 50px !important;
+    }
+    
+    /* Reduce margin on hero section */
+    .hero-section {
+      margin-top: 20px !important;
+      margin-bottom: 24px !important;
     }
   </style>
 </head>

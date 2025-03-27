@@ -28,6 +28,31 @@ document.addEventListener('DOMContentLoaded', function() {
     header.style.backgroundColor = 'rgba(255, 255, 255, 0.95)'; // More opaque background
     header.style.backdropFilter = 'blur(8px)'; // Add blur for better readability
     header.style.borderBottom = '1px solid rgba(0, 0, 0, 0.1)'; // Subtle border
+    header.style.height = '50px'; // Set smaller height
+  }
+
+  // Adjust logo size
+  const logo = document.querySelector('.logo img');
+  if (logo) {
+    logo.style.height = '24px';
+  }
+
+  // Fix mobile menu position to match new header height
+  const mobileMenu = document.querySelector('#mobile-menu');
+  if (mobileMenu) {
+    mobileMenu.style.top = '50px'; // Match new header height
+  }
+
+  // Adjust hero section top margin for smaller header
+  const heroSection = document.querySelector('.hero-section');
+  if (heroSection) {
+    heroSection.style.marginTop = '20px'; // Reduced from 35px
+  }
+  
+  // Reduce padding-top of main container
+  const mainContainer = document.querySelector('.container.mx-auto.max-w-6xl.px-4.pt-20');
+  if (mainContainer) {
+    mainContainer.style.paddingTop = '50px'; // Reduced from default 5rem (80px)
   }
   
   // Fix z-index for all interactive elements in header
@@ -41,7 +66,62 @@ document.addEventListener('DOMContentLoaded', function() {
   const searchContainer = document.querySelector('.search-container-wrapper');
   if (searchContainer) {
     searchContainer.style.position = 'relative';
-    searchContainer.style.zIndex = '10';
+    searchContainer.style.zIndex = '15';
+    searchContainer.style.width = '90%';
+    searchContainer.style.maxWidth = '900px';
+    searchContainer.style.margin = '0 auto';
+    searchContainer.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
+    searchContainer.style.backdropFilter = 'blur(8px)';
+    searchContainer.style.borderRadius = '16px';
+    searchContainer.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.2)';
+    searchContainer.style.border = '1px solid rgba(255, 255, 255, 0.6)';
+    
+    // Add hover effect through event listeners
+    searchContainer.addEventListener('mouseenter', function() {
+      this.style.transform = 'translateY(-2px)';
+      this.style.boxShadow = '0 15px 30px -5px rgba(0, 0, 0, 0.25)';
+    });
+    
+    searchContainer.addEventListener('mouseleave', function() {
+      this.style.transform = 'translateY(0)';
+      this.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.2)';
+    });
+    
+    // Enhance inner container
+    const innerContainer = searchContainer.querySelector('.search-container');
+    if (innerContainer) {
+      innerContainer.style.borderRadius = '12px';
+      innerContainer.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.08)';
+      innerContainer.style.overflow = 'hidden';
+    }
+    
+    // Enhance input groups
+    const inputGroups = searchContainer.querySelectorAll('.search-input-group');
+    inputGroups.forEach(group => {
+      group.style.transition = 'background-color 0.2s ease';
+      
+      group.addEventListener('mouseenter', function() {
+        this.style.backgroundColor = 'rgba(249, 250, 251, 0.8)';
+      });
+      
+      group.addEventListener('mouseleave', function() {
+        this.style.backgroundColor = 'transparent';
+      });
+    });
+    
+    // Enhance input wrappers
+    const inputWrappers = searchContainer.querySelectorAll('.input-wrapper');
+    inputWrappers.forEach(wrapper => {
+      wrapper.style.padding = '0.875rem 1.25rem';
+    });
+    
+    // Enhance icons
+    const icons = searchContainer.querySelectorAll('.input-wrapper i');
+    icons.forEach(icon => {
+      icon.style.color = '#4b5563';
+      icon.style.marginRight = '0.75rem';
+      icon.style.fontSize = '1.25rem';
+    });
   }
   
   // Fix dropdown menus z-index
