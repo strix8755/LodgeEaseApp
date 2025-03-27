@@ -6,9 +6,10 @@
   "scripts": {
     "build:css": "tailwindcss -i ./src/input.css -o ./dist/output.css",
     "watch:css": "tailwindcss -i ./src/input.css -o ./dist/output.css --watch",
+    "predeploy:client": "node scripts/ensure-components.js",
     "deploy:admin": "firebase deploy --only hosting:admin",
     "deploy:client": "firebase deploy --only hosting:client",
-    "deploy": "firebase deploy",
+    "deploy": "npm run predeploy:client && firebase deploy",
     "serve": "firebase serve",
     "setup": "firebase use lms-app-2b903 && firebase target:apply hosting admin lodgeease-admin && firebase target:apply hosting client lodgeease-client"
   },

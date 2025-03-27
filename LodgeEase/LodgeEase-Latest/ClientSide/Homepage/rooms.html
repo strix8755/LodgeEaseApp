@@ -118,6 +118,52 @@
       }, 500);
     });
   </script>
+  <!-- Add image fallback script -->
+  <script src="../js/image-fallback.js"></script>
+  <script src="image-fallback.js"></script>
+
+  <!-- Add this right before the closing </head> tag -->
+  <style id="emergency-fixes">
+    /* Fix for dark background */
+    body::before,
+    .bg-overlay {
+      background-color: rgba(0, 0, 0, 0.25) !important;
+      z-index: -5 !important;
+    }
+    
+    /* Fix for header elements */
+    .main-header {
+      background-color: rgba(255, 255, 255, 0.95) !important;
+      backdrop-filter: blur(8px) !important;
+      z-index: 100 !important;
+    }
+    
+    /* Ensure buttons are clickable */
+    .main-header button,
+    .main-header a,
+    .nav-button,
+    .menu-button {
+      position: relative !important;
+      z-index: 2 !important;
+    }
+    
+    /* Make dropdowns visible above all */
+    #guestsDropdown, 
+    #barangayDropdown {
+      z-index: 150 !important;
+    }
+    
+    /* Lighten hero content background */
+    .hero-content {
+      background-color: rgba(0, 0, 0, 0.3) !important;
+    }
+    
+    /* Ensure proper z-index for search container */
+    .search-container-wrapper {
+      position: relative !important;
+      z-index: 10 !important;
+    }
+  </style>
 </head>
 
 <body class="text-gray-800">
@@ -567,6 +613,9 @@
           background: transparent !important;
         }
       </style>
+
+      <!-- Add this right before the closing </body> tag -->
+      <script src="room-fixes.js"></script>
 
     </body>
   </html>
