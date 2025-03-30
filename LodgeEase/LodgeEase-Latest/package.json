@@ -6,7 +6,8 @@
   "scripts": {
     "build:css": "tailwindcss -i ./src/input.css -o ./dist/output.css",
     "watch:css": "tailwindcss -i ./src/input.css -o ./dist/output.css --watch",
-    "predeploy:client": "node scripts/ensure-components.js",
+    "build:all": "node build-css.js",
+    "predeploy:client": "node scripts/ensure-components.js && npm run build:all",
     "deploy:admin": "firebase deploy --only hosting:admin",
     "deploy:client": "firebase deploy --only hosting:client",
     "deploy": "npm run predeploy:client && firebase deploy",

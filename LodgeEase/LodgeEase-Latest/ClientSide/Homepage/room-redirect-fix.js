@@ -1,49 +1,79 @@
-// Enhanced redirect loop prevention for rooms.html
+/**
+ * Room Redirect Fix
+ * Prevents redirect loops and ensures proper page navigation for LodgeEase
+ */
 
-// Immediately detect we're on the correct page
 (function() {
   console.log('Room redirect fix script running');
   
-  // Clear redirect tracking
-  sessionStorage.removeItem('redirectCount');
-  localStorage.removeItem('redirectAttempted');
+  // Store visited pages to detect loops
+  const visitedPages = new Set();
+  const currentPage = window.location.pathname;
   
-  // Record this page has loaded successfully
-  localStorage.setItem('roomsPageLoaded', 'true');
-  localStorage.setItem('lastPageLoad', Date.now().toString());
+  // Add the current page to visited pages
+  visitedPages.add(currentPage);
   
-  // Save current URL as the last valid one
-  localStorage.setItem('lastValidUrl', window.location.href);
-  
-  // Set a global variable accessible from other scripts
-  window.__roomsPageLoaded = true;
-  
+  // Redirect loop protection
   console.log('Redirect loop protection active');
-})();
-
-// Create a hidden iframe to ensure the parent frame knows the page has loaded
-document.addEventListener('DOMContentLoaded', function() {
-  // Create a ping element to confirm rooms.html loaded correctly
-  const pingElement = document.createElement('div');
-  pingElement.id = 'rooms-page-loaded-ping';
-  pingElement.style.display = 'none';
-  document.body.appendChild(pingElement);
   
-  // Check if we got here via redirect and log it
-  if (document.referrer.includes('index.html')) {
-    console.log('Successfully redirected from index.html to rooms.html');
+  // Check for redirect loops in local storage
+  const redirectHistory = JSON.parse(localStorage.getItem('redirectHistory') || '[]');
+  const redirectTime = parseInt(localStorage.getItem('redirectTime') || '0');
+  const now = Date.now();
+  
+  // If too many redirects in a short time, stop redirecting
+  if (redirectHistory.length > 5 && (now - redirectTime < 5000)) {
+    console.warn('Too many redirects detected, stopping redirect chain');
+    localStorage.setItem('redirectBlocked', 'true');
+    
+    // Clear redirect history after 10 seconds
+    setTimeout(() => {
+      localStorage.removeItem('redirectHistory');
+      localStorage.removeItem('redirectTime');
+      localStorage.removeItem('redirectBlocked');
+    }, 10000);
+    
+    // Show warning message if we're in a loop
+    if (redirectHistory.includes(currentPage)) {
+      console.error('Redirect loop detected for page: ' + currentPage);
+    }
+  } else {
+    // Update redirect history
+    redirectHistory.push(currentPage);
+    if (redirectHistory.length > 10) {
+      redirectHistory.shift(); // Keep only the last 10 redirects
+    }
+    localStorage.setItem('redirectHistory', JSON.stringify(redirectHistory));
+    localStorage.setItem('redirectTime', now.toString());
   }
-});
-
-// Set up a custom error handler that doesn't use import/export
-window.addEventListener('error', function(e) {
-  // Don't log syntax errors from modules - these are expected
-  if (e.message && (e.message.includes('import statement') || e.message.includes('export statement'))) {
-    return;
+  
+  // Utility function to fix broken links
+  function fixBrokenLinks() {
+    // Find all links on the page
+    const links = document.querySelectorAll('a[href]');
+    
+    links.forEach(link => {
+      // Check for broken lodge links
+      if (link.href.includes('/Lodge/lodge') && !link.href.includes('.html')) {
+        link.href = link.href + '.html';
+      }
+      
+      // Add event listener to capture errors
+      link.addEventListener('click', (e) => {
+        if (localStorage.getItem('redirectBlocked') === 'true') {
+          e.preventDefault();
+          console.warn('Navigation blocked due to too many redirects');
+          alert('Navigation temporarily disabled due to redirect loop. Please try again in a few seconds.');
+        }
+      });
+    });
   }
   
-  console.error('Page error detected:', e.message);
+  // Listen for page errors
+  window.addEventListener('error', (e) => {
+    console.log('Page error detected:', e.message);
+  });
   
-  // Log critical errors
-  localStorage.setItem('roomsPageError', e.message || 'Unknown error');
-});
+  // Run when DOM is loaded
+  document.addEventListener('DOMContentLoaded', fixBrokenLinks);
+})(); // <-- This is the closing parenthesis and function invocation that was likely missing

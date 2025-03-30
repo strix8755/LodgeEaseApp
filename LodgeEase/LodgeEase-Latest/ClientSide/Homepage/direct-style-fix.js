@@ -30,154 +30,125 @@
         applyHeroFallback();
       };
       
-      // Get computed style
-      const style = window.getComputedStyle(heroSection);
+      // Get computed style to check if background image is actually loading
+      const style = getComputedStyle(heroSection);
       const bgImage = style.backgroundImage;
       
-      // Extract URL from background-image
-      const urlMatch = bgImage.match(/url\(['"]?([^'"]+)['"]?\)/);
-      if (urlMatch && urlMatch[1]) {
-        heroImg.src = urlMatch[1];
-      } else {
-        // If we can't extract the URL, assume it's missing
+      if (bgImage === 'none' || bgImage === '') {
         applyHeroFallback();
+      } else {
+        heroImg.src = bgImage.replace(/url\(['"]?(.*?)['"]?\)/i, '$1');
       }
     }
-
-    // Check if Google Maps failed to load
-    setTimeout(() => {
-      if (typeof google === 'undefined' || !google.maps) {
-        console.log('Google Maps failed to load, applying fallback');
-        // Load the map fallback script
-        const script = document.createElement('script');
-        script.src = 'map-fallback.js';
-        document.head.appendChild(script);
-        
-        // Update the map button
-        const showMapBtn = document.getElementById('showMap');
-        if (showMapBtn) {
-          showMapBtn.innerHTML = '<i class="ri-map-pin-line text-lg"></i><span class="font-medium">View Locations (Basic)</span>';
-          showMapBtn.classList.add('bg-yellow-500');
-          showMapBtn.classList.remove('bg-blue-500');
-        }
-      }
-    }, 3000);
     
-    // Fix geolocation errors
+    // Check for geolocation issues and provide a workaround
     if (navigator.geolocation) {
-      // Attempt to get current position as early as possible
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          // Store the position in a global variable for future use
-          window.userGeoLocation = {
+        position => {
+          console.log('Geolocation obtained successfully');
+          window.userLocation = {
             lat: position.coords.latitude,
             lng: position.coords.longitude
           };
-          console.log('Geolocation acquired successfully');
         },
-        (error) => {
-          console.warn('Geolocation failed:', error.message);
-          // Create a default location (Baguio City center)
-          window.userGeoLocation = {
-            lat: 16.4023, 
-            lng: 120.5960
-          };
+        error => {
+          console.log('Geolocation failed:', error.message);
+          // Set a default location for Baguio City
+          window.userLocation = { lat: 16.4023, lng: 120.5960 };
         },
-        {
-          enableHighAccuracy: false,
-          timeout: 5000,
-          maximumAge: 60000
-        }
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
       );
     }
   });
   
   function applyEmergencyStyles() {
+    // Create a style element for emergency CSS
     const style = document.createElement('style');
     style.textContent = `
       body {
-        font-family: system-ui, -apple-system, sans-serif;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         margin: 0;
         padding: 0;
-        background-color: #f9fafb;
+        background-color: #f5f5f5;
       }
-      
       .main-header {
         background-color: white;
         box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         position: fixed;
         top: 0;
         left: 0;
-        width: 100%;
-        z-index: 50;
+        right: 0;
+        z-index: 100;
+        height: 60px;
       }
-      
       .container {
-        width: 100%;
-        max-width: 1280px;
+        max-width: 1200px;
         margin: 0 auto;
         padding: 0 1rem;
       }
-      
       .flex {
         display: flex;
       }
-      
-      .space-x-6 > * + * {
-        margin-left: 1.5rem;
+      .items-center {
+        align-items: center;
       }
-      
+      .justify-between {
+        justify-content: space-between;
+      }
+      .space-x-4 > * + * {
+        margin-left: 1rem;
+      }
+      .hero-section {
+        background-color: rgba(0,0,0,0.6);
+        padding: 2rem 0;
+        color: white;
+        margin-top: 60px;
+      }
       .w-1\\/4 {
         width: 25%;
       }
-      
       .w-3\\/4 {
         width: 75%;
       }
-      
-      .lodge-container {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 1.5rem;
+      .space-x-6 > * + * {
+        margin-left: 1.5rem;
       }
-      
       .lodge-card {
         background-color: white;
         border-radius: 0.5rem;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         overflow: hidden;
+        margin-bottom: 1.5rem;
       }
-      
       .lodge-image {
         width: 100%;
         height: 200px;
         object-fit: cover;
       }
-      
-      @media (max-width: 768px) {
-        .w-1\\/4, .w-3\\/4 {
-          width: 100%;
-        }
-        
-        .space-x-6 {
-          flex-direction: column;
-        }
-        
-        .space-x-6 > * + * {
-          margin-left: 0;
-          margin-top: 1.5rem;
-        }
+      .p-4 {
+        padding: 1rem;
+      }
+      .text-xl {
+        font-size: 1.25rem;
+      }
+      .font-semibold {
+        font-weight: 600;
+      }
+      .mb-2 {
+        margin-bottom: 0.5rem;
+      }
+      .text-gray-600 {
+        color: #4b5563;
       }
     `;
-    
     document.head.appendChild(style);
   }
   
   function applyHeroFallback() {
     const heroSection = document.querySelector('.hero-bg');
     if (heroSection) {
-      heroSection.style.backgroundColor = '#1e293b';
-      heroSection.style.backgroundImage = 'linear-gradient(135deg, #1e293b 0%, #334155 100%)';
+      heroSection.style.backgroundImage = 'linear-gradient(135deg, #1e3c72, #2a5298)';
+      heroSection.style.opacity = '1';
     }
   }
 })();

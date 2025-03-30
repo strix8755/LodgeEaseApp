@@ -1,0 +1,126 @@
+/**
+ * Simplified and robust version of rooms.js
+ * This file will be used if the original rooms.js has syntax errors
+ */
+
+// Use an IIFE to avoid global namespace pollution
+(function() {
+    // Basic API for external integration
+    window.LodgeEasePublicAPI = {
+        getAllLodges: () => lodgeData || [],
+        renderLodges: createLodgeCards,
+        addNewLodge: (lodge) => {
+            if (!lodgeData) lodgeData = [];
+            lodgeData.push(lodge);
+            createLodgeCards();
+            return true;
+        },
+        updateLodge: (lodgeId, updatedData) => {
+            if (!lodgeData) return false;
+            const index = lodgeData.findIndex(lodge => lodge.id === parseInt(lodgeId));
+            if (index !== -1) {
+                lodgeData[index] = { ...lodgeData[index], ...updatedData };
+                createLodgeCards();
+                return true;
+            }
+            return false;
+        },
+        removeLodge: (lodgeId) => {
+            if (!lodgeData) return false;
+            const initialLength = lodgeData.length;
+            lodgeData = lodgeData.filter(lodge => lodge.id !== parseInt(lodgeId));
+            if (lodgeData.length !== initialLength) {
+                createLodgeCards();
+                return true;
+            }
+            return false;
+        }
+    };
+
+    // Add this function to handle login button visibility
+    function updateLoginButtonVisibility(user) {
+        const loginButton = document.getElementById('loginButton');
+        if (loginButton) {
+            loginButton.style.display = user ? 'none' : 'flex';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Backup rooms.js loaded successfully');
+        
+        // Try to import firebase modules
+        try {
+            // First try to use the fallback system
+            if (window.getFirebase) {
+                window.getFirebase().then(firebase => {
+                    const auth = firebase.auth;
+                    if (auth) {
+                        auth.onAuthStateChanged(updateLoginButtonVisibility);
+                    }
+                });
+            } else {
+                // Fall back to direct import
+                import('../../AdminSide/firebase.js')
+                    .then(({ auth }) => {
+                        auth.onAuthStateChanged(updateLoginButtonVisibility);
+                    })
+                    .catch(err => {
+                        console.warn('Failed to load Firebase auth:', err);
+                        // Use client-side stub as fallback
+                        import('../firebase.js')
+                            .then(({ auth }) => {
+                                auth.onAuthStateChanged(updateLoginButtonVisibility);
+                            })
+                            .catch(err => {
+                                console.error('All Firebase imports failed:', err);
+                            });
+                    });
+            }
+        } catch (err) {
+            console.warn('Error initializing auth:', err);
+        }
+        
+        // Initialize the lodge cards
+        createLodgeCards();
+        
+        // Set up simple event listeners
+        setupEventListeners();
+    });
+
+    function setupEventListeners() {
+        // Map toggle
+        const showMapBtn = document.getElementById('showMap');
+        const closeMapBtn = document.getElementById('closeMap');
+        const mapView = document.getElementById('mapView');
+
+        showMapBtn?.addEventListener('click', () => {
+            mapView?.classList.remove('hidden');
+        });
+
+        closeMapBtn?.addEventListener('click', () => {
+            mapView?.classList.add('hidden');
+        });
+
+        // User drawer toggle
+        const userIconBtn = document.getElementById('userIconBtn');
+        const userDrawer = document.getElementById('userDrawer');
+
+        userIconBtn?.addEventListener('click', () => {
+            userDrawer?.classList.toggle('translate-x-full');
+        });
+
+        // Close drawer when clicking outside
+        document.addEventListener('click', (e) => {
+            if (userDrawer && !userDrawer.contains(e.target) && !userIconBtn?.contains(e.target)) {
+                userDrawer.classList.add('translate-x-full');
+            }
+        });
+    }
+
+    // Minimal lodge data
+    let lodgeData = [
+        {
+            id: 1,
+            name: "Pine Haven Lodge",
+            location: "Camp John Hay, Baguio City",
+            barangay: "Camp 7",

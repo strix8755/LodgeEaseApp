@@ -7,6 +7,16 @@
   <!-- Fix favicon path to use a relative path that exists -->
   <link rel="icon" type="image/x-icon" href="../assets/favicon.ico">
   
+  <!-- Add code protection and tailwind generator early in loading process -->
+  <script src="../js/code-protector.js"></script>
+  <script src="../js/tailwind-generator.js"></script>
+  
+  <!-- Add resource loader early -->
+  <script src="../js/resource-loader.js"></script>
+  
+  <!-- Add Firebase initialization fix -->
+  <script src="firebase-init-fix.js"></script>
+  
   <!-- Improved CSS loading with multiple fallbacks -->
   <link href="../../dist/output.css" rel="stylesheet" onerror="document.head.appendChild(Object.assign(document.createElement('script'), {src: 'https://cdn.tailwindcss.com', defer: true}));">
   <link rel="stylesheet" href="../styles/styles-fix.css">
@@ -186,7 +196,7 @@
     
     /* Reduce margin on hero section */
     .hero-section {
-      margin-top: 20px !important;
+      margin-top: 10px !important;
       margin-bottom: 24px !important;
     }
 

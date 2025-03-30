@@ -265,3 +265,83 @@ window.addEventListener('load', function() {
     }
   }
 });
+
+/**
+ * Room-specific fixes for the rooms.html page
+ * Applies styling and interaction improvements
+ */
+document.addEventListener('DOMContentLoaded', function() {
+  // Fix search container styling
+  const searchContainer = document.querySelector('.search-container');
+  const inputGroups = document.querySelectorAll('.search-input-group');
+  
+  if (searchContainer) {
+    inputGroups.forEach(group => {
+      // Add hover effects
+      group.addEventListener('mouseenter', function() {
+        this.style.backgroundColor = 'rgba(249, 250, 251, 0.8)';
+      });
+      
+      group.addEventListener('mouseleave', function() {
+        this.style.backgroundColor = 'transparent';
+      });
+    });
+    
+    // Enhance input wrappers
+    const inputWrappers = searchContainer.querySelectorAll('.input-wrapper');
+    inputWrappers.forEach(wrapper => {
+      wrapper.style.padding = '0.875rem 1.25rem';
+    });
+    
+    // Enhance icons
+    const icons = searchContainer.querySelectorAll('.input-wrapper i');
+    icons.forEach(icon => {
+      icon.style.color = '#4b5563';
+      icon.style.marginRight = '0.75rem';
+      icon.style.fontSize = '1.25rem';
+    });
+  }
+  
+  // Fix dropdown menus z-index
+  const dropdowns = document.querySelectorAll('#guestsDropdown, #barangayDropdown');
+  dropdowns.forEach(dropdown => {
+    dropdown.style.zIndex = '150';
+  });
+  
+  // Fix background in hero section
+  const heroBg = document.querySelector('.hero-bg');
+  if (heroBg) {
+    heroBg.style.backgroundImage = `url('../components/baguio-city-mirador-hill-sunset.jpg')`;
+    heroBg.style.backgroundSize = 'cover';
+    heroBg.style.backgroundPosition = 'center';
+    heroBg.style.opacity = '0.85';
+  }
+  
+  // Fix date picker positioning issues
+  const datePickerBtn = document.getElementById('datePickerBtn');
+  if (datePickerBtn) {
+    datePickerBtn.addEventListener('click', () => {
+      // Ensure flatpickr is positioned correctly
+      setTimeout(() => {
+        const calendar = document.querySelector('.flatpickr-calendar');
+        if (calendar) {
+          calendar.style.zIndex = '9999';
+          calendar.style.position = 'fixed';
+        }
+      }, 10);
+    });
+  }
+  
+  // Fix syntax issue in rooms.js if it exists
+  if (window.LodgeEasePublicAPI && !window.LodgeEasePublicAPI.getAllLodges) {
+    console.log('Fixing LodgeEasePublicAPI');
+    // Provide fallback implementation
+    window.LodgeEasePublicAPI = {
+      getAllLodges: () => [],
+      renderLodges: () => console.log('Mock rendering lodges'),
+      addNewLodge: () => true,
+      updateLodge: () => true,
+      removeLodge: () => true
+    };
+  }
+});
