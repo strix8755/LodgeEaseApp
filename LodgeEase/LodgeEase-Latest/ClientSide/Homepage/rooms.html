@@ -134,10 +134,10 @@
 
   <!-- Add this right before the closing </head> tag -->
   <style id="emergency-fixes">
-    /* Fix for dark background */
+    /* Fix for dark background - LIGHTENED */
     body::before,
     .bg-overlay {
-      background-color: rgba(0, 0, 0, 0.25) !important;
+      background-color: rgba(0, 0, 0, 0.2) !important; /* Reduced from 0.25 to 0.2 */
       z-index: -5 !important;
     }
     
@@ -232,7 +232,105 @@
     body .flatpickr-calendar {
       z-index: 9999 !important;
     }
+
+    /* Hero section fixes */
+    .hero-section {
+      position: relative !important;
+      min-height: 200px !important;
+      background: linear-gradient(90deg, rgba(23, 49, 71, 0.5) 0%, rgba(37, 69, 89, 0.5) 100%) !important;
+      padding: 20px 0 !important;
+      margin-top: 40px !important;
+      overflow: hidden !important;
+    }
+    
+    .hero-bg {
+      position: absolute !important;
+      inset: 0 !important; 
+      background-image: url('https://images.unsplash.com/photo-1542718610-a1d656d1884c?q=80&w=2070&auto=format&fit=crop') !important;
+      background-size: cover !important;
+      background-position: center !important;
+      background-repeat: no-repeat !important;
+      opacity: 0.9 !important;
+      z-index: 0 !important;
+    }
+    
+    .hero-content {
+      position: relative !important;
+      z-index: 1 !important;
+      color: white !important;
+    }
+    
+    .hero-title {
+      font-size: 2rem !important;
+      font-weight: 700 !important;
+      margin-bottom: 0.5rem !important;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.7) !important;
+    }
+    
+    .hero-subtitle {
+      font-size: 1.1rem !important;
+      opacity: 0.9 !important;
+      margin-bottom: 1.5rem !important;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.7) !important;
+    }
+
+    /* Enhanced background fixes */
+    #background-container, 
+    body > img:first-of-type {
+      z-index: -5 !important;
+      opacity: 0.9 !important; /* Added higher opacity for brighter background */
+    }
+    
+    /* Force background image on body */
+    body.background-applied {
+      background-image: url('https://images.unsplash.com/photo-1573790387438-4da905039392?q=80&w=2050&auto=format&fit=crop') !important;
+      background-size: cover !important;
+      background-position: center center !important;
+      background-attachment: fixed !important;
+      background-repeat: no-repeat !important;
+    }
   </style>
+
+  <!-- Add this right before the closing </head> tag -->
+  <script src="hero-bg-fix.js"></script>
+  <script src="background-fix.js"></script>
+  <!-- Add enhanced background fix before closing head tag -->
+  <script src="enhanced-background-fix.js"></script>
+
+  <style id="ultra-light-fixes">
+    /* Remove dark overlays completely */
+    body::before,
+    .bg-overlay {
+      background-color: rgba(0, 0, 0, 0.05) !important; /* Ultra-light */
+      z-index: -5 !important;
+    }
+    
+    /* Brighten all background elements */
+    #background-container, 
+    body > img:first-of-type {
+      filter: brightness(1.2) !important;
+      opacity: 1 !important;
+      z-index: -5 !important;
+    }
+    
+    /* Enhance hero content to ensure readability */
+    .hero-content {
+      background-color: rgba(0, 0, 0, 0.15) !important; /* Very light overlay */
+    }
+    
+    .hero-title, .hero-subtitle {
+      text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.7) !important; /* Stronger text shadow */
+    }
+    
+    /* Ensure sidebar is visible but more transparent */
+    aside.w-1\/4 {
+      background-color: rgba(255, 255, 255, 0.85) !important;
+      backdrop-filter: blur(8px) !important;
+    }
+  </style>
+
+  <!-- Include the ultra-light background script last to override other styles -->
+  <script src="ultra-light-background.js"></script>
 </head>
 
 <body class="text-gray-800">
@@ -661,6 +759,12 @@
               <i class="fab fa-twitter"></i>
             </a>
           </div>
+          <div class="image-attribution mt-6">
+            <p>Background images from Unsplash: 
+              <a href="https://unsplash.com/photos/aerial-photography-of-city-VvAcrVa56fc" class="text-blue-400 hover:underline">Baguio Mountain City View by Migs Reyes</a> | 
+              <a href="https://unsplash.com/photos/brown-wooden-house-near-green-trees-during-daytime-CGoR1ptTwGE" class="text-blue-400 hover:underline">Mountain Lodge by Michał Parzuchowski</a>
+            </p>
+          </div>
         </div>
       </footer>
 
@@ -685,6 +789,7 @@
 
       <!-- Add this right before the closing </body> tag -->
       <script src="room-fixes.js"></script>
+      <script src="hero-bg-fix.js"></script>
 
     </body>
   </html>

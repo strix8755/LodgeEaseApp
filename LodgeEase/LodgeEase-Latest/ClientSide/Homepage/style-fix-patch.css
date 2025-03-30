@@ -1,6 +1,17 @@
 /* Emergency style fixes for background/foreground contrast issues */
 
-/* Make background overlay darker */
+/* New lodge-themed background images */
+
+/* Replace the main background image with mountains and city view */
+body {
+  background-image: url('https://images.unsplash.com/photo-1573790387438-4da905039392?q=80&w=2050&auto=format&fit=crop') !important;
+  background-size: cover !important;
+  background-position: center center !important;
+  background-attachment: fixed !important;
+  background-repeat: no-repeat !important;
+}
+
+/* Adjust overlay for better text readability with the new background - ULTRA LIGHT VERSION */
 body::before {
   content: '';
   position: fixed;
@@ -8,7 +19,7 @@ body::before {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.65) !important; /* Darker overlay */
+  background-color: rgba(0, 0, 0, 0.05) !important; /* Reduced from 0.2 to 0.05 */
   z-index: -1;
 }
 
@@ -17,10 +28,10 @@ body::before {
   background: transparent !important;
 }
 
-/* Improve sidebar transparency */
+/* Lighten sidebar to let background show through better */
 aside.w-1\/4 {
-  background-color: rgba(255, 255, 255, 0.95) !important;
-  backdrop-filter: blur(10px);
+  background-color: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(5px);
 }
 
 /* Fix main content area */
@@ -37,7 +48,7 @@ main.w-3\/4 {
 /* Ensure lodge cards are visible */
 .lodge-card {
   background-color: white !important;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
 }
 
 /* Fix sorting bar */
@@ -78,10 +89,10 @@ footer {
   max-width: 900px !important;
   margin: 0 auto !important;
   padding: 0.75rem !important;
-  background-color: rgba(255, 255, 255, 0.9) !important;
+  background-color: rgba(255, 255, 255, 0.92) !important;
   border-radius: 16px !important;
   backdrop-filter: blur(8px) !important;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15) !important;
   border: 1px solid rgba(255, 255, 255, 0.6) !important;
   position: relative !important;
   z-index: 20 !important;
@@ -199,6 +210,15 @@ footer {
 /* Ensure content spacing is adjusted to smaller header */
 .hero-section {
   margin-top: 20px !important;
+  background: linear-gradient(90deg, rgba(23, 49, 71, 0.85) 0%, rgba(37, 69, 89, 0.75) 100%) !important;
+}
+
+/* Hero section background - Mountain Lodge View */
+.hero-bg {
+  background-image: url('https://images.unsplash.com/photo-1542718610-a1d656d1884c?q=80&w=2070&auto=format&fit=crop') !important;
+  background-size: cover !important;
+  background-position: center !important;
+  opacity: 0.85 !important;
 }
 
 /* Fix modal positions for smaller header */
@@ -264,4 +284,19 @@ body .flatpickr-calendar {
 .search-input-group:has(#datePickerBtn):focus-within {
   z-index: 9999 !important;
   position: static !important; /* Remove relative positioning that may create stacking context */
+}
+
+/* Make background slightly brighter through filter */
+#background-container, 
+body > img:first-of-type {
+  filter: brightness(1.2) !important;
+  opacity: 1 !important;
+}
+
+/* Attribution for images - add to the footer */
+.image-attribution {
+  font-size: 10px;
+  opacity: 0.7;
+  text-align: center;
+  padding-top: 10px;
 }
